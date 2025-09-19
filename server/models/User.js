@@ -41,6 +41,7 @@ const schema = new mongoose.Schema({
     type: String,
     unique: true,
     index: true,
+    sparse: true,
     default: () => randomUUID(),
   },
 }, {

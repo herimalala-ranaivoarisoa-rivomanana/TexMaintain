@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
-import { seedAdminUser, seedEquipmentTypes } from "@/api/seed"
+import { seedAdminUser, seedEquipmentTypes, seedParts } from "@/api/seed"
 import {
   User,
   Bell,
@@ -20,6 +20,7 @@ import {
   Database,
   UserPlus,
   Wrench,
+  Package,
   CheckCircle,
   AlertCircle
 } from "lucide-react"
@@ -67,6 +68,26 @@ export function Settings() {
       })
     } finally {
       setLoading({ ...loading, equipment: false })
+    }
+  }
+
+  const handleSeedParts = async () => {
+    try {
+      setLoading({ ...loading, parts: true })
+      const result = await seedParts()
+      setSeedResults({ ...seedResults, parts: result })
+      toast({
+        title: "Success",
+        description: result.message,
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading({ ...loading, parts: false })
     }
   }
 
@@ -311,7 +332,7 @@ export function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {/* Seed Admin User */}
                   <Card className="border-2 border-dashed border-slate-200">
                     <CardHeader>
@@ -383,6 +404,46 @@ export function Settings() {
                             </Badge>
                             <Badge variant="outline" className="text-yellow-700">
                               Skipped: {seedResults.equipment.data?.skipped || 0}
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Seed Parts */}
+                  <Card className="border-2 border-dashed border-slate-200">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Package className="h-5 w-5" />
+                        Seed Parts
+                      </CardTitle>
+                      <CardDescription>
+                        Initialize the database with sample spare parts
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Button
+                        onClick={handleSeedParts}
+                        disabled={loading.parts}
+                        className="w-full"
+                      >
+                        {loading.parts ? "Creating..." : "Create Parts"}
+                      </Button>
+
+                      {seedResults.parts && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-green-800 mb-2">
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="font-medium">Success</span>
+                          </div>
+                          <p className="text-sm text-green-700 mb-2">{seedResults.parts.message}</p>
+                          <div className="flex gap-2">
+                            <Badge variant="outline" className="text-green-700">
+                              Created: {seedResults.parts.data?.created || 0}
+                            </Badge>
+                            <Badge variant="outline" className="text-yellow-700">
+                              Skipped: {seedResults.parts.data?.skipped || 0}
                             </Badge>
                           </div>
                         </div>

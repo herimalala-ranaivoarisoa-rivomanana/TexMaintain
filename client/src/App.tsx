@@ -10,11 +10,14 @@ import { Dashboard } from "./pages/Dashboard"
 import { Equipment } from "./pages/Equipment"
 import { Interventions } from "./pages/Interventions"
 import { Inventory } from "./pages/Inventory"
+import EquipmentDetailWrapper from "./pages/EquipmentDetail"
 import { Procurement } from "./pages/Procurement"
 import { Projects } from "./pages/Projects"
 import { Reports } from "./pages/Reports"
 import { Settings } from "./pages/Settings"
 import { BlankPage } from "./pages/BlankPage"
+import InterventionDetailWrapper from "./pages/InterventionDetail"
+import PartDetailWrapper from "./pages/PartDetail"
 
 function App() {
   return (
@@ -27,8 +30,11 @@ function App() {
             <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="equipment" element={<Equipment />} />
+              <Route path="equipment/:id" element={<EquipmentDetailWrapper />} />
               <Route path="interventions" element={<Interventions />} />
+              <Route path="interventions/:id" element={<InterventionDetailWrapper />} />
               <Route path="inventory" element={<Inventory />} />
+              <Route path="inventory/:id" element={<PartDetailWrapper />} />
               <Route path="procurement" element={<Procurement />} />
               <Route path="projects" element={<Projects />} />
               <Route path="reports" element={<Reports />} />

@@ -1,5 +1,6 @@
 const { User } = require('../models/User.js');
 const { Equipment, EQUIPMENT_TYPES } = require('../models/Equipment.js');
+const { Part } = require('../models/Part.js');
 const { generatePasswordHash } = require('../utils/password.js');
 
 class SeedService {
@@ -182,6 +183,76 @@ class SeedService {
     } catch (error) {
       console.error('Error seeding equipment types:', error);
       throw new Error(`Failed to seed equipment types: ${error.message}`);
+    }
+  }
+
+  static async seedParts() {
+    try {
+      console.log('Starting parts seeding...');
+
+      const partsData = [
+        {
+          name: 'V-Belt Type A',
+          partNumber: 'VB-A-001',
+          category: 'Belts',
+          currentStock: 15,
+          minStock: 10,
+          maxStock: 50,
+          unitPrice: 25.50,
+          supplier: 'Industrial Parts Co.',
+          location: 'Warehouse A-1'
+        },
+        {
+          name: 'Bearing 6205',
+          partNumber: 'BR-6205',
+          category: 'Bearings',
+          currentStock: 5,
+          minStock: 8,
+          maxStock: 30,
+          unitPrice: 12.75,
+          supplier: 'Bearing Solutions Ltd.',
+          location: 'Warehouse A-2'
+        },
+        {
+          name: 'Motor Oil SAE 30',
+          partNumber: 'OIL-SAE30',
+          category: 'Lubricants',
+          currentStock: 25,
+          minStock: 15,
+          maxStock: 100,
+          unitPrice: 8.90,
+          supplier: 'Lubricant Express',
+          location: 'Warehouse B-1'
+        }
+      ];
+
+      const createdParts = [];
+      let skippedCount = 0;
+
+      for (const partData of partsData) {
+        const existing = await Part.findOne({ partNumber: partData.partNumber });
+        if (existing) {
+          console.log(`Part already exists: ${partData.partNumber}`);
+          skippedCount++;
+          continue;
+        }
+        const part = new Part(partData);
+        await part.save();
+        createdParts.push(part);
+        console.log(`Part created: ${part.name} (${part.partNumber})`);
+      }
+
+      console.log(`Parts seeding completed. Created: ${createdParts.length}, Skipped: ${skippedCount}`);
+
+      return {
+        success: true,
+        message: `Parts seeding completed. Created: ${createdParts.length}, Skipped: ${skippedCount}`,
+        created: createdParts,
+        skipped: skippedCount
+      };
+    } catch (error) {
+      console.error('Error seeding parts:', error);
+      throw new Error(`Failed to seed parts: ${error.message}`);
     }
   }
 }

@@ -4,62 +4,36 @@ import api from './api';
 // Endpoint: GET /api/interventions
 // Request: {}
 // Response: { interventions: Array<{ _id: string, title: string, type: string, priority: string, status: string, equipment: string, assignedTo: string, createdDate: string, dueDate: string }> }
-export const getInterventions = () => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        interventions: [
-          {
-            _id: "1",
-            title: "Belt Replacement - Spinning Machine A1",
-            type: "Corrective",
-            priority: "High",
-            status: "In Progress",
-            equipment: "Spinning Machine A1",
-            assignedTo: "John Smith",
-            createdDate: "2024-01-20",
-            dueDate: "2024-01-22"
-          },
-          {
-            _id: "2",
-            title: "Preventive Maintenance - Weaving Loom B2",
-            type: "Preventive",
-            priority: "Medium",
-            status: "Pending",
-            equipment: "Weaving Loom B2",
-            assignedTo: "Sarah Johnson",
-            createdDate: "2024-01-19",
-            dueDate: "2024-01-25"
-          },
-          {
-            _id: "3",
-            title: "Emergency Repair - Dyeing Unit C1",
-            type: "Emergency",
-            priority: "Critical",
-            status: "Completed",
-            equipment: "Dyeing Unit C1",
-            assignedTo: "Mike Wilson",
-            createdDate: "2024-01-18",
-            dueDate: "2024-01-19"
-          }
-        ]
-      });
-    }, 500);
-  });
+export const getInterventions = async (params?: { page?: number; limit?: number; status?: string; type?: string; priority?: string; q?: string; sort?: string; order?: 'asc'|'desc' }) => {
+  const response = await api.get('/api/interventions', { params });
+  return response.data;
+};
+
+// Description: Get a single intervention by ID
+// Endpoint: GET /api/interventions/:id
+// Response: { intervention: object }
+export const getInterventionById = async (id: string) => {
+  const response = await api.get(`/api/interventions/${id}`);
+  return response.data;
 };
 
 // Description: Create a new intervention
 // Endpoint: POST /api/interventions
 // Request: { title: string, type: string, priority: string, equipment: string, description: string }
 // Response: { success: boolean, message: string, intervention: object }
-export const createIntervention = (data: { title: string; type: string; priority: string; equipment: string; description: string }) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        success: true,
-        message: 'Intervention created successfully',
-        intervention: { _id: Date.now().toString(), ...data, status: 'Pending', createdDate: new Date().toISOString() }
-      });
-    }, 500);
-  });
+export const createIntervention = async (data: { title: string; type: string; priority: string; equipment: string; description: string }) => {
+  const response = await api.post('/api/interventions', data);
+  return response.data;
+};
+
+// Update intervention
+export const updateIntervention = async (id: string, updates: Record<string, any>) => {
+  const response = await api.patch(`/api/interventions/${id}`, updates);
+  return response.data;
+};
+
+// Delete intervention
+export const deleteIntervention = async (id: string) => {
+  const response = await api.delete(`/api/interventions/${id}`);
+  return response.data;
 };

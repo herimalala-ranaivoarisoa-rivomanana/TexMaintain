@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { login as apiLogin, register as apiRegister, getCurrentUser } from "../api/auth";
+import { login as apiLogin, register as apiRegister, getCurrentUser, logout as apiLogout } from "../api/auth";
 
 type User = {
   _id: string;
@@ -87,12 +87,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("accessToken");
-    setIsAuthenticated(false);
-    setUser(null);
-    window.location.reload();
+  const logout = async () => {
+    try {
+      await apiLogout();
+    } catch (_err) {
+      // ignore logout API errors
+    } finally {
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("accessToken");
+      setIsAuthenticated(false);
+      setUser(null);
+      window.location.reload();
+    }
   };
 
   return (

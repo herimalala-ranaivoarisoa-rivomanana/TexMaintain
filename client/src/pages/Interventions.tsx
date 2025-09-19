@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,8 +19,11 @@ import {
   Calendar,
   CheckCircle
 } from "lucide-react"
-import { getInterventions, createIntervention } from "@/api/interventions"
+import { Link } from "react-router-dom"
+import { getInterventions, createIntervention, updateIntervention, deleteIntervention } from "@/api/interventions"
+import { useAuth } from "@/contexts/AuthContext"
 import { useToast } from "@/hooks/useToast"
+import { saveAs } from "file-saver"
 
 interface Intervention {
   _id: string
@@ -37,7 +41,13 @@ export function Interventions() {
   const [interventions, setInterventions] = useState<Intervention[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || "all")
+  const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10) || 1)
+  const [total, setTotal] = useState(0)
+  const [limit, setLimit] = useState<number>(() => parseInt(localStorage.getItem('int_limit') || '12', 10) || 12)
+  const [sort, setSort] = useState<string>(searchParams.get('sort') || 'createdDate')
+  const [order, setOrder] = useState<'asc'|'desc'>((searchParams.get('order') as any) || 'desc')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newIntervention, setNewIntervention] = useState({
     title: "",
@@ -47,13 +57,21 @@ export function Interventions() {
     description: ""
   })
   const { toast } = useToast()
+  const { user } = useAuth()
+  const [creating, setCreating] = useState(false)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchInterventions = async () => {
       try {
         console.log('Fetching interventions data...')
-        const response = await getInterventions()
+        const params: any = { page, limit, sort, order }
+        if (statusFilter !== 'all') params.status = statusFilter
+        if (searchTerm) params.q = searchTerm
+        const response = await getInterventions(params)
         setInterventions((response as any).interventions)
+        setTotal((response as any).total || 0)
         console.log('Interventions data loaded successfully')
       } catch (error) {
         console.error('Error fetching interventions:', error)
@@ -68,7 +86,29 @@ export function Interventions() {
     }
 
     fetchInterventions()
-  }, [toast])
+  }, [toast, page, statusFilter, limit, sort, order])
+
+  // Sync state to URL
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (page && page !== 1) next.set('page', String(page))
+    if (statusFilter && statusFilter !== 'all') next.set('status', statusFilter)
+    if (searchTerm) next.set('q', searchTerm)
+    if (sort && sort !== 'createdDate') next.set('sort', sort)
+    if (order && order !== 'desc') next.set('order', order)
+    setSearchParams(next, { replace: true })
+  }, [page, statusFilter, searchTerm, sort, order, setSearchParams])
+
+  // Persist limit
+  useEffect(() => {
+    localStorage.setItem('int_limit', String(limit))
+  }, [limit])
+
+  const rangeLabel = useMemo(() => {
+    const start = total === 0 ? 0 : (page - 1) * limit + 1
+    const end = Math.min(page * limit, total)
+    return `${start}-${end} of ${total}`
+  }, [page, limit, total])
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -98,19 +138,44 @@ export function Interventions() {
     }
   }
 
+  const exportCSV = () => {
+    const headers = ['Title','Type','Priority','Status','Equipment','AssignedTo','Created','Due']
+    const rows = interventions.map(i => [
+      i.title,
+      i.type,
+      i.priority,
+      i.status,
+      i.equipment,
+      i.assignedTo || '',
+      i.createdDate ? new Date(i.createdDate).toISOString() : '',
+      i.dueDate ? new Date(i.dueDate).toISOString() : ''
+    ])
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    saveAs(blob, `interventions_export_page${page}.csv`)
+  }
+
   const handleCreateIntervention = async () => {
     try {
       console.log('Creating new intervention...')
-      await createIntervention(newIntervention)
+      setCreating(true)
+      const tempId = `temp-${Date.now()}`
+      const temp = { _id: tempId, status: 'Pending', createdDate: new Date().toISOString(), dueDate: new Date().toISOString(), assignedTo: '', ...newIntervention }
+      setInterventions([temp as any, ...interventions])
+      try {
+        const res = await createIntervention(newIntervention)
+        const created = (res as any).intervention
+        setInterventions(list => list.map(i => i._id === tempId ? created : i))
+      } catch (err) {
+        setInterventions(list => list.filter(i => i._id !== tempId))
+        throw err
+      }
       toast({
         title: "Success",
         description: "Intervention created successfully",
       })
       setIsDialogOpen(false)
       setNewIntervention({ title: "", type: "", priority: "", equipment: "", description: "" })
-      // Refresh the list
-      const response = await getInterventions()
-      setInterventions((response as any).interventions)
     } catch (error) {
       console.error('Error creating intervention:', error)
       toast({
@@ -119,15 +184,54 @@ export function Interventions() {
         variant: "destructive",
       })
     }
+    finally {
+      setCreating(false)
+    }
   }
 
-  const filteredInterventions = interventions.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.equipment.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.assignedTo.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || item.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+  const handleUpdateStatus = async (id: string, status: string) => {
+    try {
+      setUpdatingId(id)
+      const prev = interventions
+      setInterventions(prev.map(i => i._id === id ? { ...i, status } : i))
+      try {
+        await updateIntervention(id, { status })
+      } catch (err) {
+        setInterventions(prev)
+        throw err
+      }
+      toast({ title: 'Updated', description: 'Intervention status updated' })
+    } catch (error) {
+      console.error('Error updating intervention:', error)
+      toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' })
+    }
+    finally {
+      setUpdatingId(null)
+    }
+  }
+
+  const handleDeleteIntervention = async (id: string) => {
+    try {
+      setDeletingId(id)
+      const prev = interventions
+      setInterventions(prev.filter(i => i._id !== id))
+      try {
+        await deleteIntervention(id)
+        toast({ title: 'Deleted', description: 'Intervention deleted' })
+      } catch (err) {
+        setInterventions(prev)
+        throw err
+      }
+    } catch (error) {
+      console.error('Error deleting intervention:', error)
+      toast({ title: 'Error', description: 'Failed to delete intervention', variant: 'destructive' })
+    }
+    finally {
+      setDeletingId(null)
+    }
+  }
+
+  const filteredInterventions = interventions
 
   if (loading) {
     return (
@@ -148,6 +252,8 @@ export function Interventions() {
             Manage maintenance interventions and work orders
           </p>
         </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
@@ -228,6 +334,7 @@ export function Interventions() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Filters */}
@@ -255,6 +362,37 @@ export function Interventions() {
                 <SelectItem value="Completed">Completed</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={sort} onValueChange={(v) => { setPage(1); setSort(v) }}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="createdDate">Created</SelectItem>
+                <SelectItem value="dueDate">Due date</SelectItem>
+                <SelectItem value="priority">Priority</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={order} onValueChange={(v: any) => { setPage(1); setOrder(v) }}>
+              <SelectTrigger className="w-full sm:w-32">
+                <SelectValue placeholder="Order" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="desc">Desc</SelectItem>
+                <SelectItem value="asc">Asc</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={String(limit)} onValueChange={(v) => { setPage(1); setLimit(parseInt(v, 10)) }}>
+              <SelectTrigger className="w-full sm:w-32">
+                <SelectValue placeholder="Per page" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="6">6 / page</SelectItem>
+                <SelectItem value="12">12 / page</SelectItem>
+                <SelectItem value="24">24 / page</SelectItem>
+                <SelectItem value="48">48 / page</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -266,7 +404,7 @@ export function Interventions() {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                  <CardTitle className="text-lg">{intervention.title}</CardTitle>
+                  <CardTitle className="text-lg"><Link className="hover:underline" to={`/interventions/${intervention._id}`}>{intervention.title}</Link></CardTitle>
                   <CardDescription className="flex items-center gap-4">
                     <span className="flex items-center">
                       <Wrench className="mr-1 h-3 w-3" />
@@ -311,16 +449,23 @@ export function Interventions() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  View Details
-                </Button>
-                <Button size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600">
-                  Update Status
-                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(intervention._id, 'In Progress')} disabled={updatingId === intervention._id}>{updatingId === intervention._id ? 'Updating...' : 'Start'}</Button>
+                <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(intervention._id, 'Completed')} disabled={updatingId === intervention._id}>{updatingId === intervention._id ? 'Updating...' : 'Complete'}</Button>
+                {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
+                  <Button variant="destructive" size="sm" onClick={() => handleDeleteIntervention(intervention._id)} disabled={deletingId === intervention._id}>{deletingId === intervention._id ? 'Deleting...' : 'Delete'}</Button>
+                )}
               </div>
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-center gap-4">
+        <span className="text-sm text-muted-foreground">{rangeLabel}</span>
+        <Button variant="outline" disabled={loading || page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>{loading ? 'Loading…' : 'Previous'}</Button>
+        <span className="text-sm">Page {page}</span>
+        <Button variant="outline" disabled={loading || page * limit >= total} onClick={() => setPage(p => p + 1)}>{loading ? 'Loading…' : 'Next'}</Button>
       </div>
 
       {filteredInterventions.length === 0 && (

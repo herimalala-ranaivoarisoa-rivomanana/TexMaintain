@@ -7,8 +7,16 @@ const MongoStore = require('connect-mongo');
 const basicRoutes = require("./routes/index");
 const authRoutes = require("./routes/authRoutes");
 const seedRoutes = require("./routes/seedRoutes");
+const equipmentRoutes = require("./routes/equipmentRoutes");
+const interventionsRoutes = require("./routes/interventionsRoutes");
+const inventoryRoutes = require("./routes/inventoryRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 const { connectDB } = require("./config/database");
 const cors = require("cors");
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const pino = require('pino');
+const pinoHttp = require('pino-http');
 
 if (!process.env.DATABASE_URL) {
   console.error("Error: DATABASE_URL variables in .env missing.");
@@ -23,6 +31,16 @@ app.enable('json spaces');
 app.enable('strict routing');
 
 app.use(cors({}));
+app.use(helmet());
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+// Structured request logging
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
+app.use(pinoHttp({ logger }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -40,6 +58,11 @@ app.use(basicRoutes);
 app.use('/api/auth', authRoutes);
 // Seed Routes
 app.use('/api/seed', seedRoutes);
+// Domain Routes
+app.use('/api/equipment', equipmentRoutes);
+app.use('/api/interventions', interventionsRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // If no routes handled the request, it's a 404
 app.use((req, res, next) => {

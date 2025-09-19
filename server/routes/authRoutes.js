@@ -4,12 +4,20 @@ const { requireUser } = require('./middleware/auth.js');
 const { User } = require('../models/User.js');
 const { generateAccessToken, generateRefreshToken } = require('../utils/auth.js');
 const jwt = require('jsonwebtoken');
+const { z } = require('zod');
 
 const router = express.Router();
 
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
 router.post('/login', async (req, res) => {
   const sendError = msg => res.status(400).json({ message: msg });
-  const { email, password } = req.body;
+  const parse = loginSchema.safeParse(req.body);
+  if (!parse.success) return sendError(parse.error.issues?.[0]?.message || 'Invalid request');
+  const { email, password } = parse.data;
 
   console.log(`Login attempt for email: ${email}`);
 
@@ -40,8 +48,16 @@ router.post('/login', async (req, res) => {
   }
 });
 
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  role: z.enum(['admin','maintenance_manager','technician','procurement_manager','project_manager']).optional(),
+});
+
 router.post('/register', async (req, res, next) => {
-  const { email, password, role } = req.body;
+  const parse = registerSchema.safeParse(req.body);
+  if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
+  const { email, password, role } = parse.data;
   
   console.log(`Registration attempt for email: ${email}, role: ${role}`);
 
@@ -59,13 +75,13 @@ router.post('/register', async (req, res, next) => {
   }
 });
 
-router.post('/logout', async (req, res) => {
-  const { email } = req.body;
+router.post('/logout', requireUser, async (req, res) => {
+  const email = req.user?.email;
 
-  console.log(`Logout attempt for email: ${email}`);
+  console.log(`Logout attempt for authenticated user: ${email}`);
 
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findById(req.user._id);
     if (user) {
       user.refreshToken = null;
       await user.save();

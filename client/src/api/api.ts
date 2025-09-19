@@ -10,7 +10,16 @@ const localApi = axios.create({
   validateStatus: (status) => {
     return status >= 200 && status < 300;
   },
-  transformResponse: [(data) => JSONbig.parse(data)]
+  transformResponse: [
+    (data) => {
+      if (!data) return data;
+      try {
+        return JSONbig.parse(data);
+      } catch (_err) {
+        return data;
+      }
+    }
+  ]
 });
 
 
@@ -33,7 +42,10 @@ const isRefreshTokenEndpoint = (url: string): boolean => {
 const setupInterceptors = (apiInstance: typeof axios) => {
   apiInstance.interceptors.request.use(
     (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
-
+      // Skip attaching Authorization for refresh endpoint to avoid stale header issues
+      if (config.url && isRefreshTokenEndpoint(config.url)) {
+        return config;
+      }
       if (!accessToken) {
         accessToken = localStorage.getItem('accessToken');
       }
@@ -120,6 +132,10 @@ const api = {
   put: (url: string, data?: any, config?: AxiosRequestConfig) => {
     const apiInstance = getApiInstance(url);
     return apiInstance.put(url, data, config);
+  },
+  patch: (url: string, data?: any, config?: AxiosRequestConfig) => {
+    const apiInstance = getApiInstance(url);
+    return apiInstance.patch(url, data, config);
   },
   delete: (url: string, config?: AxiosRequestConfig) => {
     const apiInstance = getApiInstance(url);

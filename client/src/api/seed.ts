@@ -25,3 +25,16 @@ export const seedEquipmentTypes = async () => {
     throw new Error(error?.response?.data?.message || error.message);
   }
 };
+
+// Description: Seed parts into the database
+// Endpoint: POST /api/seed/parts
+// Request: {}
+// Response: { success: boolean, message: string, data: { created: number, skipped: number, parts: Array } }
+export const seedParts = async () => {
+  try {
+    const response = await api.post('/api/seed/parts');
+    return response.data;
+  } catch (error) {
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
