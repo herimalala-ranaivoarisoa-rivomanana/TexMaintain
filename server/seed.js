@@ -1,0 +1,98 @@
+#!/usr/bin/env node
+
+/**
+ * Database Seeder Script
+ * Run this script to populate the database with initial data
+ *
+ * Usage: node seed.js
+ */
+
+const mongoose = require('mongoose');
+require('dotenv').config();
+
+const SeedService = require('./services/seedService');
+
+async function runSeeder() {
+  try {
+    console.log('🌱 Starting database seeding process...\n');
+
+    // Connect to database
+    await mongoose.connect(process.env.DATABASE_URL);
+    console.log('✅ Connected to database\n');
+
+    const results = {};
+
+    // Seed admin user
+    console.log('👤 Seeding admin user...');
+    try {
+      results.admin = await SeedService.seedAdminUser();
+      console.log('✅ Admin user seeded successfully');
+      console.log(`   Email: ${results.admin.credentials?.email}`);
+      console.log(`   Password: ${results.admin.credentials?.password}\n`);
+    } catch (error) {
+      console.log('⚠️  Admin user seeding skipped (may already exist):', error.message + '\n');
+    }
+
+    // Seed equipment categories
+    console.log('🏷️  Seeding equipment categories...');
+    try {
+      results.categories = await SeedService.seedEquipmentCategories();
+      console.log(`✅ Equipment categories seeded: ${results.categories.created} created, ${results.categories.skipped} skipped\n`);
+    } catch (error) {
+      console.error('❌ Error seeding categories:', error.message + '\n');
+    }
+
+    // Seed equipment types
+    console.log('🔧 Seeding equipment types...');
+    try {
+      results.types = await SeedService.seedEquipmentTypes();
+      console.log(`✅ Equipment types seeded: ${results.types.created} created, ${results.types.skipped} skipped\n`);
+    } catch (error) {
+      console.error('❌ Error seeding types:', error.message + '\n');
+    }
+
+    // Seed sample equipment
+    console.log('⚙️  Seeding sample equipment...');
+    try {
+      results.equipment = await SeedService.seedEquipment();
+      console.log(`✅ Sample equipment seeded: ${results.equipment.created} created, ${results.equipment.skipped} skipped\n`);
+    } catch (error) {
+      console.error('❌ Error seeding equipment:', error.message + '\n');
+    }
+
+    // Seed parts
+    console.log('🔩 Seeding parts...');
+    try {
+      results.parts = await SeedService.seedParts();
+      console.log(`✅ Parts seeded: ${results.parts.created} created, ${results.parts.skipped} skipped\n`);
+    } catch (error) {
+      console.error('❌ Error seeding parts:', error.message + '\n');
+    }
+
+    console.log('🎉 Database seeding completed successfully!');
+    console.log('\n📊 Summary:');
+    console.log(`   - Admin User: ${results.admin?.success ? 'Created' : 'Skipped'}`);
+    console.log(`   - Categories: ${results.categories?.created || 0} created`);
+    console.log(`   - Types: ${results.types?.created || 0} created`);
+    console.log(`   - Equipment: ${results.equipment?.created || 0} created`);
+    console.log(`   - Parts: ${results.parts?.created || 0} created`);
+
+    if (results.admin?.credentials) {
+      console.log('\n🔐 Admin Credentials:');
+      console.log(`   Email: ${results.admin.credentials.email}`);
+      console.log(`   Password: ${results.admin.credentials.password}`);
+    }
+
+    console.log('\n🚀 You can now start the application!');
+
+  } catch (error) {
+    console.error('💥 Fatal error during seeding:', error);
+    process.exit(1);
+  } finally {
+    await mongoose.disconnect();
+    console.log('📪 Disconnected from database');
+  }
+}
+
+// Run the seeder
+runSeeder().catch(console.error);

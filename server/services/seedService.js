@@ -1,5 +1,7 @@
 const { User } = require('../models/User.js');
-const { Equipment, EQUIPMENT_TYPES } = require('../models/Equipment.js');
+const { Equipment } = require('../models/Equipment.js');
+const { EquipmentCategory } = require('../models/EquipmentCategory.js');
+const { EquipmentType } = require('../models/EquipmentType.js');
 const { Part } = require('../models/Part.js');
 const { generatePasswordHash } = require('../utils/password.js');
 
@@ -50,7 +52,153 @@ class SeedService {
     }
   }
 
+  static async seedEquipmentCategories() {
+    try {
+      console.log('Starting equipment categories seeding...');
+
+      const categoriesData = [
+        { name: 'Cutting Machine', description: 'Machines for cutting fabrics and materials' },
+        { name: 'Sewing Machine', description: 'Industrial sewing machines for garment assembly' },
+        { name: 'Overlock/Serger', description: 'Overlock machines for fabric edge finishing' },
+        { name: 'Coverstitch Machine', description: 'Coverstitch machines for hems and edges' },
+        { name: 'Embroidery Machine', description: 'Automated embroidery machines' },
+        { name: 'Button/Buttonhole Machine', description: 'Machines for buttons and buttonholes' },
+        { name: 'Pressing/Ironing', description: 'Pressing and ironing equipment' },
+        { name: 'Finishing Equipment', description: 'Fabric finishing and treatment machines' },
+        { name: 'Printing Machine', description: 'Fabric printing equipment' },
+        { name: 'Packaging Equipment', description: 'Packaging and baling machines' },
+        { name: 'Quality Control', description: 'Quality inspection equipment' },
+        { name: 'Maintenance Equipment', description: 'Maintenance and repair tools' },
+      ];
+
+      const createdCategories = [];
+      let skippedCount = 0;
+
+      for (const categoryData of categoriesData) {
+        const existing = await EquipmentCategory.findOne({ name: categoryData.name });
+        if (existing) {
+          console.log(`Category already exists: ${categoryData.name}`);
+          skippedCount++;
+          continue;
+        }
+        const category = new EquipmentCategory(categoryData);
+        await category.save();
+        createdCategories.push(category);
+        console.log(`Category created: ${category.name}`);
+      }
+
+      console.log(`Categories seeding completed. Created: ${createdCategories.length}, Skipped: ${skippedCount}`);
+
+      return {
+        success: true,
+        message: `Categories seeding completed. Created: ${createdCategories.length}, Skipped: ${skippedCount}`,
+        created: createdCategories,
+        skipped: skippedCount
+      };
+    } catch (error) {
+      console.error('Error seeding equipment categories:', error);
+      throw new Error(`Failed to seed equipment categories: ${error.message}`);
+    }
+  }
+
   static async seedEquipmentTypes() {
+    try {
+      console.log('Starting equipment types seeding...');
+
+      // First ensure categories exist
+      const categories = await EquipmentCategory.find();
+      if (categories.length === 0) {
+        throw new Error('No equipment categories found. Please seed categories first.');
+      }
+
+      const categoryMap = {};
+      categories.forEach(cat => {
+        categoryMap[cat.name.toLowerCase().replace(/[^a-z0-9]/g, '')] = cat._id;
+      });
+
+      const typesData = [
+        // Cutting Machine types
+        { name: 'Manual Cutter', category: categoryMap['cuttingmachine'], description: 'Manual cutting tools' },
+        { name: 'Electric Cutter', category: categoryMap['cuttingmachine'], description: 'Electric cutting machines' },
+        { name: 'CNC Cutting Machine', category: categoryMap['cuttingmachine'], description: 'Computer numerical control cutting systems' },
+        { name: 'Cutting Press', category: categoryMap['cuttingmachine'], description: 'Hydraulic cutting presses' },
+
+        // Sewing Machine types
+        { name: 'Flat Stitch Machine (Straight Stitch)', category: categoryMap['sewingmachine'], description: 'Basic straight stitch sewing machines' },
+        { name: 'Zigzag Machine', category: categoryMap['sewingmachine'], description: 'Zigzag stitch sewing machines' },
+        { name: 'Double Needle Machine', category: categoryMap['sewingmachine'], description: 'Two-needle parallel stitching machines' },
+        { name: 'Free Arm Machine', category: categoryMap['sewingmachine'], description: 'Free arm sewing machines for sleeves and tubes' },
+        { name: 'Cylinder Bed Machine', category: categoryMap['sewingmachine'], description: 'Cylinder bed machines for difficult areas' },
+        { name: 'Column Machine', category: categoryMap['sewingmachine'], description: 'Column machines for heavy fabrics' },
+        { name: 'Triple Feed Machine', category: categoryMap['sewingmachine'], description: 'Triple feed machines for thick materials' },
+        { name: 'Automated/Programmable Machine', category: categoryMap['sewingmachine'], description: 'Computer-controlled sewing machines' },
+
+        // Overlock/Serger types
+        { name: '3 Thread Overlock', category: categoryMap['overlockserger'], description: '3-thread overlock machines' },
+        { name: '4 Thread Overlock', category: categoryMap['overlockserger'], description: '4-thread overlock machines' },
+        { name: '5 Thread Overlock', category: categoryMap['overlockserger'], description: '5-thread overlock machines' },
+        { name: 'Flatlock', category: categoryMap['overlockserger'], description: 'Flatlock overlock machines' },
+
+        // Coverstitch types
+        { name: 'Single Coverstitch', category: categoryMap['coverstitchmachine'], description: 'Single needle coverstitch machines' },
+        { name: 'Double Coverstitch', category: categoryMap['coverstitchmachine'], description: 'Double needle coverstitch machines' },
+
+        // Embroidery types
+        { name: 'Single Head Embroidery Machine', category: categoryMap['embroiderymachine'], description: 'Single head embroidery machines' },
+        { name: 'Multi-Head Embroidery Machine', category: categoryMap['embroiderymachine'], description: 'Multi-head embroidery machines' },
+
+        // Button/Buttonhole types
+        { name: 'Buttonhole Machine', category: categoryMap['buttonbuttonholemachine'], description: 'Automatic buttonhole cutting and sewing' },
+        { name: 'Button Sewing Machine', category: categoryMap['buttonbuttonholemachine'], description: 'Automatic button attaching machines' },
+
+        // Pressing/Ironing types
+        { name: 'Pressing Machine', category: categoryMap['pressingironing'], description: 'Industrial pressing machines' },
+        { name: 'Vacuum Table', category: categoryMap['pressingironing'], description: 'Vacuum tables for fabric holding' },
+        { name: 'Inflatable Mannequin', category: categoryMap['pressingironing'], description: 'Inflatable forms for pressing' },
+        { name: 'Steam Finishing Cabinet', category: categoryMap['pressingironing'], description: 'Steam finishing cabinets' },
+
+        // Other categories
+        { name: 'Finishing Equipment', category: categoryMap['finishingequipment'], description: 'General finishing equipment' },
+        { name: 'Printing Machine', category: categoryMap['printingmachine'], description: 'Fabric printing machines' },
+        { name: 'Packaging Equipment', category: categoryMap['packagingequipment'], description: 'Packaging and baling machines' },
+        { name: 'Quality Control Equipment', category: categoryMap['qualitycontrol'], description: 'Quality inspection tools' },
+        { name: 'Maintenance Equipment', category: categoryMap['maintenanceequipment'], description: 'Maintenance and repair tools' },
+      ];
+
+      const createdTypes = [];
+      let skippedCount = 0;
+
+      for (const typeData of typesData) {
+        const existing = await EquipmentType.findOne({
+          name: typeData.name,
+          category: typeData.category
+        });
+        if (existing) {
+          console.log(`Type already exists: ${typeData.name}`);
+          skippedCount++;
+          continue;
+        }
+        const type = new EquipmentType(typeData);
+        await type.save();
+        createdTypes.push(type);
+        console.log(`Type created: ${type.name}`);
+      }
+
+      console.log(`Types seeding completed. Created: ${createdTypes.length}, Skipped: ${skippedCount}`);
+
+      return {
+        success: true,
+        message: `Types seeding completed. Created: ${createdTypes.length}, Skipped: ${skippedCount}`,
+        created: createdTypes,
+        skipped: skippedCount
+      };
+    } catch (error) {
+      console.error('Error seeding equipment types:', error);
+      throw new Error(`Failed to seed equipment types: ${error.message}`);
+    }
+  }
+
+  static async seedEquipment() {
     try {
       console.log('Starting equipment types seeding...');
       

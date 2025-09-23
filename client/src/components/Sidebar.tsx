@@ -3,23 +3,27 @@ import { Link, useLocation } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "./ui/button"
 import { ScrollArea } from "./ui/scroll-area"
-import { 
-  LayoutDashboard, 
-  Settings, 
-  Wrench, 
-  ClipboardList, 
-  Package, 
-  ShoppingCart, 
-  FolderOpen, 
+import {
+  LayoutDashboard,
+  Settings,
+  Wrench,
+  ClipboardList,
+  Package,
+  ShoppingCart,
+  FolderOpen,
   BarChart3,
   ChevronLeft,
   ChevronRight,
-  Factory
+  Factory,
+  Tags,
+  Layers
 } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Equipment", href: "/equipment", icon: Settings },
+  { name: "Equipment Categories", href: "/equipment-categories", icon: Tags },
+  { name: "Equipment Types", href: "/equipment-types", icon: Layers },
   { name: "Interventions", href: "/interventions", icon: Wrench },
   { name: "Inventory", href: "/inventory", icon: Package },
   { name: "Procurement", href: "/procurement", icon: ShoppingCart },

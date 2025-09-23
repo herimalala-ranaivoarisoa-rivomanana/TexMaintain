@@ -6,10 +6,10 @@ const router = express.Router();
 
 // GET /api/equipment (with basic pagination & filters)
 router.get('/', requireUser, async (req, res) => {
-  const { page = 1, limit = 50, status, type, q, sort = 'createdAt', order = 'desc' } = req.query || {};
+  const { page = 1, limit = 50, status, category, q, sort = 'createdAt', order = 'desc' } = req.query || {};
   const query = {};
   if (status) query.status = status;
-  if (type) query.type = type;
+  if (category) query.category = category;
   if (q) query.$or = [
     { name: { $regex: q, $options: 'i' } },
     { location: { $regex: q, $options: 'i' } }
@@ -17,7 +17,7 @@ router.get('/', requireUser, async (req, res) => {
   const skip = (Number(page) - 1) * Number(limit);
   const sortSpec = { [String(sort)]: String(order).toLowerCase() === 'asc' ? 1 : -1 };
   const [items, total] = await Promise.all([
-    Equipment.find(query).sort(sortSpec).skip(skip).limit(Number(limit)).lean(),
+    Equipment.find(query).sort(sortSpec).skip(skip).limit(Number(limit)).populate('category').populate('type').lean(),
     Equipment.countDocuments(query)
   ]);
   return res.status(200).json({ equipment: items, page: Number(page), total });
@@ -26,7 +26,7 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/equipment/:id
 router.get('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
-  const equipment = await Equipment.findById(id).lean();
+  const equipment = await Equipment.findById(id).populate('category').populate('type').lean();
   if (!equipment) return res.status(404).json({ message: 'Equipment not found' });
   return res.status(200).json({ equipment });
 });
@@ -35,8 +35,9 @@ router.get('/:id', requireUser, async (req, res) => {
 const { z } = require('zod');
 const equipmentSchema = z.object({
   name: z.string().min(1),
-  type: z.enum(['spinning','weaving','dyeing','finishing','cutting','sewing','packaging','quality_control','maintenance']),
-  status: z.enum(['operational','maintenance','breakdown','offline']),
+  category: z.string().min(1), // ObjectId as string
+  type: z.string().min(1), // ObjectId as string
+  status: z.enum(['online','maintenance','breakdown','offline','scrapped']),
   location: z.string().min(1),
   manufacturer: z.string().optional(),
   model: z.string().optional(),
@@ -57,7 +58,7 @@ router.post('/', requireUser, requireRole('admin'), async (req, res) => {
 router.patch('/:id', requireUser, requireRole(['admin','maintenance_manager','assistant_maintenance_manager','foreman']), async (req, res) => {
   const { id } = req.params;
   const updates = (req.body || {});
-  const updated = await Equipment.findByIdAndUpdate(id, updates, { new: true }).lean();
+  const updated = await Equipment.findByIdAndUpdate(id, updates, { new: true }).populate('category').populate('type').lean();
   if (!updated) return res.status(404).json({ message: 'Equipment not found' });
   return res.status(200).json({ success: true, equipment: updated });
 });

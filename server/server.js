@@ -8,6 +8,8 @@ const basicRoutes = require("./routes/index");
 const authRoutes = require("./routes/authRoutes");
 const seedRoutes = require("./routes/seedRoutes");
 const equipmentRoutes = require("./routes/equipmentRoutes");
+const equipmentCategoriesRoutes = require("./routes/equipmentCategoriesRoutes");
+const equipmentTypesRoutes = require("./routes/equipmentTypesRoutes");
 const interventionsRoutes = require("./routes/interventionsRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
@@ -60,6 +62,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/seed', seedRoutes);
 // Domain Routes
 app.use('/api/equipment', equipmentRoutes);
+app.use('/api/equipment-categories', equipmentCategoriesRoutes);
+app.use('/api/equipment-types', equipmentTypesRoutes);
 app.use('/api/interventions', interventionsRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/dashboard', dashboardRoutes);

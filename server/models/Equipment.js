@@ -1,22 +1,11 @@
 const mongoose = require('mongoose');
 
-const EQUIPMENT_TYPES = [
-  'spinning',
-  'weaving', 
-  'dyeing',
-  'finishing',
-  'cutting',
-  'sewing',
-  'packaging',
-  'quality_control',
-  'maintenance'
-];
-
 const EQUIPMENT_STATUS = [
-  'operational',
-  'maintenance', 
+  'online',
+  'maintenance',
   'breakdown',
-  'offline'
+  'offline',
+  'scrapped'
 ];
 
 const schema = new mongoose.Schema({
@@ -25,10 +14,15 @@ const schema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  type: {
-    type: String,
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'EquipmentCategory',
     required: true,
-    enum: EQUIPMENT_TYPES,
+  },
+  type: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'EquipmentType',
+    required: true,
   },
   status: {
     type: String,
@@ -96,5 +90,4 @@ schema.pre('save', function(next) {
 });
 
 const Equipment = mongoose.model('Equipment', schema);
-
-module.exports = { Equipment, EQUIPMENT_TYPES, EQUIPMENT_STATUS };
+module.exports = { Equipment, EQUIPMENT_STATUS };

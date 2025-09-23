@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from "@/api/equipment"
+import api from "@/api/api"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
 import { saveAs } from "file-saver"
@@ -29,7 +30,8 @@ import { saveAs } from "file-saver"
 interface Equipment {
   _id: string
   name: string
-  type: string
+  category: Category
+  type: EquipmentType
   status: string
   location: string
   lastMaintenance: string
@@ -38,8 +40,23 @@ interface Equipment {
   mttr: number
 }
 
+interface Category {
+  _id: string
+  name: string
+  description?: string
+}
+
+interface EquipmentType {
+  _id: string
+  name: string
+  description?: string
+  category: Category
+}
+
 export function Equipment() {
   const [equipment, setEquipment] = useState<Equipment[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [types, setTypes] = useState<EquipmentType[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [searchParams, setSearchParams] = useSearchParams()
@@ -54,13 +71,37 @@ export function Equipment() {
   const [editingItem, setEditingItem] = useState<Equipment | null>(null)
   const [form, setForm] = useState({
     name: "",
-    type: "spinning",
-    status: "operational",
+    category: "",
+    type: "",
+    status: "offline",
     location: ""
   })
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const { user } = useAuth()
+
+  // Fetch categories and types on mount
+  useEffect(() => {
+    const fetchCategoriesAndTypes = async () => {
+      try {
+        const [categoriesResponse, typesResponse] = await Promise.all([
+          api.get('/api/equipment-categories'),
+          api.get('/api/equipment-types')
+        ])
+        setCategories((categoriesResponse.data as any).categories || [])
+        setTypes((typesResponse.data as any).types || [])
+      } catch (error) {
+        console.error('Error fetching categories and types:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load equipment categories and types",
+          variant: "destructive",
+        })
+      }
+    }
+
+    fetchCategoriesAndTypes()
+  }, [toast])
 
   useEffect(() => {
     const fetchEquipment = async () => {
@@ -117,13 +158,13 @@ export function Equipment() {
 
   const openAddDialog = () => {
     setEditingItem(null)
-    setForm({ name: "", type: "spinning", status: "operational", location: "" })
+    setForm({ name: "", category: "cutting", type: "", status: "offline", location: "" })
     setIsDialogOpen(true)
   }
 
   const openEditDialog = (item: Equipment) => {
     setEditingItem(item)
-    setForm({ name: item.name, type: item.type, status: item.status, location: item.location })
+    setForm({ name: item.name, category: item.category._id, type: item.type._id, status: item.status, location: item.location })
     setIsDialogOpen(true)
   }
 
@@ -132,7 +173,14 @@ export function Equipment() {
       setIsSaving(true)
       if (editingItem) {
         const prev = equipment
-        const optimistic = equipment.map((e) => e._id === editingItem._id ? { ...e, ...form } as Equipment : e)
+        const optimistic = equipment.map((e) => e._id === editingItem._id ? {
+          ...e,
+          name: form.name,
+          status: form.status,
+          location: form.location,
+          category: categories.find(c => c._id === form.category) || e.category,
+          type: types.find(t => t._id === form.type) || e.type
+        } as Equipment : e)
         setEquipment(optimistic)
         try {
           await updateEquipment(editingItem._id, form)
@@ -143,7 +191,20 @@ export function Equipment() {
         }
       } else {
         const tempId = `temp-${Date.now()}`
-        const tempItem: Equipment = { _id: tempId, mtbf: 0, mttr: 0, lastMaintenance: new Date().toISOString(), nextMaintenance: new Date().toISOString(), ...form }
+        const tempCategory = categories.find(c => c._id === form.category) || { _id: form.category, name: 'Loading...' }
+        const tempType = types.find(t => t._id === form.type) || { _id: form.type, name: 'Loading...', category: tempCategory }
+        const tempItem: Equipment = {
+          _id: tempId,
+          name: form.name,
+          category: tempCategory,
+          type: tempType,
+          status: form.status,
+          location: form.location,
+          mtbf: 0,
+          mttr: 0,
+          lastMaintenance: new Date().toISOString(),
+          nextMaintenance: new Date().toISOString()
+        }
         setEquipment([tempItem, ...equipment])
         try {
           const res = await createEquipment(form)
@@ -188,27 +249,32 @@ export function Equipment() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'operational': return 'bg-green-500'
+      case 'online': return 'bg-blue-500'
       case 'maintenance': return 'bg-yellow-500'
       case 'breakdown': return 'bg-red-500'
+      case 'offline': return 'bg-gray-500'
+      case 'scrapped': return 'bg-red-900'
       default: return 'bg-gray-500'
     }
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'operational': return <CheckCircle className="h-4 w-4" />
+      case 'online': return <CheckCircle className="h-4 w-4" />
       case 'maintenance': return <Clock className="h-4 w-4" />
       case 'breakdown': return <AlertTriangle className="h-4 w-4" />
+      case 'offline': return <Settings className="h-4 w-4" />
+      case 'scrapped': return <AlertTriangle className="h-4 w-4" />
       default: return <Settings className="h-4 w-4" />
     }
   }
 
   const exportCSV = () => {
-    const headers = ['Name','Type','Status','Location','MTBF','MTTR','LastMaintenance','NextMaintenance']
+    const headers = ['Name','Category','Type','Status','Location','MTBF','MTTR','LastMaintenance','NextMaintenance']
     const rows = equipment.map(e => [
       e.name,
-      e.type,
+      e.category?.name || '',
+      e.type?.name || '',
       e.status,
       e.location,
       String(e.mtbf ?? ''),
@@ -273,9 +339,10 @@ export function Equipment() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="operational">Operational</SelectItem>
+                <SelectItem value="online">Online</SelectItem>
                 <SelectItem value="maintenance">Maintenance</SelectItem>
                 <SelectItem value="breakdown">Breakdown</SelectItem>
+                <SelectItem value="scrapped">Scrapped</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sort} onValueChange={(v) => { setPage(1); setSort(v) }}>
@@ -327,7 +394,7 @@ export function Equipment() {
               </div>
               <CardDescription className="flex items-center text-slate-600">
                 <Settings className="mr-1 h-3 w-3" />
-                {item.type}
+                {item.category?.name} - {item.type?.name}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -398,21 +465,32 @@ export function Equipment() {
               <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter name" />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="category">Category</Label>
+              <Select value={form.category} onValueChange={(value) => setForm({ ...form, category: value, type: "" })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category._id} value={category._id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="type">Type</Label>
               <Select value={form.type} onValueChange={(value) => setForm({ ...form, type: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="spinning">Spinning</SelectItem>
-                  <SelectItem value="weaving">Weaving</SelectItem>
-                  <SelectItem value="dyeing">Dyeing</SelectItem>
-                  <SelectItem value="finishing">Finishing</SelectItem>
-                  <SelectItem value="cutting">Cutting</SelectItem>
-                  <SelectItem value="sewing">Sewing</SelectItem>
-                  <SelectItem value="packaging">Packaging</SelectItem>
-                  <SelectItem value="quality_control">Quality Control</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  {types.filter(type => type.category._id === form.category).map((type) => (
+                    <SelectItem key={type._id} value={type._id}>
+                      {type.name}
+                    </SelectItem>
+                  )) || <SelectItem value="" disabled>No types available</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
@@ -423,10 +501,11 @@ export function Equipment() {
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="operational">Operational</SelectItem>
+                  <SelectItem value="online">Online</SelectItem>
                   <SelectItem value="maintenance">Maintenance</SelectItem>
                   <SelectItem value="breakdown">Breakdown</SelectItem>
                   <SelectItem value="offline">Offline</SelectItem>
+                  <SelectItem value="scrapped">Scrapped</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -51,11 +51,39 @@ npm install
 npm start
 ```
 
-## Tests API (Postman)
+## Initialisation de la base de données
+
+### Via script automatique (recommandé)
+```bash
+# Depuis la racine du projet
+npm run seed
+
+# Ou depuis le dossier server
+cd server && npm run seed
+```
+Cette commande exécute automatiquement tous les seeders dans l'ordre correct.
+
+### Via API (alternative)
 1) Importer `AQUA-MAINTAIN.postman_collection.json` dans Postman/Insomnia.
 2) Définir la variable `baseUrl` (par défaut http://localhost:3000).
-3) Appeler `Seed > Seed Admin`, puis `Auth > Login` et copier les `accessToken`/`refreshToken` dans les variables.
-4) Tester Equipment, Inventory, Interventions (CRUD et stock).
+3) Appeler `Seed > Seed All` pour initialiser toute la base de données.
+4) Ou utiliser individuellement :
+   - `Seed > Seed Admin` (utilisateur admin)
+   - `Seed > Seed Equipment Categories`
+   - `Seed > Seed Equipment Types`
+   - `Seed > Seed Equipment` (échantillons)
+   - `Seed > Seed Parts`
+
+### Via interface web
+Une fois l'application démarrée, les administrateurs peuvent gérer :
+- **Catégories d'équipement** : `/equipment-categories`
+- **Types d'équipement** : `/equipment-types`
+
+## Tests API (Postman)
+Après initialisation, connecter avec l'utilisateur admin et tester :
+- Authentification (login/register)
+- Equipment, Inventory, Interventions (CRUD et stock)
+- Gestion des catégories et types d'équipement
 
 ## Arrêter / logs DB
 ```bash
