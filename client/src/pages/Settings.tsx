@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
-import { seedAdminUser, seedEquipmentCategories, seedEquipmentTypes, seedEquipment, seedParts, seedAll } from "@/api/seed"
+import { seedAdminUser, seedEquipmentCategories, seedEquipmentTypes, seedEquipment, seedParts, seedBrands, seedAll } from "@/api/seed"
 import {
   User,
   Bell,
@@ -21,6 +21,7 @@ import {
   UserPlus,
   Wrench,
   Package,
+  Factory,
   CheckCircle,
   AlertCircle
 } from "lucide-react"
@@ -128,6 +129,26 @@ export function Settings() {
       })
     } finally {
       setLoading({ ...loading, parts: false })
+    }
+  }
+
+  const handleSeedBrands = async () => {
+    try {
+      setLoading({ ...loading, brands: true })
+      const result = await seedBrands()
+      setSeedResults({ ...seedResults, brands: result })
+      toast({
+        title: "Success",
+        description: result.message,
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading({ ...loading, brands: false })
     }
   }
 
@@ -504,6 +525,46 @@ export function Settings() {
                             </Badge>
                             <Badge variant="outline" className="text-yellow-700">
                               Skipped: {seedResults.parts.data?.skipped || 0}
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Seed Brands */}
+                  <Card className="border-2 border-dashed border-slate-200">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Factory className="h-5 w-5" />
+                        Seed Brands
+                      </CardTitle>
+                      <CardDescription>
+                        Initialize the database with equipment brands
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Button
+                        onClick={handleSeedBrands}
+                        disabled={loading.brands}
+                        className="w-full"
+                      >
+                        {loading.brands ? "Creating..." : "Create Brands"}
+                      </Button>
+
+                      {seedResults.brands && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-green-800 mb-2">
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="font-medium">Success</span>
+                          </div>
+                          <p className="text-sm text-green-700 mb-2">{seedResults.brands.message}</p>
+                          <div className="flex gap-2">
+                            <Badge variant="outline" className="text-green-700">
+                              Created: {seedResults.brands.data?.created || 0}
+                            </Badge>
+                            <Badge variant="outline" className="text-yellow-700">
+                              Skipped: {seedResults.brands.data?.skipped || 0}
                             </Badge>
                           </div>
                         </div>

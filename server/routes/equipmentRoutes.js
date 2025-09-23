@@ -42,6 +42,8 @@ const equipmentSchema = z.object({
   manufacturer: z.string().optional(),
   model: z.string().optional(),
   serialNumber: z.string().optional(),
+  chipNumber: z.string().optional(),
+  brand: z.string().optional(),
   installationDate: z.coerce.date().optional(),
   lastMaintenance: z.coerce.date().optional(),
   nextMaintenance: z.coerce.date().optional(),

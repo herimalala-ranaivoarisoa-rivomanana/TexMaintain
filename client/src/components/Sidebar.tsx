@@ -24,6 +24,7 @@ const navigation = [
   { name: "Equipment", href: "/equipment", icon: Settings },
   { name: "Equipment Categories", href: "/equipment-categories", icon: Tags },
   { name: "Equipment Types", href: "/equipment-types", icon: Layers },
+  { name: "Brands", href: "/brands", icon: Factory },
   { name: "Interventions", href: "/interventions", icon: Wrench },
   { name: "Inventory", href: "/inventory", icon: Package },
   { name: "Procurement", href: "/procurement", icon: ShoppingCart },

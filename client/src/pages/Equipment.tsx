@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from "@/api/equipment"
+import { getBrands } from "@/api/brands"
 import api from "@/api/api"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
@@ -34,6 +35,9 @@ interface Equipment {
   type: EquipmentType
   status: string
   location: string
+  serialNumber?: string
+  chipNumber?: string
+  brand?: string
   lastMaintenance: string
   nextMaintenance: string
   mtbf: number
@@ -57,6 +61,7 @@ export function Equipment() {
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [types, setTypes] = useState<EquipmentType[]>([])
+  const [brands, setBrands] = useState<{ _id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [searchParams, setSearchParams] = useSearchParams()
@@ -74,33 +79,38 @@ export function Equipment() {
     category: "",
     type: "",
     status: "offline",
-    location: ""
+    location: "",
+    serialNumber: "",
+    chipNumber: "",
+    brand: ""
   })
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const { user } = useAuth()
 
-  // Fetch categories and types on mount
+  // Fetch categories, types, and brands on mount
   useEffect(() => {
-    const fetchCategoriesAndTypes = async () => {
+    const fetchData = async () => {
       try {
-        const [categoriesResponse, typesResponse] = await Promise.all([
+        const [categoriesResponse, typesResponse, brandsResponse] = await Promise.all([
           api.get('/api/equipment-categories'),
-          api.get('/api/equipment-types')
+          api.get('/api/equipment-types'),
+          getBrands()
         ])
         setCategories((categoriesResponse.data as any).categories || [])
         setTypes((typesResponse.data as any).types || [])
+        setBrands(brandsResponse.brands || [])
       } catch (error) {
-        console.error('Error fetching categories and types:', error)
+        console.error('Error fetching data:', error)
         toast({
           title: "Error",
-          description: "Failed to load equipment categories and types",
+          description: "Failed to load equipment data",
           variant: "destructive",
         })
       }
     }
 
-    fetchCategoriesAndTypes()
+    fetchData()
   }, [toast])
 
   useEffect(() => {
@@ -158,13 +168,13 @@ export function Equipment() {
 
   const openAddDialog = () => {
     setEditingItem(null)
-    setForm({ name: "", category: "cutting", type: "", status: "offline", location: "" })
+    setForm({ name: "", category: "cutting", type: "", status: "offline", location: "", serialNumber: "", chipNumber: "", brand: "" })
     setIsDialogOpen(true)
   }
 
   const openEditDialog = (item: Equipment) => {
     setEditingItem(item)
-    setForm({ name: item.name, category: item.category._id, type: item.type._id, status: item.status, location: item.location })
+    setForm({ name: item.name, category: item.category._id, type: item.type._id, status: item.status, location: item.location, serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: item.brand || "" })
     setIsDialogOpen(true)
   }
 
@@ -178,6 +188,9 @@ export function Equipment() {
           name: form.name,
           status: form.status,
           location: form.location,
+          serialNumber: form.serialNumber,
+          chipNumber: form.chipNumber,
+          brand: form.brand,
           category: categories.find(c => c._id === form.category) || e.category,
           type: types.find(t => t._id === form.type) || e.type
         } as Equipment : e)
@@ -270,13 +283,16 @@ export function Equipment() {
   }
 
   const exportCSV = () => {
-    const headers = ['Name','Category','Type','Status','Location','MTBF','MTTR','LastMaintenance','NextMaintenance']
+    const headers = ['Name','Category','Type','Status','Location','SerialNumber','ChipNumber','Brand','MTBF','MTTR','LastMaintenance','NextMaintenance']
     const rows = equipment.map(e => [
       e.name,
       e.category?.name || '',
       e.type?.name || '',
       e.status,
       e.location,
+      e.serialNumber || '',
+      e.chipNumber || '',
+      e.brand || '',
       String(e.mtbf ?? ''),
       String(e.mttr ?? ''),
       e.lastMaintenance ? new Date(e.lastMaintenance).toISOString() : '',
@@ -512,6 +528,29 @@ export function Equipment() {
             <div className="grid gap-2">
               <Label htmlFor="location">Location</Label>
               <Input id="location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Enter location" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="serialNumber">Serial Number</Label>
+              <Input id="serialNumber" value={form.serialNumber} onChange={(e) => setForm({ ...form, serialNumber: e.target.value })} placeholder="Enter serial number" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="chipNumber">Chip Number</Label>
+              <Input id="chipNumber" value={form.chipNumber} onChange={(e) => setForm({ ...form, chipNumber: e.target.value })} placeholder="Enter chip number" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="brand">Brand</Label>
+              <Select value={form.brand} onValueChange={(value) => setForm({ ...form, brand: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  {brands.map((brand) => (
+                    <SelectItem key={brand._id} value={brand.name}>
+                      {brand.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

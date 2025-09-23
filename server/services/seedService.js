@@ -3,6 +3,7 @@ const { Equipment } = require('../models/Equipment.js');
 const { EquipmentCategory } = require('../models/EquipmentCategory.js');
 const { EquipmentType } = require('../models/EquipmentType.js');
 const { Part } = require('../models/Part.js');
+const { Brand } = require('../models/Brand.js');
 const { generatePasswordHash } = require('../utils/password.js');
 
 class SeedService {
@@ -126,6 +127,7 @@ class SeedService {
         // Sewing Machine types
         { name: 'Flat Stitch Machine (Straight Stitch)', category: categoryMap['sewingmachine'], description: 'Basic straight stitch sewing machines' },
         { name: 'Zigzag Machine', category: categoryMap['sewingmachine'], description: 'Zigzag stitch sewing machines' },
+        { name: 'Single Needle Machine', category: categoryMap['sewingmachine'], description: 'Single needle sewing machines' },
         { name: 'Double Needle Machine', category: categoryMap['sewingmachine'], description: 'Two-needle parallel stitching machines' },
         { name: 'Free Arm Machine', category: categoryMap['sewingmachine'], description: 'Free arm sewing machines for sleeves and tubes' },
         { name: 'Cylinder Bed Machine', category: categoryMap['sewingmachine'], description: 'Cylinder bed machines for difficult areas' },
@@ -401,6 +403,58 @@ class SeedService {
     } catch (error) {
       console.error('Error seeding parts:', error);
       throw new Error(`Failed to seed parts: ${error.message}`);
+    }
+  }
+
+  static async seedBrands() {
+    try {
+      console.log('Starting brands seeding...');
+
+      const brandsData = [
+        { name: 'Rieter', description: 'Leading manufacturer of textile machinery, specializing in spinning systems' },
+        { name: 'Schlafhorst', description: 'Premium textile machinery for rotor spinning and winding' },
+        { name: 'Murata Machinery', description: 'Advanced textile machinery including air jet looms and spinning frames' },
+        { name: 'Toyota Industries', description: 'High-speed air jet weaving machines and textile equipment' },
+        { name: 'Picanol', description: 'Innovative weaving solutions and air jet looms' },
+        { name: 'Sulzer', description: 'Precision weaving machinery and projectile looms' },
+        { name: 'Itema', description: 'High-performance weaving machines and textile solutions' },
+        { name: 'Benninger', description: 'Textile finishing equipment and dyeing machines' },
+        { name: 'Lakshmi Machine Works', description: 'Comprehensive textile machinery manufacturer' },
+        { name: 'Trützschler', description: 'Carding and blowroom equipment for spinning preparation' },
+        { name: 'Juki', description: 'Industrial sewing machines and automation solutions' },
+        { name: 'Gerber', description: 'Automated cutting systems for apparel and textiles' },
+        { name: 'Monforts', description: 'Textile finishing and coating equipment' },
+        { name: 'Thies', description: 'Dyeing and finishing machinery for textiles' },
+        { name: 'Other', description: 'Other brands not listed' }
+      ];
+
+      const createdBrands = [];
+      let skippedCount = 0;
+
+      for (const brandData of brandsData) {
+        const existing = await Brand.findOne({ name: brandData.name });
+        if (existing) {
+          console.log(`Brand already exists: ${brandData.name}`);
+          skippedCount++;
+          continue;
+        }
+        const brand = new Brand(brandData);
+        await brand.save();
+        createdBrands.push(brand);
+        console.log(`Brand created: ${brand.name}`);
+      }
+
+      console.log(`Brands seeding completed. Created: ${createdBrands.length}, Skipped: ${skippedCount}`);
+
+      return {
+        success: true,
+        message: `Brands seeding completed. Created: ${createdBrands.length}, Skipped: ${skippedCount}`,
+        created: createdBrands,
+        skipped: skippedCount
+      };
+    } catch (error) {
+      console.error('Error seeding brands:', error);
+      throw new Error(`Failed to seed brands: ${error.message}`);
     }
   }
 }

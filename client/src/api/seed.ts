@@ -65,6 +65,19 @@ export const seedParts = async () => {
   }
 };
 
+// Description: Seed brands into the database
+// Endpoint: POST /api/seed/brands
+// Request: {}
+// Response: { success: boolean, message: string, data: { created: number, skipped: number, brands: Array } }
+export const seedBrands = async () => {
+  try {
+    const response = await api.post('/api/seed/brands');
+    return response.data;
+  } catch (error) {
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
+
 // Description: Seed all data into the database
 // Endpoint: POST /api/seed/all
 // Request: {}

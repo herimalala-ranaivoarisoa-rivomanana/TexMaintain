@@ -49,6 +49,14 @@ const schema = new mongoose.Schema({
     sparse: true,
     trim: true,
   },
+  chipNumber: {
+    type: String,
+    trim: true,
+  },
+  brand: {
+    type: String,
+    trim: true,
+  },
   installationDate: {
     type: Date,
   },

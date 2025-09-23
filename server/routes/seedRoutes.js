@@ -123,6 +123,30 @@ router.post('/parts', requireUser, requireRole('admin'), async (req, res) => {
   }
 });
 
+// Seed brands
+router.post('/brands', requireUser, requireRole('admin'), async (req, res) => {
+  try {
+    console.log('Received request to seed brands');
+    const result = await SeedService.seedBrands();
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        created: result.created.length,
+        skipped: result.skipped,
+        brands: result.created
+      }
+    });
+  } catch (error) {
+    console.error('Error in seed brands route:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to seed brands'
+    });
+  }
+});
+
 // Seed all data (comprehensive seeder)
 router.post('/all', requireUser, requireRole('admin'), async (req, res) => {
   try {
@@ -173,6 +197,15 @@ router.post('/all', requireUser, requireRole('admin'), async (req, res) => {
     } catch (error) {
       console.error('Error seeding parts:', error);
       results.parts = { error: error.message };
+    }
+
+    // Seed brands
+    try {
+      results.brands = await SeedService.seedBrands();
+      console.log('Brands seeding completed');
+    } catch (error) {
+      console.error('Error seeding brands:', error);
+      results.brands = { error: error.message };
     }
 
     console.log('Comprehensive database seeding completed');
