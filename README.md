@@ -1,4 +1,4 @@
-# TexMaintain - Dev DB via Docker
+# AQUA-MAINTAIN - Dev DB via Docker
 
 ## Prérequis
 - Docker Desktop
@@ -52,7 +52,7 @@ npm start
 ```
 
 ## Tests API (Postman)
-1) Importer `TexMaintain.postman_collection.json` dans Postman/Insomnia.
+1) Importer `AQUA-MAINTAIN.postman_collection.json` dans Postman/Insomnia.
 2) Définir la variable `baseUrl` (par défaut http://localhost:3000).
 3) Appeler `Seed > Seed Admin`, puis `Auth > Login` et copier les `accessToken`/`refreshToken` dans les variables.
 4) Tester Equipment, Inventory, Interventions (CRUD et stock).
