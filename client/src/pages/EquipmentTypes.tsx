@@ -16,7 +16,8 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
-import api from "@/api/api"
+import { getEquipmentTypes, createEquipmentType, updateEquipmentType, deleteEquipmentType } from "@/api/equipmentTypes"
+import { getEquipmentCategories } from "@/api/equipmentCategories"
 
 interface Category {
   _id: string
@@ -57,11 +58,11 @@ export function EquipmentTypes() {
   const fetchData = async () => {
     try {
       const [typesResponse, categoriesResponse] = await Promise.all([
-        api.get('/api/equipment-types'),
-        api.get('/api/equipment-categories')
+        getEquipmentTypes(),
+        getEquipmentCategories()
       ])
-      setTypes((typesResponse.data as any).types || [])
-      setCategories((categoriesResponse.data as any).categories || [])
+      setTypes(typesResponse.types || [])
+      setCategories(categoriesResponse.categories || [])
     } catch (error) {
       console.error('Error fetching data:', error)
       toast({
@@ -94,10 +95,10 @@ export function EquipmentTypes() {
     try {
       setIsSaving(true)
       if (editingItem) {
-        await api.patch(`/api/equipment-types/${editingItem._id}`, form)
+        await updateEquipmentType(editingItem._id, form)
         toast({ title: "Updated", description: "Equipment type updated successfully" })
       } else {
-        await api.post('/api/equipment-types', form)
+        await createEquipmentType(form)
         toast({ title: "Created", description: "Equipment type created successfully" })
       }
       setIsDialogOpen(false)
@@ -113,7 +114,7 @@ export function EquipmentTypes() {
   const handleDelete = async (id: string) => {
     try {
       setDeletingId(id)
-      await api.delete(`/api/equipment-types/${id}`)
+      await deleteEquipmentType(id)
       toast({ title: "Deleted", description: "Equipment type deleted successfully" })
       fetchData()
     } catch (error) {
@@ -143,7 +144,7 @@ export function EquipmentTypes() {
             Manage equipment types within categories
           </p>
         </div>
-        {user?.role === 'admin' && (
+        {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
           <Button onClick={openAddDialog} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
             <Plus className="mr-2 h-4 w-4" />
             Add Type

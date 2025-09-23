@@ -17,7 +17,7 @@ const categorySchema = z.object({
   description: z.string().optional(),
 });
 
-router.post('/', requireUser, requireRole('admin'), async (req, res) => {
+router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   const parse = categorySchema.safeParse(req.body || {});
   if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
   const created = await EquipmentCategory.create(parse.data);

@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
-import { seedAdminUser, seedEquipmentTypes, seedParts } from "@/api/seed"
+import { seedAdminUser, seedEquipmentCategories, seedEquipmentTypes, seedEquipment, seedParts, seedAll } from "@/api/seed"
 import {
   User,
   Bell,
@@ -51,10 +51,50 @@ export function Settings() {
     }
   }
 
+  const handleSeedEquipmentTypes = async () => {
+    try {
+      setLoading({ ...loading, equipmentTypes: true })
+      const result = await seedEquipmentTypes()
+      setSeedResults({ ...seedResults, equipmentTypes: result })
+      toast({
+        title: "Success",
+        description: result.message,
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading({ ...loading, equipmentTypes: false })
+    }
+  }
+
+  const handleSeedCategories = async () => {
+    try {
+      setLoading({ ...loading, categories: true })
+      const result = await seedEquipmentCategories()
+      setSeedResults({ ...seedResults, categories: result })
+      toast({
+        title: "Success",
+        description: result.message,
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading({ ...loading, categories: false })
+    }
+  }
+
   const handleSeedEquipment = async () => {
     try {
       setLoading({ ...loading, equipment: true })
-      const result = await seedEquipmentTypes()
+      const result = await seedEquipment()
       setSeedResults({ ...seedResults, equipment: result })
       toast({
         title: "Success",
@@ -88,6 +128,26 @@ export function Settings() {
       })
     } finally {
       setLoading({ ...loading, parts: false })
+    }
+  }
+
+  const handleSeedAll = async () => {
+    try {
+      setLoading({ ...loading, all: true })
+      const result = await seedAll()
+      setSeedResults({ ...seedResults, all: result })
+      toast({
+        title: "Success",
+        description: result.message,
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading({ ...loading, all: false })
     }
   }
 
@@ -332,7 +392,7 @@ export function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {/* Seed Admin User */}
                   <Card className="border-2 border-dashed border-slate-200">
                     <CardHeader>
@@ -383,27 +443,27 @@ export function Settings() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <Button 
-                        onClick={handleSeedEquipment} 
-                        disabled={loading.equipment}
+                      <Button
+                        onClick={handleSeedEquipmentTypes}
+                        disabled={loading.equipmentTypes}
                         className="w-full"
                       >
-                        {loading.equipment ? "Creating..." : "Create Equipment Types"}
+                        {loading.equipmentTypes ? "Creating..." : "Create Equipment Types"}
                       </Button>
                       
-                      {seedResults.equipment && (
+                      {seedResults.equipmentTypes && (
                         <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                           <div className="flex items-center gap-2 text-green-800 mb-2">
                             <CheckCircle className="h-4 w-4" />
                             <span className="font-medium">Success</span>
                           </div>
-                          <p className="text-sm text-green-700 mb-2">{seedResults.equipment.message}</p>
+                          <p className="text-sm text-green-700 mb-2">{seedResults.equipmentTypes.message}</p>
                           <div className="flex gap-2">
                             <Badge variant="outline" className="text-green-700">
-                              Created: {seedResults.equipment.data?.created || 0}
+                              Created: {seedResults.equipmentTypes.data?.created || 0}
                             </Badge>
                             <Badge variant="outline" className="text-yellow-700">
-                              Skipped: {seedResults.equipment.data?.skipped || 0}
+                              Skipped: {seedResults.equipmentTypes.data?.skipped || 0}
                             </Badge>
                           </div>
                         </div>
@@ -446,6 +506,118 @@ export function Settings() {
                               Skipped: {seedResults.parts.data?.skipped || 0}
                             </Badge>
                           </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Seed Equipment Categories */}
+                  <Card className="border-2 border-dashed border-slate-200">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Settings className="h-5 w-5" />
+                        Seed Categories
+                      </CardTitle>
+                      <CardDescription>
+                        Initialize the database with equipment categories
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Button
+                        onClick={handleSeedCategories}
+                        disabled={loading.categories}
+                        className="w-full"
+                      >
+                        {loading.categories ? "Creating..." : "Create Categories"}
+                      </Button>
+
+                      {seedResults.categories && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-green-800 mb-2">
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="font-medium">Success</span>
+                          </div>
+                          <p className="text-sm text-green-700 mb-2">{seedResults.categories.message}</p>
+                          <div className="flex gap-2">
+                            <Badge variant="outline" className="text-green-700">
+                              Created: {seedResults.categories.data?.created || 0}
+                            </Badge>
+                            <Badge variant="outline" className="text-yellow-700">
+                              Skipped: {seedResults.categories.data?.skipped || 0}
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Seed Equipment */}
+                  <Card className="border-2 border-dashed border-slate-200">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Wrench className="h-5 w-5" />
+                        Seed Equipment
+                      </CardTitle>
+                      <CardDescription>
+                        Initialize the database with sample equipment
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Button
+                        onClick={handleSeedEquipment}
+                        disabled={loading.equipment}
+                        className="w-full"
+                      >
+                        {loading.equipment ? "Creating..." : "Create Equipment"}
+                      </Button>
+
+                      {seedResults.equipment && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-green-800 mb-2">
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="font-medium">Success</span>
+                          </div>
+                          <p className="text-sm text-green-700 mb-2">{seedResults.equipment.message}</p>
+                          <div className="flex gap-2">
+                            <Badge variant="outline" className="text-green-700">
+                              Created: {seedResults.equipment.data?.created || 0}
+                            </Badge>
+                            <Badge variant="outline" className="text-yellow-700">
+                              Skipped: {seedResults.equipment.data?.skipped || 0}
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Seed All */}
+                  <Card className="border-2 border-dashed border-slate-200">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Database className="h-5 w-5" />
+                        Seed All Data
+                      </CardTitle>
+                      <CardDescription>
+                        Initialize the database with all sample data
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Button
+                        onClick={handleSeedAll}
+                        disabled={loading.all}
+                        className="w-full"
+                      >
+                        {loading.all ? "Creating..." : "Create All Data"}
+                      </Button>
+
+                      {seedResults.all && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-green-800 mb-2">
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="font-medium">Success</span>
+                          </div>
+                          <p className="text-sm text-green-700 mb-2">{seedResults.all.message}</p>
                         </div>
                       )}
                     </CardContent>

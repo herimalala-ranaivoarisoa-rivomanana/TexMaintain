@@ -47,7 +47,7 @@ const equipmentSchema = z.object({
   nextMaintenance: z.coerce.date().optional(),
 });
 
-router.post('/', requireUser, requireRole('admin'), async (req, res) => {
+router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   const parse = equipmentSchema.safeParse(req.body || {});
   if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
   const created = await Equipment.create(parse.data);

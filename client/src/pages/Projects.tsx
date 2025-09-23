@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { FolderOpen, Plus, Calendar, Users, DollarSign } from "lucide-react"
+import { FolderOpen, Plus, Calendar, Users, DollarSign, Settings } from "lucide-react"
 
 export function Projects() {
   return (
@@ -21,6 +21,18 @@ export function Projects() {
           New Project
         </Button>
       </div>
+
+      <Card className="bg-yellow-50 border-yellow-200">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-yellow-800">
+            <Settings className="h-4 w-4" />
+            <span className="font-medium">Under Development</span>
+          </div>
+          <p className="text-sm text-yellow-700 mt-1">
+            This feature is currently under development. The data shown is for demonstration purposes only.
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200/60">

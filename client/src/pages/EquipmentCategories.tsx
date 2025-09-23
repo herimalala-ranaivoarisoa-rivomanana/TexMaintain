@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
-import api from "@/api/api"
+import { getEquipmentCategories, createEquipmentCategory, updateEquipmentCategory, deleteEquipmentCategory } from "@/api/equipmentCategories"
 
 interface Category {
   _id: string
@@ -44,8 +44,8 @@ export function EquipmentCategories() {
 
   const fetchCategories = async () => {
     try {
-      const response = await api.get('/api/equipment-categories')
-      setCategories((response.data as any).categories || [])
+      const response = await getEquipmentCategories()
+      setCategories(response.categories || [])
     } catch (error) {
       console.error('Error fetching categories:', error)
       toast({
@@ -74,10 +74,10 @@ export function EquipmentCategories() {
     try {
       setIsSaving(true)
       if (editingItem) {
-        await api.patch(`/api/equipment-categories/${editingItem._id}`, form)
+        await updateEquipmentCategory(editingItem._id, form)
         toast({ title: "Updated", description: "Category updated successfully" })
       } else {
-        await api.post('/api/equipment-categories', form)
+        await createEquipmentCategory(form)
         toast({ title: "Created", description: "Category created successfully" })
       }
       setIsDialogOpen(false)
@@ -93,7 +93,7 @@ export function EquipmentCategories() {
   const handleDelete = async (id: string) => {
     try {
       setDeletingId(id)
-      await api.delete(`/api/equipment-categories/${id}`)
+      await deleteEquipmentCategory(id)
       toast({ title: "Deleted", description: "Category deleted successfully" })
       fetchCategories()
     } catch (error) {
@@ -123,7 +123,7 @@ export function EquipmentCategories() {
             Manage equipment categories for your factory
           </p>
         </div>
-        {user?.role === 'admin' && (
+        {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
           <Button onClick={openAddDialog} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
             <Plus className="mr-2 h-4 w-4" />
             Add Category

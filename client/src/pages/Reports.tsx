@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BarChart3, Download, FileText, TrendingUp, Calendar, Activity, Settings, Package } from "lucide-react"
+import { BarChart3, Download, FileText, TrendingUp, Calendar, Activity, Settings, Package, Wrench } from "lucide-react"
 
 export function Reports() {
   return (
@@ -34,6 +34,18 @@ export function Reports() {
           </Button>
         </div>
       </div>
+
+      <Card className="bg-yellow-50 border-yellow-200">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-yellow-800">
+            <Wrench className="h-4 w-4" />
+            <span className="font-medium">Under Development</span>
+          </div>
+          <p className="text-sm text-yellow-700 mt-1">
+            This feature is currently under development. The data shown is for demonstration purposes only.
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200 cursor-pointer">

@@ -310,7 +310,7 @@ export function Equipment() {
         </div>
         <div className="flex gap-2">
         <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
-        {user?.role === 'admin' && (
+        {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
         <Button onClick={openAddDialog} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
           <Plus className="mr-2 h-4 w-4" />
           Add Equipment

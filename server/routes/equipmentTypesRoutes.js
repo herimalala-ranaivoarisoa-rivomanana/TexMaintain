@@ -20,7 +20,7 @@ const typeSchema = z.object({
   category: z.string().min(1), // ObjectId as string
 });
 
-router.post('/', requireUser, requireRole('admin'), async (req, res) => {
+router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   const parse = typeSchema.safeParse(req.body || {});
   if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
   const created = await EquipmentType.create(parse.data);
