@@ -51,7 +51,7 @@ router.post('/login', async (req, res) => {
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(['admin','maintenance_manager','technician','procurement_manager','project_manager']).optional(),
+  role: z.enum(['admin','maintenance_manager','mechanic','electrician','general_maintenance_agent','dockworker','assistant_maintenance_manager','factory_manager','production_manager','line_manager','foreman','procurement_manager','project_manager']).optional(),
 });
 
 router.post('/register', async (req, res, next) => {

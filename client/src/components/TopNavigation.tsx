@@ -27,7 +27,15 @@ export function TopNavigation() {
     const roleMap: Record<string, string> = {
       'admin': 'Administrator',
       'maintenance_manager': 'Maintenance Manager',
-      'technician': 'Technician',
+      'mechanic': 'Mechanic',
+      'electrician': 'Electrician',
+      'general_maintenance_agent': 'General Maintenance Agent',
+      'dockworker': 'Dockworker',
+      'assistant_maintenance_manager': 'Assistant Maintenance Manager',
+      'factory_manager': 'Factory Manager',
+      'production_manager': 'Production Manager',
+      'line_manager': 'Line Manager',
+      'foreman': 'Foreman',
       'procurement_manager': 'Procurement Manager',
       'project_manager': 'Project Manager',
     }
@@ -38,7 +46,15 @@ export function TopNavigation() {
     const variantMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       'admin': 'destructive',
       'maintenance_manager': 'default',
-      'technician': 'secondary',
+      'mechanic': 'secondary',
+      'electrician': 'secondary',
+      'general_maintenance_agent': 'secondary',
+      'dockworker': 'outline',
+      'assistant_maintenance_manager': 'default',
+      'factory_manager': 'destructive',
+      'production_manager': 'default',
+      'line_manager': 'default',
+      'foreman': 'default',
       'procurement_manager': 'outline',
       'project_manager': 'default',
     }

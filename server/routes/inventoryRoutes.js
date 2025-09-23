@@ -32,7 +32,7 @@ router.get('/:id', requireUser, async (req, res) => {
 });
 
 // PUT /api/inventory/:id/stock
-router.put('/:id/stock', requireUser, requireRole(['admin','maintenance_manager','procurement_manager']), async (req, res) => {
+router.put('/:id/stock', requireUser, requireRole(['admin','maintenance_manager','procurement_manager','assistant_maintenance_manager','foreman']), async (req, res) => {
   const { id } = req.params;
   const { quantity, type } = req.body || {};
   const part = await Part.findById(id);

@@ -54,7 +54,7 @@ router.post('/', requireUser, requireRole('admin'), async (req, res) => {
 });
 
 // PATCH /api/equipment/:id
-router.patch('/:id', requireUser, requireRole(['admin','maintenance_manager']), async (req, res) => {
+router.patch('/:id', requireUser, requireRole(['admin','maintenance_manager','assistant_maintenance_manager','foreman']), async (req, res) => {
   const { id } = req.params;
   const updates = (req.body || {});
   const updated = await Equipment.findByIdAndUpdate(id, updates, { new: true }).lean();

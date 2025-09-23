@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const { validatePassword, isPasswordHash } = require('../utils/password.js');
 const {randomUUID} = require("crypto");
 
-const VALID_ROLES = ['admin', 'maintenance_manager', 'technician', 'procurement_manager', 'project_manager'];
+const VALID_ROLES = ['admin', 'maintenance_manager', 'mechanic', 'electrician', 'general_maintenance_agent', 'dockworker', 'assistant_maintenance_manager', 'factory_manager', 'production_manager', 'line_manager', 'foreman', 'procurement_manager', 'project_manager'];
 
 const schema = new mongoose.Schema({
   email: {
@@ -22,7 +22,7 @@ const schema = new mongoose.Schema({
     type: String,
     required: true,
     enum: VALID_ROLES,
-    default: 'technician',
+    default: 'general_maintenance_agent',
   },
   createdAt: {
     type: Date,

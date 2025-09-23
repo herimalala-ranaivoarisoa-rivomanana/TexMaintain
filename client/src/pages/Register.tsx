@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Card,
   CardContent,
@@ -25,12 +25,35 @@ type RegisterForm = {
   role: string
 }
 
-const ROLES = [
-  { value: 'admin', label: 'Administrator' },
-  { value: 'maintenance_manager', label: 'Maintenance Manager' },
-  { value: 'technician', label: 'Technician' },
-  { value: 'procurement_manager', label: 'Procurement Manager' },
-  { value: 'project_manager', label: 'Project Manager' },
+const ROLE_GROUPS = [
+  {
+    label: 'Maintenance Department',
+    roles: [
+      { value: 'admin', label: 'Administrator' },
+      { value: 'maintenance_manager', label: 'Maintenance Manager' },
+      { value: 'mechanic', label: 'Mechanic' },
+      { value: 'electrician', label: 'Electrician' },
+      { value: 'general_maintenance_agent', label: 'General Maintenance Agent' },
+      { value: 'dockworker', label: 'Dockworker' },
+      { value: 'assistant_maintenance_manager', label: 'Assistant Maintenance Manager' },
+    ]
+  },
+  {
+    label: 'Production Department',
+    roles: [
+      { value: 'factory_manager', label: 'Factory Manager' },
+      { value: 'production_manager', label: 'Production Manager' },
+      { value: 'line_manager', label: 'Line Manager' },
+      { value: 'foreman', label: 'Foreman' },
+    ]
+  },
+  {
+    label: 'Other Departments',
+    roles: [
+      { value: 'procurement_manager', label: 'Procurement Manager' },
+      { value: 'project_manager', label: 'Project Manager' },
+    ]
+  }
 ];
 
 export function Register() {
@@ -40,7 +63,7 @@ export function Register() {
   const navigate = useNavigate()
   const { register, handleSubmit, setValue, watch } = useForm<RegisterForm>({
     defaultValues: {
-      role: 'technician'
+      role: 'general_maintenance_agent'
     }
   })
 
@@ -101,10 +124,15 @@ export function Register() {
                   <SelectValue placeholder="Select your role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ROLES.map((role) => (
-                    <SelectItem key={role.value} value={role.value}>
-                      {role.label}
-                    </SelectItem>
+                  {ROLE_GROUPS.map((group) => (
+                    <SelectGroup key={group.label}>
+                      <SelectLabel>{group.label}</SelectLabel>
+                      {group.roles.map((role) => (
+                        <SelectItem key={role.value} value={role.value}>
+                          {role.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>

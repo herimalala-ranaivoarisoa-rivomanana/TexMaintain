@@ -67,7 +67,7 @@ router.patch('/:id', requireUser, async (req, res) => {
 });
 
 // DELETE /api/interventions/:id
-router.delete('/:id', requireUser, require('../routes/middleware/auth').requireRole(['admin','maintenance_manager']), async (req, res) => {
+router.delete('/:id', requireUser, require('../routes/middleware/auth').requireRole(['admin','maintenance_manager','assistant_maintenance_manager','foreman']), async (req, res) => {
   const { id } = req.params;
   const deleted = await Intervention.findByIdAndDelete(id).lean();
   if (!deleted) return res.status(404).json({ message: 'Intervention not found' });

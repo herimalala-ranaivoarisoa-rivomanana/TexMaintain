@@ -362,7 +362,7 @@ export function Equipment() {
               </div>
 
               <div className="flex gap-2 pt-2">
-                {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
+                {(user?.role === 'admin' || user?.role === 'maintenance_manager' || user?.role === 'assistant_maintenance_manager' || user?.role === 'foreman') && (
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => openEditDialog(item)} disabled={deletingId === item._id}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit
                   </Button>

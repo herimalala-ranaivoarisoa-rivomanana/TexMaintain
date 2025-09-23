@@ -73,7 +73,7 @@ class UserService {
     }
   }
 
-  static async create({ email, password, role = 'technician', name = '' }) {
+  static async create({ email, password, role = 'general_maintenance_agent', name = '' }) {
     if (!email) throw new Error('Email is required');
     if (!password) throw new Error('Password is required');
     
