@@ -18,6 +18,9 @@ import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
 import { getEquipmentTypes, createEquipmentType, updateEquipmentType, deleteEquipmentType } from "@/api/equipmentTypes"
 import { getEquipmentCategories } from "@/api/equipmentCategories"
+import { getEquipment } from "@/api/equipment"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Progress } from "@/components/ui/progress"
 
 interface Category {
   _id: string
@@ -34,9 +37,27 @@ interface EquipmentType {
   updatedAt: string
 }
 
+interface EquipmentStats {
+  typeId: string
+  typeName: string
+  categoryName: string
+  totalEquipment: number
+  byStatus: {
+    online: number
+    maintenance: number
+    breakdown: number
+    offline: number
+    scrapped: number
+  }
+  avgMtbf: number
+  avgMttr: number
+  availability: number
+}
+
 export function EquipmentTypes() {
   const [types, setTypes] = useState<EquipmentType[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [stats, setStats] = useState<EquipmentStats[]>([])
   const [loading, setLoading] = useState(true)
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const { toast } = useToast()
@@ -57,12 +78,20 @@ export function EquipmentTypes() {
 
   const fetchData = async () => {
     try {
-      const [typesResponse, categoriesResponse] = await Promise.all([
+      const [typesResponse, categoriesResponse, equipmentResponse] = await Promise.all([
         getEquipmentTypes(),
-        getEquipmentCategories()
+        getEquipmentCategories(),
+        getEquipment({ limit: 1000 }) // Get all equipment for stats
       ])
-      setTypes(typesResponse.types || [])
+      const typesData = typesResponse.types || []
+      const equipmentData = (equipmentResponse as any).equipment || []
+
+      setTypes(typesData)
       setCategories(categoriesResponse.categories || [])
+
+      // Calculate statistics
+      const calculatedStats = calculateEquipmentStats(typesData, equipmentData)
+      setStats(calculatedStats)
     } catch (error) {
       console.error('Error fetching data:', error)
       toast({
@@ -73,6 +102,39 @@ export function EquipmentTypes() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const calculateEquipmentStats = (typesData: EquipmentType[], equipmentData: any[]): EquipmentStats[] => {
+    return typesData.map(type => {
+      const typeEquipment = equipmentData.filter(eq => eq.type?._id === type._id)
+      const totalEquipment = typeEquipment.length
+
+      const byStatus = {
+        online: typeEquipment.filter(eq => eq.status === 'online').length,
+        maintenance: typeEquipment.filter(eq => eq.status === 'maintenance').length,
+        breakdown: typeEquipment.filter(eq => eq.status === 'breakdown').length,
+        offline: typeEquipment.filter(eq => eq.status === 'offline').length,
+        scrapped: typeEquipment.filter(eq => eq.status === 'scrapped').length,
+      }
+
+      const avgMtbf = totalEquipment > 0 ? typeEquipment.reduce((sum, eq) => sum + (eq.mtbf || 0), 0) / totalEquipment : 0
+      const avgMttr = totalEquipment > 0 ? typeEquipment.reduce((sum, eq) => sum + (eq.mttr || 0), 0) / totalEquipment : 0
+
+      // Calculate availability: (online + maintenance) / total * 100
+      const operational = byStatus.online + byStatus.maintenance
+      const availability = totalEquipment > 0 ? (operational / totalEquipment) * 100 : 0
+
+      return {
+        typeId: type._id,
+        typeName: type.name,
+        categoryName: type.category.name,
+        totalEquipment,
+        byStatus,
+        avgMtbf: Math.round(avgMtbf * 100) / 100,
+        avgMttr: Math.round(avgMttr * 100) / 100,
+        availability: Math.round(availability * 100) / 100
+      }
+    })
   }
 
   const filteredTypes = categoryFilter === "all"
@@ -176,6 +238,74 @@ export function EquipmentTypes() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Statistics Table */}
+      {stats.length > 0 && (
+        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
+          <CardHeader>
+            <CardTitle className="text-xl">Equipment Statistics by Type</CardTitle>
+            <CardDescription>Overview of equipment performance and status distribution</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead className="text-center">Total</TableHead>
+                  <TableHead className="text-center">Status Distribution</TableHead>
+                  <TableHead className="text-center">MTBF (h)</TableHead>
+                  <TableHead className="text-center">MTTR (h)</TableHead>
+                  <TableHead className="text-center">Availability (%)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {stats
+                  .filter(stat => categoryFilter === "all" || categories.find(c => c.name === stat.categoryName)?._id === categoryFilter)
+                  .map((stat) => (
+                    <TableRow key={stat.typeId}>
+                      <TableCell className="font-medium">{stat.typeName}</TableCell>
+                      <TableCell>{stat.categoryName}</TableCell>
+                      <TableCell className="text-center font-semibold">{stat.totalEquipment}</TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                            <span>Online: {stat.byStatus.online}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                            <span>Maintenance: {stat.byStatus.maintenance}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-3 h-3 bg-red-500 rounded"></div>
+                            <span>Breakdown: {stat.byStatus.breakdown}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-3 h-3 bg-gray-500 rounded"></div>
+                            <span>Offline: {stat.byStatus.offline}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-3 h-3 bg-red-900 rounded"></div>
+                            <span>Scrapped: {stat.byStatus.scrapped}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">{stat.avgMtbf}</TableCell>
+                      <TableCell className="text-center">{stat.avgMttr}</TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center gap-2">
+                          <Progress value={stat.availability} className="w-16 h-2" />
+                          <span className="text-sm font-medium">{stat.availability}%</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTypes.map((type) => (
