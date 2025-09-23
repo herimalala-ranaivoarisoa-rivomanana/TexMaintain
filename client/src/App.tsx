@@ -21,6 +21,7 @@ import PartDetailWrapper from "./pages/PartDetail"
 import EquipmentCategoriesPageWrapper from "./pages/EquipmentCategories"
 import EquipmentTypesPageWrapper from "./pages/EquipmentTypes"
 import BrandsPageWrapper from "./pages/Brands"
+import ProductionLinesPageWrapper from "./pages/ProductionLines"
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
               <Route path="equipment-categories" element={<EquipmentCategoriesPageWrapper />} />
               <Route path="equipment-types" element={<EquipmentTypesPageWrapper />} />
               <Route path="brands" element={<BrandsPageWrapper />} />
+              <Route path="production-lines" element={<ProductionLinesPageWrapper />} />
               <Route path="interventions" element={<Interventions />} />
               <Route path="interventions/:id" element={<InterventionDetailWrapper />} />
               <Route path="inventory" element={<Inventory />} />
