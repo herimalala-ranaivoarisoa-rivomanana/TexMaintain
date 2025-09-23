@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,11 +26,9 @@ import { getBrands } from "@/api/brands"
 import api from "@/api/api"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
-import { saveAs } from "file-saver"
 
 interface Equipment {
   _id: string
-  name: string
   category: Category
   type: EquipmentType
   status: string
@@ -75,7 +73,6 @@ export function Equipment() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Equipment | null>(null)
   const [form, setForm] = useState({
-    name: "",
     category: "",
     type: "",
     status: "offline",
@@ -161,20 +158,16 @@ export function Equipment() {
     return `${start}-${end} of ${total}`
   }, [page, limit, total])
 
-  const refreshList = async () => {
-    const response = await getEquipment()
-    setEquipment((response as any).equipment)
-  }
 
   const openAddDialog = () => {
     setEditingItem(null)
-    setForm({ name: "", category: "cutting", type: "", status: "offline", location: "", serialNumber: "", chipNumber: "", brand: "" })
+    setForm({ category: "cutting", type: "", status: "offline", location: "", serialNumber: "", chipNumber: "", brand: "" })
     setIsDialogOpen(true)
   }
 
   const openEditDialog = (item: Equipment) => {
     setEditingItem(item)
-    setForm({ name: item.name, category: item.category._id, type: item.type._id, status: item.status, location: item.location, serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: item.brand || "" })
+    setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: item.brand || "" })
     setIsDialogOpen(true)
   }
 
@@ -185,7 +178,6 @@ export function Equipment() {
         const prev = equipment
         const optimistic = equipment.map((e) => e._id === editingItem._id ? {
           ...e,
-          name: form.name,
           status: form.status,
           location: form.location,
           serialNumber: form.serialNumber,
@@ -208,7 +200,6 @@ export function Equipment() {
         const tempType = types.find(t => t._id === form.type) || { _id: form.type, name: 'Loading...', category: tempCategory }
         const tempItem: Equipment = {
           _id: tempId,
-          name: form.name,
           category: tempCategory,
           type: tempType,
           status: form.status,
@@ -282,26 +273,17 @@ export function Equipment() {
     }
   }
 
-  const exportCSV = () => {
-    const headers = ['Name','Category','Type','Status','Location','SerialNumber','ChipNumber','Brand','MTBF','MTTR','LastMaintenance','NextMaintenance']
-    const rows = equipment.map(e => [
-      e.name,
-      e.category?.name || '',
-      e.type?.name || '',
-      e.status,
-      e.location,
-      e.serialNumber || '',
-      e.chipNumber || '',
-      e.brand || '',
-      String(e.mtbf ?? ''),
-      String(e.mttr ?? ''),
-      e.lastMaintenance ? new Date(e.lastMaintenance).toISOString() : '',
-      e.nextMaintenance ? new Date(e.nextMaintenance).toISOString() : ''
-    ])
-    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    saveAs(blob, `equipment_export_page${page}.csv`)
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Not set'
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return 'Invalid date'
+      return date.toLocaleDateString()
+    } catch {
+      return 'Invalid date'
+    }
   }
+
 
   const filteredEquipment = equipment
 
@@ -325,7 +307,6 @@ export function Equipment() {
           </p>
         </div>
         <div className="flex gap-2">
-        <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
         {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
         <Button onClick={openAddDialog} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
           <Plus className="mr-2 h-4 w-4" />
@@ -368,7 +349,6 @@ export function Equipment() {
               <SelectContent>
                 <SelectItem value="createdAt">Created</SelectItem>
                 <SelectItem value="updatedAt">Updated</SelectItem>
-                <SelectItem value="name">Name</SelectItem>
                 <SelectItem value="status">Status</SelectItem>
               </SelectContent>
             </Select>
@@ -402,23 +382,39 @@ export function Equipment() {
           <Card key={item._id} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg"><Link className="hover:underline" to={`/equipment/${item._id}`}>{item.name}</Link></CardTitle>
+                <CardTitle className="text-lg"><Link className="hover:underline" to={`/equipment/${item._id}`}>{item.category?.name} - {item.type?.name}</Link></CardTitle>
                 <Badge className={`${getStatusColor(item.status)} text-white flex items-center gap-1`}>
                   {getStatusIcon(item.status)}
                   {item.status}
                 </Badge>
               </div>
-              <CardDescription className="flex items-center text-slate-600">
-                <Settings className="mr-1 h-3 w-3" />
-                {item.category?.name} - {item.type?.name}
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center text-sm text-slate-600">
-                <MapPin className="mr-2 h-4 w-4" />
-                {item.location}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-slate-500">Location</p>
+                  <p className="text-slate-900 flex items-center">
+                    <MapPin className="mr-1 h-3 w-3" />
+                    {item.location}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Brand</p>
+                  <p className="text-slate-900">{item.brand || '-'}</p>
+                </div>
               </div>
-              
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-slate-500">Serial Number</p>
+                  <p className="text-slate-900">{item.serialNumber || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Chip Number</p>
+                  <p className="text-slate-900">{item.chipNumber || '-'}</p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-slate-500">MTBF</p>
@@ -433,13 +429,13 @@ export function Equipment() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">Last Maintenance:</span>
-                  <span className="text-slate-900">{new Date(item.lastMaintenance).toLocaleDateString()}</span>
+                  <span className="text-slate-900">{formatDate(item.lastMaintenance)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">Next Maintenance:</span>
                   <span className="text-slate-900 flex items-center">
                     <Calendar className="mr-1 h-3 w-3" />
-                    {new Date(item.nextMaintenance).toLocaleDateString()}
+                    {formatDate(item.nextMaintenance)}
                   </span>
                 </div>
               </div>
@@ -476,10 +472,6 @@ export function Equipment() {
             <DialogTitle>{editingItem ? 'Edit Equipment' : 'Add Equipment'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter name" />
-            </div>
             <div className="grid gap-2">
               <Label htmlFor="category">Category</Label>
               <Select value={form.category} onValueChange={(value) => setForm({ ...form, category: value, type: "" })}>

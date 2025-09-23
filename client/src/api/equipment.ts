@@ -20,7 +20,7 @@ export const getEquipmentById = async (id: string) => {
 
 // Description: Create new equipment (admin)
 // Endpoint: POST /api/equipment
-export const createEquipment = async (data: { name: string; category: string; type: string; status: string; location: string; [key: string]: any }) => {
+export const createEquipment = async (data: { category: string; type: string; status: string; location: string; [key: string]: any }) => {
   const response = await api.post('/api/equipment', data);
   return response.data;
 };

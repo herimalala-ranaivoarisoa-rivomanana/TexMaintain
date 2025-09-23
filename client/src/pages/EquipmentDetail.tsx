@@ -8,13 +8,23 @@ import { Settings, MapPin, Calendar, ArrowLeft } from "lucide-react"
 
 interface EquipmentDetailData {
   _id: string
-  name: string
-  type: string
+  category: {
+    _id: string
+    name: string
+  }
+  type: {
+    _id: string
+    name: string
+    category: {
+      _id: string
+      name: string
+    }
+  }
   status: string
   location: string
-  manufacturer?: string
-  model?: string
+  brand?: string
   serialNumber?: string
+  chipNumber?: string
   installationDate?: string
   lastMaintenance?: string
   nextMaintenance?: string
@@ -62,54 +72,156 @@ export function EquipmentDetail() {
 
   const statusColor = (status: string) => {
     switch (status) {
-      case 'operational': return 'bg-green-500'
+      case 'online': return 'bg-blue-500'
       case 'maintenance': return 'bg-yellow-500'
       case 'breakdown': return 'bg-red-500'
+      case 'offline': return 'bg-gray-500'
+      case 'scrapped': return 'bg-red-900'
       default: return 'bg-gray-500'
+    }
+  }
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Not set'
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return 'Invalid date'
+      return date.toLocaleDateString()
+    } catch {
+      return 'Invalid date'
+    }
+  }
+
+  const getMaintenanceStatus = (nextMaintenance?: string) => {
+    if (!nextMaintenance) return { text: 'Not scheduled', color: 'text-gray-500' }
+    try {
+      const nextDate = new Date(nextMaintenance)
+      if (isNaN(nextDate.getTime())) return { text: 'Invalid date', color: 'text-red-500' }
+      const now = new Date()
+      const daysUntil = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      if (daysUntil < 0) return { text: `${Math.abs(daysUntil)} days overdue`, color: 'text-red-600' }
+      if (daysUntil === 0) return { text: 'Due today', color: 'text-orange-600' }
+      if (daysUntil <= 7) return { text: `${daysUntil} days`, color: 'text-yellow-600' }
+      return { text: `${daysUntil} days`, color: 'text-green-600' }
+    } catch {
+      return { text: 'Invalid date', color: 'text-red-500' }
     }
   }
 
   return (
     <div className="space-y-6">
       <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4"/>Back</Button>
-      <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl">{data.name}</CardTitle>
-            <Badge className={`${statusColor(data.status)} text-white`}>{data.status}</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center text-slate-700"><Settings className="mr-2 h-4 w-4"/>{data.type}</div>
-          <div className="flex items-center text-slate-700"><MapPin className="mr-2 h-4 w-4"/>{data.location}</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-slate-500">Manufacturer</p>
-              <p className="text-slate-900">{data.manufacturer || '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Model</p>
-              <p className="text-slate-900">{data.model || '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Serial Number</p>
-              <p className="text-slate-900">{data.serialNumber || '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Installation</p>
-              <p className="text-slate-900 flex items-center"><Calendar className="mr-1 h-3 w-3"/>{data.installationDate ? new Date(data.installationDate).toLocaleDateString() : '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Last Maintenance</p>
-              <p className="text-slate-900 flex items-center"><Calendar className="mr-1 h-3 w-3"/>{data.lastMaintenance ? new Date(data.lastMaintenance).toLocaleDateString() : '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Next Maintenance</p>
-              <p className="text-slate-900 flex items-center"><Calendar className="mr-1 h-3 w-3"/>{data.nextMaintenance ? new Date(data.nextMaintenance).toLocaleDateString() : '-'}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Information Card */}
+        <div className="lg:col-span-2">
+          <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl">{data.category?.name} - {data.type?.name}</CardTitle>
+                <Badge className={`${statusColor(data.status)} text-white`}>{data.status}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-slate-500">Category</p>
+                  <p className="text-slate-900">{data.category?.name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Type</p>
+                  <p className="text-slate-900">{data.type?.name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Location</p>
+                  <p className="text-slate-900 flex items-center"><MapPin className="mr-2 h-4 w-4"/>{data.location}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Brand</p>
+                  <p className="text-slate-900">{data.brand || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Serial Number</p>
+                  <p className="text-slate-900">{data.serialNumber || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Chip Number</p>
+                  <p className="text-slate-900">{data.chipNumber || '-'}</p>
+                </div>
+              </div>
+
+              {/* Maintenance Information */}
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-semibold mb-4">Maintenance Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-slate-500">Installation Date</p>
+                    <p className="text-slate-900 flex items-center"><Calendar className="mr-2 h-4 w-4"/>{formatDate(data.installationDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">Last Maintenance</p>
+                    <p className="text-slate-900 flex items-center"><Calendar className="mr-2 h-4 w-4"/>{formatDate(data.lastMaintenance)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">Next Maintenance</p>
+                    <p className={`flex items-center ${getMaintenanceStatus(data.nextMaintenance).color}`}>
+                      <Calendar className="mr-2 h-4 w-4"/>
+                      {formatDate(data.nextMaintenance)}
+                      {data.nextMaintenance && (
+                        <span className="ml-2 text-xs">({getMaintenanceStatus(data.nextMaintenance).text})</span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">Maintenance Status</p>
+                    <p className={`font-medium ${getMaintenanceStatus(data.nextMaintenance).color}`}>
+                      {getMaintenanceStatus(data.nextMaintenance).text}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Performance Metrics */}
+              <div className="border-t pt-4">
+                <h3 className="text-lg font-semibold mb-4">Performance Metrics</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-slate-500">MTBF (Mean Time Between Failures)</p>
+                    <p className="text-slate-900 text-lg font-semibold">{data.mtbf ? `${data.mtbf}h` : 'Not available'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">MTTR (Mean Time To Repair)</p>
+                    <p className="text-slate-900 text-lg font-semibold">{data.mttr ? `${data.mttr}h` : 'Not available'}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Specifications Card */}
+        <div>
+          <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
+            <CardHeader>
+              <CardTitle className="text-lg">Technical Specifications</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data.specifications && Object.keys(data.specifications).length > 0 ? (
+                <div className="space-y-3">
+                  {Object.entries(data.specifications).map(([key, value]) => (
+                    <div key={key}>
+                      <p className="text-sm text-slate-500 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                      <p className="text-slate-900">{String(value)}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-slate-500 text-center py-4">No specifications available</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

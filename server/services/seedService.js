@@ -206,12 +206,10 @@ class SeedService {
       
       const equipmentTypesData = [
         {
-          name: 'Ring Spinning Frame',
           type: 'spinning',
           status: 'operational',
           location: 'Spinning Department - Line 1',
-          manufacturer: 'Rieter',
-          model: 'G35',
+          brand: 'Rieter',
           mtbf: 720,
           mttr: 4.5,
           specifications: {
@@ -221,12 +219,10 @@ class SeedService {
           }
         },
         {
-          name: 'Air Jet Loom',
           type: 'weaving',
-          status: 'operational', 
+          status: 'operational',
           location: 'Weaving Department - Line A',
-          manufacturer: 'Toyota',
-          model: 'JAT810',
+          brand: 'Toyota Industries',
           mtbf: 680,
           mttr: 6.2,
           specifications: {
@@ -236,12 +232,10 @@ class SeedService {
           }
         },
         {
-          name: 'Jet Dyeing Machine',
           type: 'dyeing',
           status: 'maintenance',
           location: 'Dyeing Department - Unit 1',
-          manufacturer: 'Thies',
-          model: 'eco-soft',
+          brand: 'Thies',
           mtbf: 540,
           mttr: 8.1,
           specifications: {
@@ -251,12 +245,10 @@ class SeedService {
           }
         },
         {
-          name: 'Stenter Machine',
           type: 'finishing',
           status: 'operational',
           location: 'Finishing Department',
-          manufacturer: 'Monforts',
-          model: 'Montex 6500',
+          brand: 'Monforts',
           mtbf: 600,
           mttr: 5.8,
           specifications: {
@@ -266,12 +258,10 @@ class SeedService {
           }
         },
         {
-          name: 'Automated Cutting System',
           type: 'cutting',
           status: 'operational',
           location: 'Cutting Department',
-          manufacturer: 'Gerber',
-          model: 'DCS2500',
+          brand: 'Gerber',
           mtbf: 480,
           mttr: 3.2,
           specifications: {
@@ -281,12 +271,10 @@ class SeedService {
           }
         },
         {
-          name: 'Industrial Sewing Machine',
           type: 'sewing',
           status: 'operational',
           location: 'Sewing Department - Line 1',
-          manufacturer: 'Juki',
-          model: 'DDL-8700',
+          brand: 'Juki',
           mtbf: 360,
           mttr: 2.1,
           specifications: {
@@ -301,11 +289,14 @@ class SeedService {
       let skippedCount = 0;
 
       for (const equipmentData of equipmentTypesData) {
-        // Check if equipment with same name already exists
-        const existingEquipment = await Equipment.findOne({ name: equipmentData.name });
-        
+        // Check if equipment with same type and location already exists
+        const existingEquipment = await Equipment.findOne({
+          type: equipmentData.type,
+          location: equipmentData.location
+        });
+
         if (existingEquipment) {
-          console.log(`Equipment already exists: ${equipmentData.name}`);
+          console.log(`Equipment already exists: ${equipmentData.type} at ${equipmentData.location}`);
           skippedCount++;
           continue;
         }
@@ -319,7 +310,7 @@ class SeedService {
         const equipment = new Equipment(equipmentData);
         await equipment.save();
         createdEquipment.push(equipment);
-        console.log(`Equipment created: ${equipment.name} (${equipment.type})`);
+        console.log(`Equipment created: ${equipment.type} at ${equipment.location}`);
       }
 
       console.log(`Equipment seeding completed. Created: ${createdEquipment.length}, Skipped: ${skippedCount}`);

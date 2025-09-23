@@ -34,7 +34,6 @@ router.get('/:id', requireUser, async (req, res) => {
 // POST /api/equipment
 const { z } = require('zod');
 const equipmentSchema = z.object({
-  name: z.string().min(1),
   category: z.string().min(1), // ObjectId as string
   type: z.string().min(1), // ObjectId as string
   status: z.enum(['online','maintenance','breakdown','offline','scrapped']),
