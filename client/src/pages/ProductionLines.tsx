@@ -15,8 +15,7 @@ import {
   Wrench
 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
-import { useAuth } from "@/contexts/AuthContext"
-import { getProductionLines, createProductionLine, updateProductionLine, deleteProductionLine, updateProductionLineSections } from "@/api/productionLines"
+import { getProductionLines, createProductionLine, updateProductionLine, deleteProductionLine } from "@/api/productionLines"
 import { getProductionSections, createProductionSection, updateProductionSection, updateProductionSectionEquipment } from "@/api/productionSections"
 import { getEquipment } from "@/api/equipment"
 import {
@@ -31,11 +30,8 @@ import {
 import {
   arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import {
   useSortable,
+  verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
@@ -78,26 +74,6 @@ interface ProductionSection {
 }
 
 
-function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
-
-  return (
-    <div ref={setNodeRef} style={style} {...attributes}>
-      {children}
-    </div>
-  )
-}
 
 interface Equipment {
   _id: string
@@ -105,6 +81,46 @@ interface Equipment {
   category: { name: string }
   type: { name: string }
   status: string
+}
+
+interface SortableEquipmentProps {
+  id: string
+  equipment: {
+    equipmentId: {
+      _id: string
+      category: { name: string }
+      type: { name: string }
+      status: string
+    }
+  }
+}
+
+function SortableEquipment({ id, equipment }: SortableEquipmentProps) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
+  const style = transform ? { transform: CSS.Transform.toString(transform), transition } : undefined
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-500'
+      case 'inactive': return 'bg-gray-500'
+      case 'maintenance': return 'bg-yellow-500'
+      default: return 'bg-gray-500'
+    }
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="flex items-center gap-2 p-2 bg-slate-50 rounded border cursor-grab">
+      <GripVertical className="h-3 w-3 text-slate-400 flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">
+          {equipment.equipmentId.category?.name} - {equipment.equipmentId.type?.name}
+        </p>
+      </div>
+      <Badge className={`${getStatusColor(equipment.equipmentId.status)} text-white text-xs`}>
+        {equipment.equipmentId.status}
+      </Badge>
+    </div>
+  )
 }
 
 export function ProductionLines() {
@@ -135,13 +151,10 @@ export function ProductionLines() {
   })
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
-  const { user } = useAuth()
 
   const sensors = useSensors(
     useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(KeyboardSensor)
   )
 
   useEffect(() => {
@@ -330,57 +343,83 @@ export function ProductionLines() {
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
+    console.log('Drag end:', active.id, over?.id)
+
     if (!over || active.id === over.id) return
 
     const activeId = active.id as string
     const overId = over.id as string
 
-    // Handle section reordering within production line
-    if (selectedLine && activeId.startsWith('section-') && overId.startsWith('section-')) {
-      const oldIndex = selectedLine.sections.findIndex(s => s.sectionId._id === activeId.replace('section-', ''))
-      const newIndex = selectedLine.sections.findIndex(s => s.sectionId._id === overId.replace('section-', ''))
+    console.log('Processing drag:', activeId, overId)
 
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newSections = arrayMove(selectedLine.sections, oldIndex, newIndex)
-        const updatedSections = newSections.map((section, index) => ({
-          sectionId: section.sectionId._id,
-          order: index
-        }))
+    // Section reordering removed for now to avoid complexity
 
-        try {
-          await updateProductionLineSections(selectedLine._id, updatedSections)
-          setSelectedLine({ ...selectedLine, sections: newSections })
-          toast({ title: "Updated", description: "Section order updated successfully" })
-        } catch (error) {
-          toast({ title: "Error", description: "Failed to update section order", variant: "destructive" })
-        }
-      }
-    }
-
-    // Handle equipment reordering within section
-    if (activeId.startsWith('equipment-') && overId.startsWith('equipment-')) {
+    // Handle equipment reordering within section or moving between sections
+    if (activeId.startsWith('equipment-')) {
       const [sectionId, equipmentId] = activeId.replace('equipment-', '').split('-')
-      const [overSectionId, overEquipmentId] = overId.replace('equipment-', '').split('-')
 
-      if (sectionId === overSectionId) {
-        const section = sections.find(s => s._id === sectionId)
-        if (section) {
-          const oldIndex = section.equipment.findIndex(e => e.equipmentId._id === equipmentId)
-          const newIndex = section.equipment.findIndex(e => e.equipmentId._id === overEquipmentId)
+      if (overId.startsWith('equipment-')) {
+        const [overSectionId, overEquipmentId] = overId.replace('equipment-', '').split('-')
 
-          if (oldIndex !== -1 && newIndex !== -1) {
-            const newEquipment = arrayMove(section.equipment, oldIndex, newIndex)
-            const updatedEquipment = newEquipment.map((eq, index) => ({
-              equipmentId: eq.equipmentId._id,
-              order: index
-            }))
+        if (sectionId === overSectionId) {
+          // Reorder within section
+          const section = sections.find(s => s._id === sectionId)
+          if (section) {
+            const oldIndex = section.equipment.findIndex(e => e.equipmentId._id === equipmentId)
+            const newIndex = section.equipment.findIndex(e => e.equipmentId._id === overEquipmentId)
+
+            if (oldIndex !== -1 && newIndex !== -1) {
+              const newEquipment = arrayMove(section.equipment, oldIndex, newIndex).map((eq, index) => ({ ...eq, order: index }))
+              const updatedEquipment = newEquipment.map((eq, index) => ({
+                equipmentId: eq.equipmentId._id,
+                order: index
+              }))
+
+              try {
+                await updateProductionSectionEquipment(sectionId, updatedEquipment)
+                setSections(sections.map(s => s._id === sectionId ? { ...s, equipment: newEquipment } : s))
+                setSelectedLine(prev => prev ? { ...prev, sections: prev.sections.map(s => s.sectionId._id === sectionId ? { ...s, sectionId: { ...s.sectionId, equipment: newEquipment } } : s) } : null)
+                toast({ title: "Updated", description: "Equipment order updated successfully" })
+              } catch (error) {
+                toast({ title: "Error", description: "Failed to update equipment order", variant: "destructive" })
+              }
+            }
+          }
+        }
+      } else if (overId.startsWith('section-')) {
+        // Move equipment to another section
+        const overSectionId = overId.replace('section-', '')
+        if (sectionId !== overSectionId) {
+          const currentSection = sections.find(s => s._id === sectionId)
+          const overSection = sections.find(s => s._id === overSectionId)
+          const equipmentToMove = currentSection?.equipment.find(e => e.equipmentId._id === equipmentId)
+
+          if (currentSection && overSection && equipmentToMove) {
+            // Remove from current section and update orders
+            const updatedCurrent = currentSection.equipment.filter(e => e.equipmentId._id !== equipmentId).map((e, idx) => ({ ...e, order: idx }))
+            // Remove from over section if already there, add to over section, update orders
+            const updatedOver = overSection.equipment.filter(e => e.equipmentId._id !== equipmentId)
+            updatedOver.push({ ...equipmentToMove, order: updatedOver.length })
+            const updatedOverOrdered = updatedOver.map((e, idx) => ({ ...e, order: idx }))
 
             try {
-              await updateProductionSectionEquipment(sectionId, updatedEquipment)
-              setSections(sections.map(s => s._id === sectionId ? { ...s, equipment: newEquipment } : s))
-              toast({ title: "Updated", description: "Equipment order updated successfully" })
+              await Promise.all([
+                updateProductionSectionEquipment(sectionId, updatedCurrent.map(e => ({ equipmentId: e.equipmentId._id, order: e.order }))),
+                updateProductionSectionEquipment(overSectionId, updatedOverOrdered.map(e => ({ equipmentId: e.equipmentId._id, order: e.order })))
+              ])
+              setSections(sections.map(s =>
+                s._id === sectionId ? { ...s, equipment: updatedCurrent } :
+                s._id === overSectionId ? { ...s, equipment: updatedOverOrdered } :
+                s
+              ))
+              setSelectedLine(prev => prev ? { ...prev, sections: prev.sections.map(s =>
+                s.sectionId._id === sectionId ? { ...s, sectionId: { ...s.sectionId, equipment: updatedCurrent } } :
+                s.sectionId._id === overSectionId ? { ...s, sectionId: { ...s.sectionId, equipment: updatedOverOrdered } } :
+                s
+              ) } : null)
+              toast({ title: "Moved", description: "Equipment moved to another section successfully" })
             } catch (error) {
-              toast({ title: "Error", description: "Failed to update equipment order", variant: "destructive" })
+              toast({ title: "Error", description: "Failed to move equipment", variant: "destructive" })
             }
           }
         }
@@ -425,61 +464,61 @@ export function ProductionLines() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {sortedSections.map((sectionWrapper) => {
-            const section = sectionWrapper.sectionId
-            const sortedEquipment = [...section.equipment].sort((a, b) => a.order - b.order)
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {sortedSections.map((sectionWrapper) => {
+              const section = sectionWrapper.sectionId
+              const sortedEquipment = [...section.equipment].sort((a, b) => a.order - b.order)
 
-            return (
-              <Card key={`section-${section._id}`} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center">
-                      {section.name}
-                    </CardTitle>
-                    <Badge variant="outline">
-                      <Factory className="h-3 w-3 mr-1" />
-                      Section
-                    </Badge>
-                  </div>
-                  {section.description && (
-                    <CardDescription>{section.description}</CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex justify-end mb-3">
-                    <Button variant="outline" size="sm" onClick={() => { console.log('Button clicked, section:', section._id); openEquipmentDialog(section._id); }} className="bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100">
-                      <Wrench className="mr-2 h-3 w-3" />
-                      Add Equipment
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {sortedEquipment.map((equipmentWrapper) => {
-                      const eq = equipmentWrapper.equipmentId
-                      return (
-                        <div key={`equipment-${section._id}-${eq._id}`} className="flex items-center gap-2 p-2 bg-slate-50 rounded border">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {eq.category?.name} - {eq.type?.name}
-                            </p>
-                          </div>
-                          <Badge className={`${getStatusColor(eq.status)} text-white text-xs`}>
-                            {eq.status}
-                          </Badge>
-                        </div>
-                      )
-                    })}
-                    {sortedEquipment.length === 0 && (
-                      <p className="text-sm text-slate-500 text-center py-2">No equipment assigned</p>
+              return (
+                <Card key={`section-${section._id}`} id={`section-${section._id}`} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center">
+                        {section.name}
+                      </CardTitle>
+                      <Badge variant="outline">
+                        <Factory className="h-3 w-3 mr-1" />
+                        Section
+                      </Badge>
+                    </div>
+                    {section.description && (
+                      <CardDescription>{section.description}</CardDescription>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex justify-end mb-3">
+                      <Button variant="outline" size="sm" onClick={() => { console.log('Button clicked, section:', section._id); openEquipmentDialog(section._id); }} className="bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100">
+                        <Wrench className="mr-2 h-3 w-3" />
+                        Add Equipment
+                      </Button>
+                    </div>
+                    <SortableContext items={sortedEquipment.map(e => `equipment-${section._id}-${e.equipmentId._id}`)} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-2">
+                        {sortedEquipment.map((equipmentWrapper) => (
+                          <SortableEquipment
+                            key={`equipment-${section._id}-${equipmentWrapper.equipmentId._id}`}
+                            id={`equipment-${section._id}-${equipmentWrapper.equipmentId._id}`}
+                            equipment={equipmentWrapper}
+                          />
+                        ))}
+                        {sortedEquipment.length === 0 && (
+                          <p className="text-sm text-slate-500 text-center py-2">No equipment assigned</p>
+                        )}
+                      </div>
+                    </SortableContext>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </DndContext>
 
-        {/* Add Section Button */}
+      {/* Add Section Button */}
         <div className="flex justify-center">
           <Button onClick={() => { console.log('Add Section button clicked for line:', selectedLine._id); openSectionDialog(selectedLine._id); }} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
             <Plus className="mr-2 h-4 w-4" />
