@@ -12,7 +12,8 @@ import {
   ArrowLeft,
   GripVertical,
   Factory,
-  Wrench
+  Wrench,
+  Trash
 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
 import { getProductionLines, createProductionLine, updateProductionLine, deleteProductionLine } from "@/api/productionLines"
@@ -93,9 +94,10 @@ interface SortableEquipmentProps {
       status: string
     }
   }
+  onDelete: () => void
 }
 
-function SortableEquipment({ id, equipment }: SortableEquipmentProps) {
+function SortableEquipment({ id, equipment, onDelete }: SortableEquipmentProps) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
   const style = transform ? { transform: CSS.Transform.toString(transform), transition } : undefined
 
@@ -109,8 +111,10 @@ function SortableEquipment({ id, equipment }: SortableEquipmentProps) {
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="flex items-center gap-2 p-2 bg-slate-50 rounded border cursor-grab">
-      <GripVertical className="h-3 w-3 text-slate-400 flex-shrink-0" />
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 p-2 bg-slate-50 rounded border">
+      <div {...attributes} {...listeners} className="cursor-grab flex-shrink-0">
+        <GripVertical className="h-3 w-3 text-slate-400" />
+      </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">
           {equipment.equipmentId.category?.name} - {equipment.equipmentId.type?.name}
@@ -119,6 +123,9 @@ function SortableEquipment({ id, equipment }: SortableEquipmentProps) {
       <Badge className={`${getStatusColor(equipment.equipmentId.status)} text-white text-xs`}>
         {equipment.equipmentId.status}
       </Badge>
+      <Button variant="ghost" size="sm" onClick={onDelete} className="h-6 w-6 p-0 text-red-500 hover:text-red-700">
+        <Trash className="h-3 w-3" />
+      </Button>
     </div>
   )
 }
@@ -328,6 +335,27 @@ export function ProductionLines() {
     }
   }
 
+  const handleDeleteEquipment = async (sectionId: string, equipmentId: string) => {
+    if (!confirm('Are you sure you want to remove this equipment from the section?')) return
+
+    try {
+      const currentSection = sections.find(s => s._id === sectionId)
+      if (currentSection) {
+        const updatedEquipment = currentSection.equipment.filter(e => e.equipmentId._id !== equipmentId).map((e, idx) => ({
+          equipmentId: e.equipmentId._id,
+          order: idx
+        }))
+        await updateProductionSectionEquipment(sectionId, updatedEquipment)
+        const newEquipment = currentSection.equipment.filter(e => e.equipmentId._id !== equipmentId).map((e, idx) => ({ ...e, order: idx }))
+        setSections(sections.map(s => s._id === sectionId ? { ...s, equipment: newEquipment } : s))
+        setSelectedLine(prev => prev ? { ...prev, sections: prev.sections.map(s => s.sectionId._id === sectionId ? { ...s, sectionId: { ...s.sectionId, equipment: newEquipment } } : s) } : null)
+        toast({ title: "Removed", description: "Equipment removed from section successfully" })
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to remove equipment", variant: "destructive" })
+    }
+  }
+
   const handleDeleteLine = async (id: string) => {
     try {
       await deleteProductionLine(id)
@@ -385,11 +413,8 @@ export function ProductionLines() {
               }
             }
           }
-        }
-      } else if (overId.startsWith('section-')) {
-        // Move equipment to another section
-        const overSectionId = overId.replace('section-', '')
-        if (sectionId !== overSectionId) {
+        } else {
+          // Move to another section
           const currentSection = sections.find(s => s._id === sectionId)
           const overSection = sections.find(s => s._id === overSectionId)
           const equipmentToMove = currentSection?.equipment.find(e => e.equipmentId._id === equipmentId)
@@ -397,24 +422,22 @@ export function ProductionLines() {
           if (currentSection && overSection && equipmentToMove) {
             // Remove from current section and update orders
             const updatedCurrent = currentSection.equipment.filter(e => e.equipmentId._id !== equipmentId).map((e, idx) => ({ ...e, order: idx }))
-            // Remove from over section if already there, add to over section, update orders
-            const updatedOver = overSection.equipment.filter(e => e.equipmentId._id !== equipmentId)
-            updatedOver.push({ ...equipmentToMove, order: updatedOver.length })
-            const updatedOverOrdered = updatedOver.map((e, idx) => ({ ...e, order: idx }))
+            // Add to over section at the end
+            const updatedOver = [...overSection.equipment, { ...equipmentToMove, order: overSection.equipment.length }].map((e, idx) => ({ ...e, order: idx }))
 
             try {
               await Promise.all([
                 updateProductionSectionEquipment(sectionId, updatedCurrent.map(e => ({ equipmentId: e.equipmentId._id, order: e.order }))),
-                updateProductionSectionEquipment(overSectionId, updatedOverOrdered.map(e => ({ equipmentId: e.equipmentId._id, order: e.order })))
+                updateProductionSectionEquipment(overSectionId, updatedOver.map(e => ({ equipmentId: e.equipmentId._id, order: e.order })))
               ])
               setSections(sections.map(s =>
                 s._id === sectionId ? { ...s, equipment: updatedCurrent } :
-                s._id === overSectionId ? { ...s, equipment: updatedOverOrdered } :
+                s._id === overSectionId ? { ...s, equipment: updatedOver } :
                 s
               ))
               setSelectedLine(prev => prev ? { ...prev, sections: prev.sections.map(s =>
                 s.sectionId._id === sectionId ? { ...s, sectionId: { ...s.sectionId, equipment: updatedCurrent } } :
-                s.sectionId._id === overSectionId ? { ...s, sectionId: { ...s.sectionId, equipment: updatedOverOrdered } } :
+                s.sectionId._id === overSectionId ? { ...s, sectionId: { ...s.sectionId, equipment: updatedOver } } :
                 s
               ) } : null)
               toast({ title: "Moved", description: "Equipment moved to another section successfully" })
@@ -504,6 +527,7 @@ export function ProductionLines() {
                             key={`equipment-${section._id}-${equipmentWrapper.equipmentId._id}`}
                             id={`equipment-${section._id}-${equipmentWrapper.equipmentId._id}`}
                             equipment={equipmentWrapper}
+                            onDelete={() => handleDeleteEquipment(section._id, equipmentWrapper.equipmentId._id)}
                           />
                         ))}
                         {sortedEquipment.length === 0 && (
@@ -563,7 +587,7 @@ export function ProductionLines() {
                     <SelectValue placeholder="Choose equipment to add" />
                   </SelectTrigger>
                   <SelectContent>
-                    {equipment.map((eq) => (
+                    {equipment.filter((eq) => !sections.some((s) => s.equipment.some((e) => e.equipmentId._id === eq._id))).map((eq) => (
                       <SelectItem key={eq._id} value={eq._id}>
                         {eq.category?.name} - {eq.type?.name} ({eq.status})
                       </SelectItem>
