@@ -73,7 +73,7 @@ router.patch('/:id', requireUser, async (req, res) => {
 });
 
 // PATCH /api/production-sections/:id/equipment (update equipment order)
-router.patch('/:id/equipment', requireUser, async (req, res) => {
+router.patch('/:id/equipment', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   const { id } = req.params;
   const { equipment } = req.body || {};
 

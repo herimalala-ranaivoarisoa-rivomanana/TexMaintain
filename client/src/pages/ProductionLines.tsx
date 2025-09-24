@@ -15,6 +15,7 @@ import {
   Wrench
 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
+import { useAuth } from "@/contexts/AuthContext"
 import { getProductionLines, createProductionLine, updateProductionLine, deleteProductionLine, updateProductionLineSections } from "@/api/productionLines"
 import { getProductionSections, createProductionSection, updateProductionSection, updateProductionSectionEquipment } from "@/api/productionSections"
 import { getEquipment } from "@/api/equipment"
@@ -92,7 +93,7 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} {...attributes}>
       {children}
     </div>
   )
@@ -134,6 +135,7 @@ export function ProductionLines() {
   })
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
+  const { user } = useAuth()
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -224,12 +226,14 @@ export function ProductionLines() {
 
   const openEquipmentDialog = (sectionId: string) => {
     console.log('Opening equipment dialog for section:', sectionId)
+    console.log('Equipment available:', equipment.length)
     setSelectedSectionForEquipment(sectionId)
     setEquipmentForm({
       equipmentId: "",
       order: 0
     })
     setIsEquipmentDialogOpen(true)
+    console.log('Dialog should be open now')
   }
 
   const handleSaveLine = async () => {
@@ -280,8 +284,25 @@ export function ProductionLines() {
       setIsSaving(true)
       console.log('Saving equipment to section:', selectedSectionForEquipment, 'with form:', equipmentForm)
       if (selectedSectionForEquipment) {
-        await updateProductionSectionEquipment(selectedSectionForEquipment, [equipmentForm])
-        toast({ title: "Added", description: "Equipment added to section successfully" })
+        // Find the current section to get existing equipment
+        const currentSection = sections.find(s => s._id === selectedSectionForEquipment)
+        if (currentSection) {
+          // Create the full equipment array: existing + new
+          const updatedEquipment = [
+            ...currentSection.equipment.map(eq => ({
+              equipmentId: eq.equipmentId._id,
+              order: eq.order
+            })),
+            {
+              equipmentId: equipmentForm.equipmentId,
+              order: equipmentForm.order
+            }
+          ]
+          await updateProductionSectionEquipment(selectedSectionForEquipment, updatedEquipment)
+          toast({ title: "Added", description: "Equipment added to section successfully" })
+        } else {
+          throw new Error('Section not found')
+        }
       }
       setIsEquipmentDialogOpen(false)
       fetchData()
@@ -385,6 +406,7 @@ export function ProductionLines() {
   }
 
   if (selectedLine) {
+    console.log('Rendering selected line:', selectedLine.name, 'sections:', selectedLine.sections)
     const sortedSections = [...selectedLine.sections].sort((a, b) => a.order - b.order)
 
     return (
@@ -403,75 +425,59 @@ export function ProductionLines() {
           </div>
         </div>
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <SortableContext items={sortedSections.map(s => `section-${s.sectionId._id}`)} strategy={verticalListSortingStrategy}>
-              {sortedSections.map((sectionWrapper) => {
-                const section = sectionWrapper.sectionId
-                const sortedEquipment = [...section.equipment].sort((a, b) => a.order - b.order)
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {sortedSections.map((sectionWrapper) => {
+            const section = sectionWrapper.sectionId
+            const sortedEquipment = [...section.equipment].sort((a, b) => a.order - b.order)
 
-                return (
-                  <SortableItem key={`section-${section._id}`} id={`section-${section._id}`}>
-                    <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg flex items-center">
-                            <GripVertical className="mr-2 h-4 w-4 text-slate-400" />
-                            {section.name}
-                          </CardTitle>
-                          <Badge variant="outline">
-                            <Factory className="h-3 w-3 mr-1" />
-                            Section
+            return (
+              <Card key={`section-${section._id}`} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center">
+                      {section.name}
+                    </CardTitle>
+                    <Badge variant="outline">
+                      <Factory className="h-3 w-3 mr-1" />
+                      Section
+                    </Badge>
+                  </div>
+                  {section.description && (
+                    <CardDescription>{section.description}</CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex justify-end mb-3">
+                    <Button variant="outline" size="sm" onClick={() => { console.log('Button clicked, section:', section._id); openEquipmentDialog(section._id); }} className="bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100">
+                      <Wrench className="mr-2 h-3 w-3" />
+                      Add Equipment
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {sortedEquipment.map((equipmentWrapper) => {
+                      const eq = equipmentWrapper.equipmentId
+                      return (
+                        <div key={`equipment-${section._id}-${eq._id}`} className="flex items-center gap-2 p-2 bg-slate-50 rounded border">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {eq.category?.name} - {eq.type?.name}
+                            </p>
+                          </div>
+                          <Badge className={`${getStatusColor(eq.status)} text-white text-xs`}>
+                            {eq.status}
                           </Badge>
                         </div>
-                        {section.description && (
-                          <CardDescription>{section.description}</CardDescription>
-                        )}
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="flex justify-end mb-3">
-                          <Button variant="outline" size="sm" onClick={() => openEquipmentDialog(section._id)} className="bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100">
-                            <Wrench className="mr-2 h-3 w-3" />
-                            Add Equipment
-                          </Button>
-                        </div>
-                        <SortableContext items={sortedEquipment.map(e => `equipment-${section._id}-${e.equipmentId._id}`)} strategy={verticalListSortingStrategy}>
-                          <div className="space-y-2">
-                            {sortedEquipment.map((equipmentWrapper) => {
-                              const eq = equipmentWrapper.equipmentId
-                              return (
-                                <SortableItem key={`equipment-${section._id}-${eq._id}`} id={`equipment-${section._id}-${eq._id}`}>
-                                  <div className="flex items-center gap-2 p-2 bg-slate-50 rounded border">
-                                    <GripVertical className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium truncate">
-                                        {eq.category?.name} - {eq.type?.name}
-                                      </p>
-                                    </div>
-                                    <Badge className={`${getStatusColor(eq.status)} text-white text-xs`}>
-                                      {eq.status}
-                                    </Badge>
-                                  </div>
-                                </SortableItem>
-                              )
-                            })}
-                            {sortedEquipment.length === 0 && (
-                              <p className="text-sm text-slate-500 text-center py-2">No equipment assigned</p>
-                            )}
-                          </div>
-                        </SortableContext>
-                      </CardContent>
-                    </Card>
-                  </SortableItem>
-                )
-              })}
-            </SortableContext>
-          </div>
-        </DndContext>
+                      )
+                    })}
+                    {sortedEquipment.length === 0 && (
+                      <p className="text-sm text-slate-500 text-center py-2">No equipment assigned</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
 
         {/* Add Section Button */}
         <div className="flex justify-center">
