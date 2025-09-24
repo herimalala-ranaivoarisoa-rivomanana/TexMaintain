@@ -52,7 +52,8 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
   const parse = equipmentSchema.safeParse(req.body || {});
   if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
   const created = await Equipment.create(parse.data);
-  return res.status(201).json({ success: true, equipment: created });
+  const populated = await Equipment.findById(created._id).populate('category').populate('type').lean();
+  return res.status(201).json({ success: true, equipment: populated });
 });
 
 // PATCH /api/equipment/:id
