@@ -33,6 +33,7 @@ interface Equipment {
   type: EquipmentType
   status: string
   location: string
+  model?: string
   serialNumber?: string
   chipNumber?: string
   brand?: string
@@ -57,6 +58,8 @@ interface EquipmentType {
 
 export function Equipment() {
   const [equipment, setEquipment] = useState<Equipment[]>([])
+  const [sections, setSections] = useState<any[]>([])
+  const [lines, setLines] = useState<any[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [types, setTypes] = useState<EquipmentType[]>([])
   const [brands, setBrands] = useState<{ _id: string; name: string }[]>([])
@@ -77,6 +80,7 @@ export function Equipment() {
     type: "",
     status: "offline",
     location: "",
+    model: "",
     serialNumber: "",
     chipNumber: "",
     brand: ""
@@ -85,18 +89,22 @@ export function Equipment() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const { user } = useAuth()
 
-  // Fetch categories, types, and brands on mount
+  // Fetch categories, types, brands, and sections on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [categoriesResponse, typesResponse, brandsResponse] = await Promise.all([
+        const [categoriesResponse, typesResponse, brandsResponse, sectionsResponse, linesResponse] = await Promise.all([
           api.get('/api/equipment-categories'),
           api.get('/api/equipment-types'),
-          getBrands()
+          getBrands(),
+          api.get('/api/production-sections'),
+          api.get('/api/production-lines')
         ])
         setCategories((categoriesResponse.data as any).categories || [])
         setTypes((typesResponse.data as any).types || [])
         setBrands(brandsResponse.brands || [])
+        setSections((sectionsResponse.data as any).sections || [])
+        setLines((linesResponse.data as any).productionLines || [])
       } catch (error) {
         console.error('Error fetching data:', error)
         toast({
@@ -161,13 +169,13 @@ export function Equipment() {
 
   const openAddDialog = () => {
     setEditingItem(null)
-    setForm({ category: "cutting", type: "", status: "offline", location: "", serialNumber: "", chipNumber: "", brand: "" })
+    setForm({ category: "cutting", type: "", status: "offline", location: "", model: "", serialNumber: "", chipNumber: "", brand: "" })
     setIsDialogOpen(true)
   }
 
   const openEditDialog = (item: Equipment) => {
     setEditingItem(item)
-    setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: item.brand || "" })
+    setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, model: item.model || "", serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: item.brand || "" })
     setIsDialogOpen(true)
   }
 
@@ -180,6 +188,7 @@ export function Equipment() {
           ...e,
           status: form.status,
           location: form.location,
+          model: form.model,
           serialNumber: form.serialNumber,
           chipNumber: form.chipNumber,
           brand: form.brand,
@@ -204,6 +213,7 @@ export function Equipment() {
           type: tempType,
           status: form.status,
           location: form.location,
+          model: form.model,
           mtbf: 0,
           mttr: 0,
           lastMaintenance: new Date().toISOString(),
@@ -282,6 +292,15 @@ export function Equipment() {
     } catch {
       return 'Invalid date'
     }
+  }
+
+  const getEquipmentLocation = (equipmentId: string) => {
+    const section = sections.find(s => s.equipment.some((e: any) => e.equipmentId._id === equipmentId))
+    if (section) {
+      const line = lines.find(l => l._id === section.productionLine._id)
+      return `Line: ${line?.name || 'Unknown'}, Section: ${section.name}`
+    }
+    return 'Not assigned'
   }
 
 
@@ -399,9 +418,25 @@ export function Equipment() {
                   </p>
                 </div>
                 <div>
+                  <p className="text-slate-500">Model</p>
+                  <p className="text-slate-900">{item.model || '-'}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
                   <p className="text-slate-500">Brand</p>
                   <p className="text-slate-900">{item.brand || '-'}</p>
                 </div>
+                <div>
+                  <p className="text-slate-500">Serial Number</p>
+                  <p className="text-slate-900">{item.serialNumber || '-'}</p>
+                </div>
+              </div>
+
+              <div className="text-sm">
+                <p className="text-slate-500">Assigned to</p>
+                <p className="text-slate-900">{getEquipmentLocation(item._id)}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -520,6 +555,10 @@ export function Equipment() {
             <div className="grid gap-2">
               <Label htmlFor="location">Location</Label>
               <Input id="location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Enter location" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="model">Model</Label>
+              <Input id="model" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="Enter model" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="serialNumber">Serial Number</Label>

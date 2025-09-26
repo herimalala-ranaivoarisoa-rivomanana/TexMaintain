@@ -18,7 +18,7 @@ import {
 import { useToast } from "@/hooks/useToast"
 import { getProductionLines, createProductionLine, updateProductionLine, deleteProductionLine } from "@/api/productionLines"
 import { getProductionSections, createProductionSection, updateProductionSection, updateProductionSectionEquipment } from "@/api/productionSections"
-import { getEquipment } from "@/api/equipment"
+import { getEquipment, updateEquipment } from "@/api/equipment"
 import {
   DndContext,
   closestCenter,
@@ -319,6 +319,8 @@ export function ProductionLines() {
             }
           ]
           await updateProductionSectionEquipment(selectedSectionForEquipment, updatedEquipment)
+          // Update equipment status to online
+          await updateEquipment(equipmentForm.equipmentId, { status: 'online' })
           toast({ title: "Added", description: "Equipment added to section successfully" })
         } else {
           throw new Error('Section not found')
@@ -346,6 +348,8 @@ export function ProductionLines() {
           order: idx
         }))
         await updateProductionSectionEquipment(sectionId, updatedEquipment)
+        // Update equipment status to offline
+        await updateEquipment(equipmentId, { status: 'offline' })
         const newEquipment = currentSection.equipment.filter(e => e.equipmentId._id !== equipmentId).map((e, idx) => ({ ...e, order: idx }))
         setSections(sections.map(s => s._id === sectionId ? { ...s, equipment: newEquipment } : s))
         setSelectedLine(prev => prev ? { ...prev, sections: prev.sections.map(s => s.sectionId._id === sectionId ? { ...s, sectionId: { ...s.sectionId, equipment: newEquipment } } : s) } : null)
