@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { 
-  Search, 
-  Filter, 
+import {
+  Search,
+  Filter,
   Plus,
   Settings,
   AlertTriangle,
@@ -21,7 +21,9 @@ import {
   Trash,
   History,
   Package,
-  Factory
+  Factory,
+  Wrench,
+  Activity
 } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from "@/api/equipment"
@@ -40,10 +42,14 @@ interface Equipment {
   serialNumber?: string
   chipNumber?: string
   brand?: string
+  installationDate?: string
   lastMaintenance: string
   nextMaintenance: string
+  lastDowntime?: string
   mtbf: number
   mttr: number
+  totalOperatingHours?: number
+  downtimeHours?: number
   productionSection?: {
     _id: string
     name: string
@@ -309,6 +315,25 @@ export function Equipment() {
     }
   }
 
+  const calculateHoursSinceAcquisition = (installationDate?: string) => {
+    if (!installationDate) return 0
+    try {
+      const installation = new Date(installationDate)
+      const now = new Date()
+      const diffMs = now.getTime() - installation.getTime()
+      return Math.floor(diffMs / (1000 * 60 * 60)) // Convert to hours
+    } catch {
+      return 0
+    }
+  }
+
+  const formatHours = (hours: number) => {
+    if (hours < 24) return `${hours}h`
+    const days = Math.floor(hours / 24)
+    const remainingHours = hours % 24
+    return `${days}d ${remainingHours}h`
+  }
+
 
   const filteredEquipment = equipment
 
@@ -414,79 +439,137 @@ export function Equipment() {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-slate-500">Modèle</p>
-                  <p className="text-slate-900 font-medium">{item.model}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">Location</p>
-                  <p className="text-slate-900 flex items-center">
-                    <MapPin className="mr-1 h-3 w-3" />
-                    {item.location}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-slate-500">Brand</p>
-                  <p className="text-slate-900">{item.brand || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">Serial Number</p>
-                  <p className="text-slate-900">{item.serialNumber || '-'}</p>
-                </div>
-              </div>
-
-              {/* Info Ligne/Section de Production */}
-              <div className="border-t pt-3">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-slate-500">Ligne de Production</p>
-                    <p className="text-slate-900 flex items-center">
-                      <Factory className="mr-1 h-3 w-3" />
-                      {item.productionLine?.name || <span className="text-slate-400">Non assigné</span>}
-                    </p>
+            <CardContent className="p-0">
+              {/* Section Identité */}
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <MapPin className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase tracking-wide">Location</p>
+                      <p className="font-semibold text-slate-900">{item.location}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-slate-500">Section</p>
-                    <p className="text-slate-900">
-                      {item.productionSection?.name || <span className="text-slate-400">Non assigné</span>}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                      <Package className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase tracking-wide">Chip Number</p>
+                      <p className="font-semibold text-slate-900">{item.chipNumber || '-'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-slate-500">Chip Number</p>
-                  <p className="text-slate-900">{item.chipNumber || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">MTBF</p>
-                  <p className="font-semibold text-slate-900">{item.mtbf}h</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-slate-500">MTTR</p>
-                  <p className="font-semibold text-slate-900">{item.mttr}h</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">Last Maintenance</p>
-                  <p className="text-slate-900">{formatDate(item.lastMaintenance)}</p>
+              {/* Section Spécifications */}
+              <div className="p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide border-b pb-1">Specifications</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-slate-500">Brand</span>
+                    <span className="font-medium text-slate-900">{item.brand || '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-slate-500">Model</span>
+                    <span className="font-medium text-slate-900">{item.model}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-slate-500">Serial Number</span>
+                    <span className="font-medium text-slate-900">{item.serialNumber || '-'}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-500">Next Maintenance:</span>
-                <span className="text-slate-900 flex items-center">
-                  <Calendar className="mr-1 h-3 w-3" />
-                  {formatDate(item.nextMaintenance)}
-                </span>
+              {/* Section Production */}
+              <div className="px-4 pb-4">
+                <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide border-b pb-1 mb-3">Production Assignment</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Factory className="h-4 w-4 text-blue-600" />
+                      <span className="text-xs text-blue-600 font-medium uppercase">Line</span>
+                    </div>
+                    <p className="font-semibold text-slate-900">
+                      {item.productionLine?.name || <span className="text-slate-400">Unassigned</span>}
+                    </p>
+                  </div>
+                  <div className="bg-indigo-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Settings className="h-4 w-4 text-indigo-600" />
+                      <span className="text-xs text-indigo-600 font-medium uppercase">Section</span>
+                    </div>
+                    <p className="font-semibold text-slate-900">
+                      {item.productionSection?.name || <span className="text-slate-400">Unassigned</span>}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section Métriques */}
+              <div className="px-4 pb-4">
+                <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide border-b pb-1 mb-3">Operating Metrics</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-emerald-50 p-2 rounded-lg text-center">
+                    <Clock className="h-4 w-4 text-emerald-600 mx-auto mb-1" />
+                    <p className="text-xs text-emerald-600 font-medium">Since Acquisition</p>
+                    <p className="font-bold text-emerald-900 text-sm">{formatHours(calculateHoursSinceAcquisition(item.installationDate))}</p>
+                  </div>
+                  <div className="bg-blue-50 p-2 rounded-lg text-center">
+                    <Activity className="h-4 w-4 text-blue-600 mx-auto mb-1" />
+                    <p className="text-xs text-blue-600 font-medium">Operating</p>
+                    <p className="font-bold text-blue-900 text-sm">{formatHours(item.totalOperatingHours || 0)}</p>
+                  </div>
+                  <div className="bg-orange-50 p-2 rounded-lg text-center">
+                    <AlertTriangle className="h-4 w-4 text-orange-600 mx-auto mb-1" />
+                    <p className="text-xs text-orange-600 font-medium">Downtime</p>
+                    <p className="font-bold text-orange-900 text-sm">{formatHours(item.downtimeHours || 0)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section Servicing */}
+              <div className="px-4 pb-4">
+                <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide border-b pb-1 mb-3">Servicing Schedule</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-red-600 font-medium uppercase tracking-wide">Last Downtime</p>
+                        <p className="font-semibold text-slate-900">{formatDate(item.lastDowntime)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <Wrench className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-green-600 font-medium uppercase tracking-wide">Last Servicing</p>
+                        <p className="font-semibold text-slate-900">{formatDate(item.lastMaintenance)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                        <Calendar className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-purple-600 font-medium uppercase tracking-wide">Next Servicing</p>
+                        <p className="font-semibold text-slate-900">{formatDate(item.nextMaintenance)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Nouveaux boutons */}

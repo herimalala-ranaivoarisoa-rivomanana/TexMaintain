@@ -72,6 +72,18 @@ const schema = new mongoose.Schema({
     type: Number, // Mean Time To Repair (hours)
     default: 0,
   },
+  // Nouvelles métriques d'exploitation
+  totalOperatingHours: {
+    type: Number, // Heures totales de fonctionnement depuis acquisition
+    default: 0,
+  },
+  downtimeHours: {
+    type: Number, // Heures d'arrêt (réparations/interventions)
+    default: 0,
+  },
+  lastDowntime: {
+    type: Date, // Dernière période d'arrêt
+  },
   specifications: {
     type: mongoose.Schema.Types.Mixed,
     default: {},
