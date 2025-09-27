@@ -207,7 +207,8 @@ class SeedService {
       const equipmentTypesData = [
         {
           type: 'spinning',
-          status: 'operational',
+          model: 'G32 Ring Spinning Frame',
+          status: 'offline',
           location: 'Spinning Department - Line 1',
           brand: 'Rieter',
           mtbf: 720,
@@ -220,7 +221,8 @@ class SeedService {
         },
         {
           type: 'weaving',
-          status: 'operational',
+          model: 'JAT710 Air Jet Loom',
+          status: 'offline',
           location: 'Weaving Department - Line A',
           brand: 'Toyota Industries',
           mtbf: 680,
@@ -233,7 +235,8 @@ class SeedService {
         },
         {
           type: 'dyeing',
-          status: 'maintenance',
+          model: 'ThenThermex Dyeing Machine',
+          status: 'offline',
           location: 'Dyeing Department - Unit 1',
           brand: 'Thies',
           mtbf: 540,
@@ -246,7 +249,8 @@ class SeedService {
         },
         {
           type: 'finishing',
-          status: 'operational',
+          model: 'Montex 8000 Stenter',
+          status: 'offline',
           location: 'Finishing Department',
           brand: 'Monforts',
           mtbf: 600,
@@ -259,7 +263,8 @@ class SeedService {
         },
         {
           type: 'cutting',
-          status: 'operational',
+          model: 'GERBERcutter Z1',
+          status: 'offline',
           location: 'Cutting Department',
           brand: 'Gerber',
           mtbf: 480,
@@ -272,7 +277,8 @@ class SeedService {
         },
         {
           type: 'sewing',
-          status: 'operational',
+          model: 'DDL-8700 Lockstitch',
+          status: 'offline',
           location: 'Sewing Department - Line 1',
           brand: 'Juki',
           mtbf: 360,
@@ -289,20 +295,22 @@ class SeedService {
       let skippedCount = 0;
 
       for (const equipmentData of equipmentTypesData) {
-        // Check if equipment with same type and location already exists
+        // Generate unique serial number first
+        const serialNumber = `${equipmentData.type.toUpperCase()}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        
+        // Check if equipment with same serial number already exists (should be unique)
         const existingEquipment = await Equipment.findOne({
-          type: equipmentData.type,
-          location: equipmentData.location
+          serialNumber: serialNumber
         });
 
         if (existingEquipment) {
-          console.log(`Equipment already exists: ${equipmentData.type} at ${equipmentData.location}`);
+          console.log(`Equipment with serial number already exists: ${serialNumber}`);
           skippedCount++;
           continue;
         }
 
-        // Generate unique serial number
-        equipmentData.serialNumber = `${equipmentData.type.toUpperCase()}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        // Use the pre-generated serial number
+        equipmentData.serialNumber = serialNumber;
         equipmentData.installationDate = new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000); // Random date within last year
         equipmentData.lastMaintenance = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000); // Random date within last month
         equipmentData.nextMaintenance = new Date(Date.now() + Math.random() * 60 * 24 * 60 * 60 * 1000); // Random date within next 2 months

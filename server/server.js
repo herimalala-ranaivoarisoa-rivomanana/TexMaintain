@@ -16,6 +16,7 @@ const inventoryRoutes = require("./routes/inventoryRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const productionLinesRoutes = require("./routes/productionLinesRoutes");
 const productionSectionsRoutes = require("./routes/productionSectionsRoutes");
+const partOrdersRoutes = require("./routes/partOrdersRoutes");
 const { connectDB } = require("./config/database");
 const cors = require("cors");
 const helmet = require('helmet');
@@ -73,6 +74,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/production-lines', productionLinesRoutes);
 app.use('/api/production-sections', productionSectionsRoutes);
+app.use('/api/part-orders', partOrdersRoutes);
 
 // If no routes handled the request, it's a 404
 app.use((req, res, next) => {

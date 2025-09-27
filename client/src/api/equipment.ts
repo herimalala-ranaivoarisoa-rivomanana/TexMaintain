@@ -38,3 +38,31 @@ export const deleteEquipment = async (id: string) => {
   const response = await api.delete(`/api/equipment/${id}`);
   return response.data;
 };
+
+// Description: Get equipment interventions history
+// Endpoint: GET /api/equipment/:id/interventions
+export const getEquipmentInterventions = async (id: string, params?: { page?: number; limit?: number; type?: string; status?: string; q?: string; sort?: string; order?: 'asc'|'desc' }) => {
+  const response = await api.get(`/api/equipment/${id}/interventions`, { params });
+  return response.data;
+};
+
+// Description: Get equipment associated parts
+// Endpoint: GET /api/equipment/:id/parts
+export const getEquipmentParts = async (id: string) => {
+  const response = await api.get(`/api/equipment/${id}/parts`);
+  return response.data;
+};
+
+// Description: Assign equipment to production section
+// Endpoint: POST /api/equipment/:id/assign-section
+export const assignEquipmentToSection = async (id: string, sectionId: string) => {
+  const response = await api.post(`/api/equipment/${id}/assign-section`, { sectionId });
+  return response.data;
+};
+
+// Description: Associate part to equipment
+// Endpoint: POST /api/equipment/:id/parts
+export const associatePartToEquipment = async (id: string, data: { partId: string; quantity?: number; replacementFrequency?: number; notes?: string }) => {
+  const response = await api.post(`/api/equipment/${id}/parts`, data);
+  return response.data;
+};

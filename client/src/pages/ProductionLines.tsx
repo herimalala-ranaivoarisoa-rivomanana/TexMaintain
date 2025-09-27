@@ -103,9 +103,11 @@ function SortableEquipment({ id, equipment, onDelete }: SortableEquipmentProps) 
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-500'
-      case 'inactive': return 'bg-gray-500'
+      case 'online': return 'bg-green-500'
+      case 'offline': return 'bg-gray-500'
       case 'maintenance': return 'bg-yellow-500'
+      case 'breakdown': return 'bg-red-500'
+      case 'scrapped': return 'bg-red-900'
       default: return 'bg-gray-500'
     }
   }

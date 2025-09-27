@@ -81,14 +81,56 @@ router.patch('/:id/equipment', requireUser, requireRole(['admin', 'maintenance_m
     return res.status(400).json({ message: 'Equipment must be an array' });
   }
 
-  const updated = await ProductionSection.findByIdAndUpdate(id, { equipment }, { new: true }).populate({
-    path: 'equipment.equipmentId',
-    model: 'Equipment',
-    populate: ['category', 'type']
-  }).lean();
+  try {
+    // 1. Récupérer l'ancienne configuration de la section
+    const oldSection = await ProductionSection.findById(id);
+    if (!oldSection) return res.status(404).json({ message: 'Production section not found' });
 
-  if (!updated) return res.status(404).json({ message: 'Production section not found' });
-  return res.status(200).json({ success: true, section: updated });
+    const oldEquipmentIds = oldSection.equipment.map(e => e.equipmentId.toString());
+    const newEquipmentIds = equipment.map(e => e.equipmentId.toString());
+
+    // 2. Mettre à jour la section avec les nouveaux équipements
+    const updated = await ProductionSection.findByIdAndUpdate(id, { equipment }, { new: true }).populate({
+      path: 'equipment.equipmentId',
+      model: 'Equipment',
+      populate: ['category', 'type']
+    }).lean();
+
+    // 3. Équipements retirés de la section → productionSection = null (statut → offline)
+    const removedIds = oldEquipmentIds.filter(equipId => !newEquipmentIds.includes(equipId));
+    if (removedIds.length > 0) {
+      const { Equipment } = require('../models/Equipment');
+      // Utiliser save() individuellement pour déclencher le middleware
+      for (const equipId of removedIds) {
+        const equipment = await Equipment.findById(equipId);
+        if (equipment) {
+          equipment.productionSection = null;
+          await equipment.save(); // Déclenche le middleware pre('save')
+        }
+      }
+      console.log(`Equipment removed from section ${id}:`, removedIds);
+    }
+
+    // 4. Équipements ajoutés à la section → productionSection = sectionId (statut → online)
+    const addedIds = newEquipmentIds.filter(equipId => !oldEquipmentIds.includes(equipId));
+    if (addedIds.length > 0) {
+      const { Equipment } = require('../models/Equipment');
+      // Utiliser save() individuellement pour déclencher le middleware
+      for (const equipId of addedIds) {
+        const equipment = await Equipment.findById(equipId);
+        if (equipment) {
+          equipment.productionSection = id;
+          await equipment.save(); // Déclenche le middleware pre('save')
+        }
+      }
+      console.log(`Equipment added to section ${id}:`, addedIds);
+    }
+
+    return res.status(200).json({ success: true, section: updated });
+  } catch (error) {
+    console.error('Error updating section equipment:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
 // DELETE /api/production-sections/:id

@@ -23,7 +23,7 @@ const schema = new mongoose.Schema({
     type: String,
     required: true,
     enum: EQUIPMENT_STATUS,
-    default: 'operational',
+    default: 'offline',
   },
   location: {
     type: String,
@@ -37,6 +37,7 @@ const schema = new mongoose.Schema({
   model: {
     type: String,
     trim: true,
+    required: true,
   },
   serialNumber: {
     type: String,
@@ -46,6 +47,8 @@ const schema = new mongoose.Schema({
   },
   chipNumber: {
     type: String,
+    unique: true,
+    sparse: true,
     trim: true,
   },
   brand: {
@@ -73,6 +76,25 @@ const schema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: {},
   },
+  // NOUVEAUX CHAMPS
+  productionSection: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ProductionSection',
+    default: null
+  },
+  productionLine: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ProductionLine',
+    default: null
+  },
+  // Historique des affectations
+  assignmentHistory: [{
+    section: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductionSection' },
+    line: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductionLine' },
+    assignedAt: { type: Date, default: Date.now },
+    unassignedAt: { type: Date, default: null },
+    assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  }],
   createdAt: {
     type: Date,
     default: Date.now,
@@ -87,10 +109,40 @@ const schema = new mongoose.Schema({
 });
 
 // Update the updatedAt field before saving
-schema.pre('save', function(next) {
+schema.pre('save', async function(next) {
   this.updatedAt = Date.now();
+  
+  // Gestion automatique du statut selon l'affectation à une section
+  if (this.productionSection && this.status === 'offline') {
+    this.status = 'online';
+  }
+  
+  // Si retiré d'une section → offline (sauf si en maintenance ou en panne)
+  if (!this.productionSection && ['online'].includes(this.status)) {
+    this.status = 'offline';
+  }
+  
+  // Calculer productionLine depuis productionSection
+  if (this.productionSection && this.isModified('productionSection')) {
+    try {
+      const ProductionSection = this.constructor.db.model('ProductionSection');
+      const section = await ProductionSection.findById(this.productionSection);
+      this.productionLine = section?.productionLine || null;
+    } catch (error) {
+      console.warn('Could not find production section:', error.message);
+    }
+  } else if (!this.productionSection) {
+    this.productionLine = null;
+  }
+  
   next();
 });
+
+// Index pour les requêtes fréquentes (pas d'unicité sur productionSection)
+schema.index({ category: 1, type: 1 });
+schema.index({ status: 1 });
+schema.index({ productionLine: 1 });
+schema.index({ productionSection: 1 }); // Index simple pour performance
 
 const Equipment = mongoose.model('Equipment', schema);
 module.exports = { Equipment, EQUIPMENT_STATUS };

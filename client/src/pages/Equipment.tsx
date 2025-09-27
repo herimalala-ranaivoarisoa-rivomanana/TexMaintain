@@ -10,17 +10,20 @@ import { Label } from "@/components/ui/label"
 import { 
   Search, 
   Filter, 
-  Plus, 
-  Settings, 
-  AlertTriangle, 
-  CheckCircle, 
+  Plus,
+  Settings,
+  AlertTriangle,
+  CheckCircle,
   Clock,
   MapPin,
   Calendar,
   Pencil,
-  Trash
+  Trash,
+  History,
+  Package,
+  Factory
 } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from "@/api/equipment"
 import { getBrands } from "@/api/brands"
 import api from "@/api/api"
@@ -33,6 +36,7 @@ interface Equipment {
   type: EquipmentType
   status: string
   location: string
+  model: string
   serialNumber?: string
   chipNumber?: string
   brand?: string
@@ -40,6 +44,14 @@ interface Equipment {
   nextMaintenance: string
   mtbf: number
   mttr: number
+  productionSection?: {
+    _id: string
+    name: string
+  }
+  productionLine?: {
+    _id: string
+    name: string
+  }
 }
 
 interface Category {
@@ -77,6 +89,7 @@ export function Equipment() {
     type: "",
     status: "offline",
     location: "",
+    model: "",
     serialNumber: "",
     chipNumber: "",
     brand: ""
@@ -84,6 +97,7 @@ export function Equipment() {
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   // Fetch categories, types, and brands on mount
   useEffect(() => {
@@ -161,13 +175,22 @@ export function Equipment() {
 
   const openAddDialog = () => {
     setEditingItem(null)
-    setForm({ category: "cutting", type: "", status: "offline", location: "", serialNumber: "", chipNumber: "", brand: "" })
+    setForm({ category: "", type: "", status: "offline", location: "", model: "", serialNumber: "", chipNumber: "", brand: "" })
     setIsDialogOpen(true)
   }
 
   const openEditDialog = (item: Equipment) => {
     setEditingItem(item)
-    setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: item.brand || "" })
+    setForm({
+      category: item.category._id,
+      type: item.type._id,
+      status: item.status,
+      location: item.location,
+      model: item.model || "",
+      serialNumber: item.serialNumber || "",
+      chipNumber: item.chipNumber || "",
+      brand: item.brand || ""
+    })
     setIsDialogOpen(true)
   }
 
@@ -180,6 +203,7 @@ export function Equipment() {
           ...e,
           status: form.status,
           location: form.location,
+          model: form.model,
           serialNumber: form.serialNumber,
           chipNumber: form.chipNumber,
           brand: form.brand,
@@ -204,6 +228,7 @@ export function Equipment() {
           type: tempType,
           status: form.status,
           location: form.location,
+          model: form.model,
           mtbf: 0,
           mttr: 0,
           lastMaintenance: new Date().toISOString(),
@@ -392,63 +417,109 @@ export function Equipment() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
+                  <p className="text-slate-500">Modèle</p>
+                  <p className="text-slate-900 font-medium">{item.model}</p>
+                </div>
+                <div>
                   <p className="text-slate-500">Location</p>
                   <p className="text-slate-900 flex items-center">
                     <MapPin className="mr-1 h-3 w-3" />
                     {item.location}
                   </p>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-slate-500">Brand</p>
                   <p className="text-slate-900">{item.brand || '-'}</p>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-slate-500">Serial Number</p>
                   <p className="text-slate-900">{item.serialNumber || '-'}</p>
                 </div>
-                <div>
-                  <p className="text-slate-500">Chip Number</p>
-                  <p className="text-slate-900">{item.chipNumber || '-'}</p>
+              </div>
+
+              {/* Info Ligne/Section de Production */}
+              <div className="border-t pt-3">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500">Ligne de Production</p>
+                    <p className="text-slate-900 flex items-center">
+                      <Factory className="mr-1 h-3 w-3" />
+                      {item.productionLine?.name || <span className="text-slate-400">Non assigné</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Section</p>
+                    <p className="text-slate-900">
+                      {item.productionSection?.name || <span className="text-slate-400">Non assigné</span>}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
+                  <p className="text-slate-500">Chip Number</p>
+                  <p className="text-slate-900">{item.chipNumber || '-'}</p>
+                </div>
+                <div>
                   <p className="text-slate-500">MTBF</p>
                   <p className="font-semibold text-slate-900">{item.mtbf}h</p>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-slate-500">MTTR</p>
                   <p className="font-semibold text-slate-900">{item.mttr}h</p>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500">Last Maintenance:</span>
-                  <span className="text-slate-900">{formatDate(item.lastMaintenance)}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500">Next Maintenance:</span>
-                  <span className="text-slate-900 flex items-center">
-                    <Calendar className="mr-1 h-3 w-3" />
-                    {formatDate(item.nextMaintenance)}
-                  </span>
+                <div>
+                  <p className="text-slate-500">Last Maintenance</p>
+                  <p className="text-slate-900">{formatDate(item.lastMaintenance)}</p>
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">Next Maintenance:</span>
+                <span className="text-slate-900 flex items-center">
+                  <Calendar className="mr-1 h-3 w-3" />
+                  {formatDate(item.nextMaintenance)}
+                </span>
+              </div>
+
+              {/* Nouveaux boutons */}
+              <div className="grid grid-cols-2 gap-2 pt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/equipment/${item._id}/interventions`)}
+                  className="text-xs"
+                >
+                  <History className="mr-1 h-3 w-3" />
+                  Historique
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/equipment/${item._id}/parts`)}
+                  className="text-xs"
+                >
+                  <Package className="mr-1 h-3 w-3" />
+                  Pièces
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1 pt-2">
                 {(user?.role === 'admin' || user?.role === 'maintenance_manager' || user?.role === 'assistant_maintenance_manager' || user?.role === 'foreman') && (
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => openEditDialog(item)} disabled={deletingId === item._id}>
-                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                  <Button variant="outline" size="sm" onClick={() => openEditDialog(item)} disabled={deletingId === item._id}>
+                    <Pencil className="h-3 w-3" />
                   </Button>
                 )}
                 {user?.role === 'admin' && (
-                  <Button variant="destructive" size="sm" className="flex-1" onClick={() => handleDelete(item._id)} disabled={deletingId === item._id}>
-                    <Trash className="mr-2 h-4 w-4" /> {deletingId === item._id ? 'Deleting...' : 'Delete'}
+                  <Button variant="destructive" size="sm" onClick={() => handleDelete(item._id)} disabled={deletingId === item._id}>
+                    <Trash className="h-3 w-3" />
                   </Button>
                 )}
               </div>
@@ -520,6 +591,10 @@ export function Equipment() {
             <div className="grid gap-2">
               <Label htmlFor="location">Location</Label>
               <Input id="location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Enter location" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="model">Model *</Label>
+              <Input id="model" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="Enter model" required />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="serialNumber">Serial Number</Label>
