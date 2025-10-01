@@ -236,6 +236,257 @@ router.post('/:id/assign-section', requireUser, requireRole(['admin', 'maintenan
 });
 
 // POST /api/equipment/:id/parts - Associer une pièce à l'équipement
+// PATCH /api/equipment/:id/status - Changer le statut d'un équipement
+router.patch('/:id/status', requireUser, async (req, res) => {
+  const { id } = req.params;
+  const { newStatus, reason, notes, interventionData } = req.body;
+  
+  try {
+    const equipment = await Equipment.findById(id);
+    if (!equipment) {
+      return res.status(404).json({ message: 'Equipment not found' });
+    }
+    
+    // Vérifier si le nouveau statut est autorisé
+    const availableStatuses = equipment.getAvailableStatuses();
+    if (!availableStatuses.includes(newStatus)) {
+      return res.status(400).json({ 
+        message: 'Status change not allowed',
+        availableStatuses,
+        currentStatus: equipment.status,
+        inProductionSection: !!equipment.productionSection
+      });
+    }
+    
+    // Mettre à jour les métriques avant le changement de statut
+    equipment.updateOperatingMetrics();
+    
+    const now = new Date();
+    const oldStatus = equipment.status;
+    
+    // Gestion spécifique selon le nouveau statut
+    switch (newStatus) {
+      case 'breakdown':
+        equipment.lastDowntime = now;
+        equipment.productionMetrics.lastBreakdownStart = now;
+        equipment.productionMetrics.isOperating = false;
+        equipment.productionMetrics.breakdownCount += 1;
+        
+        // Créer automatiquement une intervention si des données sont fournies
+        if (interventionData) {
+          const { Intervention } = require('../models/Intervention');
+          const intervention = new Intervention({
+            title: interventionData.title || `Panne - ${equipment.model}`,
+            type: 'Corrective',
+            priority: interventionData.priority || 'High',
+            status: 'Pending',
+            equipment: equipment._id,
+            description: interventionData.description,
+            assignedTo: interventionData.assignedTo,
+            createdDate: now
+          });
+          await intervention.save();
+          
+          // Ajouter l'intervention à l'historique de statut
+          equipment.statusHistory.push({
+            status: newStatus,
+            changedAt: now,
+            changedBy: req.user._id,
+            reason: reason || 'Breakdown reported',
+            interventionId: intervention._id,
+            notes
+          });
+        }
+        break;
+        
+      case 'online':
+        equipment.productionMetrics.isOperating = true;
+        equipment.productionMetrics.lastOperatingStart = now;
+        if (oldStatus === 'breakdown') {
+          equipment.productionMetrics.lastBreakdownStart = null;
+        }
+        break;
+        
+      case 'offline':
+        equipment.productionMetrics.isOperating = false;
+        equipment.productionMetrics.lastOperatingStart = null;
+        break;
+        
+      case 'maintenance':
+      case 'scrapped':
+        equipment.productionMetrics.isOperating = false;
+        equipment.productionMetrics.lastOperatingStart = null;
+        break;
+    }
+    
+    // Mettre à jour le statut
+    equipment.status = newStatus;
+    
+    // Ajouter à l'historique si pas déjà fait
+    if (!equipment.statusHistory.some(h => h.changedAt.getTime() === now.getTime())) {
+      equipment.statusHistory.push({
+        status: newStatus,
+        changedAt: now,
+        changedBy: req.user._id,
+        reason,
+        notes
+      });
+    }
+    
+    await equipment.save();
+    
+    // Retourner l'équipement mis à jour avec les nouvelles métriques
+    const updatedEquipment = await Equipment.findById(id)
+      .populate('category')
+      .populate('type')
+      .populate('productionSection', 'name')
+      .populate('productionLine', 'name');
+    
+    res.json({ 
+      equipment: updatedEquipment,
+      message: `Status changed from ${oldStatus} to ${newStatus}`,
+      availableStatuses: updatedEquipment.getAvailableStatuses()
+    });
+    
+  } catch (error) {
+    console.error('Error changing equipment status:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// GET /api/equipment/:id/available-statuses - Obtenir les statuts disponibles
+router.get('/:id/available-statuses', requireUser, async (req, res) => {
+  try {
+    const equipment = await Equipment.findById(req.params.id);
+    if (!equipment) {
+      return res.status(404).json({ message: 'Equipment not found' });
+    }
+    
+    const availableStatuses = equipment.getAvailableStatuses();
+    
+    res.json({
+      currentStatus: equipment.status,
+      availableStatuses,
+      inProductionSection: !!equipment.productionSection,
+      productionSection: equipment.productionSection,
+      productionLine: equipment.productionLine
+    });
+  } catch (error) {
+    console.error('Error getting available statuses:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// GET /api/equipment/:id/metrics - Obtenir les métriques détaillées
+router.get('/:id/metrics', requireUser, async (req, res) => {
+  try {
+    const equipment = await Equipment.findById(req.params.id);
+    if (!equipment) {
+      return res.status(404).json({ message: 'Equipment not found' });
+    }
+    
+    // Si l'équipement est assigné à une section mais n'a pas de insertedAt, l'initialiser
+    if (equipment.productionSection && !equipment.productionMetrics.insertedAt) {
+      equipment.productionMetrics.insertedAt = new Date();
+      equipment.productionMetrics.isOperating = equipment.status === 'online';
+      await equipment.save();
+    }
+    
+    // Mettre à jour les métriques avant de les retourner
+    equipment.updateOperatingMetrics();
+    await equipment.save();
+    
+    // Calculs temporels de base
+    const now = new Date();
+    const acquisitionDate = equipment.installationDate || equipment.createdAt;
+    const insertionDate = equipment.productionMetrics.insertedAt;
+    
+    // Temps depuis acquisition et insertion (en heures)
+    const timeSinceAcquisition = acquisitionDate ? (now - acquisitionDate) / (1000 * 60 * 60) : 0;
+    const timeSinceInsertion = insertionDate ? (now - insertionDate) / (1000 * 60 * 60) : 0;
+    
+    // CORRECTION RADICALE : Forcer la cohérence absolue des métriques
+    const maxSectionTime = Math.max(timeSinceInsertion, 0);
+    
+    // Récupérer les valeurs brutes
+    const rawSectionOperatingHours = equipment.productionMetrics.operatingHours || 0;
+    const rawSectionDowntimeHours = equipment.productionMetrics.sectionDowntimeHours || 0;
+    const rawTotalOperatingHours = equipment.totalOperatingHours || 0;
+    const rawTotalDowntimeHours = equipment.downtimeHours || 0;
+    
+    // ÉTAPE 1: Limiter strictement les métriques de section au temps disponible
+    let correctedSectionOperatingHours = Math.min(rawSectionOperatingHours, maxSectionTime);
+    let correctedSectionDowntimeHours = Math.min(rawSectionDowntimeHours, maxSectionTime);
+    
+    // ÉTAPE 2: S'assurer que la somme ne dépasse jamais le temps disponible
+    const totalSectionTime = correctedSectionOperatingHours + correctedSectionDowntimeHours;
+    if (totalSectionTime > maxSectionTime && maxSectionTime > 0) {
+      // Si la somme dépasse, proportionner en gardant les ratios
+      const ratio = maxSectionTime / totalSectionTime;
+      correctedSectionOperatingHours = correctedSectionOperatingHours * ratio;
+      correctedSectionDowntimeHours = correctedSectionDowntimeHours * ratio;
+    }
+    
+    // ÉTAPE 3: Forcer la synchronisation des métriques globales
+    // Les métriques globales DOIVENT être au moins égales aux métriques de section
+    const finalTotalOperatingHours = Math.max(rawTotalOperatingHours, correctedSectionOperatingHours);
+    const finalTotalDowntimeHours = Math.max(rawTotalDowntimeHours, correctedSectionDowntimeHours);
+    
+    // ÉTAPE 4: Validation finale - si les métriques globales sont encore incohérentes, les forcer
+    const finalSectionOperatingHours = correctedSectionOperatingHours;
+    const finalSectionDowntimeHours = correctedSectionDowntimeHours;
+    
+
+    
+    // Calculs corrects de MTBF et MTTR avec les métriques validées
+    const breakdownCount = equipment.productionMetrics.breakdownCount || 0;
+    const sectionMTBF = breakdownCount > 0 ? finalSectionOperatingHours / breakdownCount : 0;
+    const sectionMTTR = breakdownCount > 0 ? finalSectionDowntimeHours / breakdownCount : 0;
+    
+    // Calculs globaux de MTBF et MTTR (basés sur l'historique total)
+    const globalBreakdownCount = Math.max(breakdownCount, 1); // Au moins 1 pour éviter division par 0
+    const globalMTBF = finalTotalOperatingHours / globalBreakdownCount;
+    const globalMTTR = finalTotalDowntimeHours / globalBreakdownCount;
+    
+    const metrics = {
+      // Métriques globales (validées et synchronisées)
+      mtbf: globalMTBF,
+      mttr: globalMTTR,
+      totalOperatingHours: finalTotalOperatingHours,
+      downtimeHours: finalTotalDowntimeHours,
+      installationDate: equipment.installationDate,
+      createdAt: equipment.createdAt,
+      
+      // Availability globale (Operating hours / (Operating hours + Downtime hours))
+      globalAvailability: finalTotalOperatingHours + finalTotalDowntimeHours > 0 ?
+        (finalTotalOperatingHours / (finalTotalOperatingHours + finalTotalDowntimeHours)) * 100 : 0,
+      
+      // Métriques de production (validées et ajustées)
+      productionMetrics: {
+        ...equipment.productionMetrics.toObject(),
+        operatingHours: finalSectionOperatingHours,
+        sectionDowntimeHours: finalSectionDowntimeHours
+      },
+      
+      // Métriques calculées pour la section actuelle (corrigées)
+      sectionMTBF: sectionMTBF,
+      sectionMTTR: sectionMTTR,
+      
+      // Temps depuis l'insertion dans la section
+      timeSinceInsertion: timeSinceInsertion,
+      
+      // Disponibilité de section (Operating hours / (Operating hours + Downtime hours))
+      availability: finalSectionOperatingHours + finalSectionDowntimeHours > 0 ?
+        (finalSectionOperatingHours / (finalSectionOperatingHours + finalSectionDowntimeHours)) * 100 : 0
+    };
+    
+    res.json({ metrics });
+  } catch (error) {
+    console.error('Error getting equipment metrics:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 router.post('/:id/parts', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   const { id } = req.params;
   const { partId, quantity = 1, replacementFrequency, notes } = req.body;

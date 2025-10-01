@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getEquipmentById } from "@/api/equipment"
-import { Settings, MapPin, Calendar, ArrowLeft } from "lucide-react"
+import { MapPin, Calendar, ArrowLeft } from "lucide-react"
+import { EquipmentStatusChanger } from "@/components/EquipmentStatusChanger"
+import { EquipmentMetrics } from "@/components/EquipmentMetrics"
 
 interface EquipmentDetailData {
   _id: string
@@ -38,16 +39,24 @@ export function EquipmentDetail() {
   const navigate = useNavigate()
   const [data, setData] = useState<EquipmentDetailData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+  const fetchDetail = async () => {
+    try {
+      setLoading(true)
+      const res = await getEquipmentById(id as string)
+      setData((res as any).equipment)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStatusChanged = () => {
+    fetchDetail()
+    setRefreshTrigger(prev => prev + 1)
+  }
 
   useEffect(() => {
-    const fetchDetail = async () => {
-      try {
-        const res = await getEquipmentById(id as string)
-        setData((res as any).equipment)
-      } finally {
-        setLoading(false)
-      }
-    }
     if (id) fetchDetail()
   }, [id])
 
@@ -70,16 +79,7 @@ export function EquipmentDetail() {
     )
   }
 
-  const statusColor = (status: string) => {
-    switch (status) {
-      case 'online': return 'bg-blue-500'
-      case 'maintenance': return 'bg-yellow-500'
-      case 'breakdown': return 'bg-red-500'
-      case 'offline': return 'bg-gray-500'
-      case 'scrapped': return 'bg-red-900'
-      default: return 'bg-gray-500'
-    }
-  }
+
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Not set'
@@ -111,6 +111,8 @@ export function EquipmentDetail() {
   return (
     <div className="space-y-6">
       <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4"/>Back</Button>
+      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Information Card */}
         <div className="lg:col-span-2">
@@ -118,7 +120,11 @@ export function EquipmentDetail() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-2xl">{data.category?.name} - {data.type?.name}</CardTitle>
-                <Badge className={`${statusColor(data.status)} text-white`}>{data.status}</Badge>
+                <EquipmentStatusChanger 
+                  equipmentId={data._id}
+                  currentStatus={data.status}
+                  onStatusChanged={handleStatusChanged}
+                />
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -181,20 +187,7 @@ export function EquipmentDetail() {
                 </div>
               </div>
 
-              {/* Performance Metrics */}
-              <div className="border-t pt-4">
-                <h3 className="text-lg font-semibold mb-4">Performance Metrics</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500">MTBF (Mean Time Between Failures)</p>
-                    <p className="text-slate-900 text-lg font-semibold">{data.mtbf ? `${data.mtbf}h` : 'Not available'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">MTTR (Mean Time To Repair)</p>
-                    <p className="text-slate-900 text-lg font-semibold">{data.mttr ? `${data.mttr}h` : 'Not available'}</p>
-                  </div>
-                </div>
-              </div>
+
             </CardContent>
           </Card>
         </div>
@@ -222,6 +215,12 @@ export function EquipmentDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Equipment Metrics Section */}
+      <EquipmentMetrics 
+        equipmentId={data._id}
+        refreshTrigger={refreshTrigger}
+      />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -12,18 +12,12 @@ import {
   Filter,
   Plus,
   Settings,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
   MapPin,
-  Calendar,
   Pencil,
   Trash,
   History,
   Package,
-  Factory,
-  Wrench,
-  Activity
+  Factory
 } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from "@/api/equipment"
@@ -31,6 +25,8 @@ import { getBrands } from "@/api/brands"
 import api from "@/api/api"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
+import { EquipmentStatusChanger } from "@/components/EquipmentStatusChanger"
+
 
 interface Equipment {
   _id: string
@@ -282,57 +278,7 @@ export function Equipment() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'online': return 'bg-blue-500'
-      case 'maintenance': return 'bg-yellow-500'
-      case 'breakdown': return 'bg-red-500'
-      case 'offline': return 'bg-gray-500'
-      case 'scrapped': return 'bg-red-900'
-      default: return 'bg-gray-500'
-    }
-  }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'online': return <CheckCircle className="h-4 w-4" />
-      case 'maintenance': return <Clock className="h-4 w-4" />
-      case 'breakdown': return <AlertTriangle className="h-4 w-4" />
-      case 'offline': return <Settings className="h-4 w-4" />
-      case 'scrapped': return <AlertTriangle className="h-4 w-4" />
-      default: return <Settings className="h-4 w-4" />
-    }
-  }
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Not set'
-    try {
-      const date = new Date(dateString)
-      if (isNaN(date.getTime())) return 'Invalid date'
-      return date.toLocaleDateString()
-    } catch {
-      return 'Invalid date'
-    }
-  }
-
-  const calculateHoursSinceAcquisition = (installationDate?: string) => {
-    if (!installationDate) return 0
-    try {
-      const installation = new Date(installationDate)
-      const now = new Date()
-      const diffMs = now.getTime() - installation.getTime()
-      return Math.floor(diffMs / (1000 * 60 * 60)) // Convert to hours
-    } catch {
-      return 0
-    }
-  }
-
-  const formatHours = (hours: number) => {
-    if (hours < 24) return `${hours}h`
-    const days = Math.floor(hours / 24)
-    const remainingHours = hours % 24
-    return `${days}d ${remainingHours}h`
-  }
 
 
   const filteredEquipment = equipment
@@ -433,10 +379,11 @@ export function Equipment() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg"><Link className="hover:underline" to={`/equipment/${item._id}`}>{item.category?.name} - {item.type?.name}</Link></CardTitle>
-                <Badge className={`${getStatusColor(item.status)} text-white flex items-center gap-1`}>
-                  {getStatusIcon(item.status)}
-                  {item.status}
-                </Badge>
+                <EquipmentStatusChanger 
+                  equipmentId={item._id}
+                  currentStatus={item.status}
+                  onStatusChanged={() => window.location.reload()}
+                />
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -508,69 +455,7 @@ export function Equipment() {
                 </div>
               </div>
 
-              {/* Section Métriques */}
-              <div className="px-4 pb-4">
-                <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide border-b pb-1 mb-3">Operating Metrics</h4>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-emerald-50 p-2 rounded-lg text-center">
-                    <Clock className="h-4 w-4 text-emerald-600 mx-auto mb-1" />
-                    <p className="text-xs text-emerald-600 font-medium">Since Acquisition</p>
-                    <p className="font-bold text-emerald-900 text-sm">{formatHours(calculateHoursSinceAcquisition(item.installationDate))}</p>
-                  </div>
-                  <div className="bg-blue-50 p-2 rounded-lg text-center">
-                    <Activity className="h-4 w-4 text-blue-600 mx-auto mb-1" />
-                    <p className="text-xs text-blue-600 font-medium">Operating</p>
-                    <p className="font-bold text-blue-900 text-sm">{formatHours(item.totalOperatingHours || 0)}</p>
-                  </div>
-                  <div className="bg-orange-50 p-2 rounded-lg text-center">
-                    <AlertTriangle className="h-4 w-4 text-orange-600 mx-auto mb-1" />
-                    <p className="text-xs text-orange-600 font-medium">Downtime</p>
-                    <p className="font-bold text-orange-900 text-sm">{formatHours(item.downtimeHours || 0)}</p>
-                  </div>
-                </div>
-              </div>
 
-              {/* Section Servicing */}
-              <div className="px-4 pb-4">
-                <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide border-b pb-1 mb-3">Servicing Schedule</h4>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                        <AlertTriangle className="h-4 w-4 text-red-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-red-600 font-medium uppercase tracking-wide">Last Downtime</p>
-                        <p className="font-semibold text-slate-900">{formatDate(item.lastDowntime)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <Wrench className="h-4 w-4 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-green-600 font-medium uppercase tracking-wide">Last Servicing</p>
-                        <p className="font-semibold text-slate-900">{formatDate(item.lastMaintenance)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                        <Calendar className="h-4 w-4 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-purple-600 font-medium uppercase tracking-wide">Next Servicing</p>
-                        <p className="font-semibold text-slate-900">{formatDate(item.nextMaintenance)}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {/* Nouveaux boutons */}
               <div className="grid grid-cols-2 gap-2 pt-3">
@@ -581,7 +466,7 @@ export function Equipment() {
                   className="text-xs"
                 >
                   <History className="mr-1 h-3 w-3" />
-                  Historique
+                  History
                 </Button>
                 <Button
                   variant="outline"
@@ -590,7 +475,7 @@ export function Equipment() {
                   className="text-xs"
                 >
                   <Package className="mr-1 h-3 w-3" />
-                  Pièces
+                  Parts
                 </Button>
               </div>
 

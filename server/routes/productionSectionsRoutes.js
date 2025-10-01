@@ -100,15 +100,26 @@ router.patch('/:id/equipment', requireUser, requireRole(['admin', 'maintenance_m
     const removedIds = oldEquipmentIds.filter(equipId => !newEquipmentIds.includes(equipId));
     if (removedIds.length > 0) {
       const { Equipment } = require('../models/Equipment');
+      console.log(`Attempting to remove ${removedIds.length} equipment from section ${id}:`, removedIds);
+      
       // Utiliser save() individuellement pour déclencher le middleware
       for (const equipId of removedIds) {
-        const equipment = await Equipment.findById(equipId);
-        if (equipment) {
-          equipment.productionSection = null;
-          await equipment.save(); // Déclenche le middleware pre('save')
+        try {
+          const equipment = await Equipment.findById(equipId);
+          if (equipment) {
+            console.log(`Removing equipment ${equipId} from section. Current status: ${equipment.status}`);
+            equipment.productionSection = null;
+            await equipment.save(); // Déclenche le middleware pre('save')
+            console.log(`Equipment ${equipId} successfully removed. New status: ${equipment.status}`);
+          } else {
+            console.warn(`Equipment ${equipId} not found when trying to remove from section`);
+          }
+        } catch (error) {
+          console.error(`Error removing equipment ${equipId} from section:`, error);
+          throw error; // Re-throw pour arrêter le processus si erreur critique
         }
       }
-      console.log(`Equipment removed from section ${id}:`, removedIds);
+      console.log(`Successfully removed ${removedIds.length} equipment from section ${id}`);
     }
 
     // 4. Équipements ajoutés à la section → productionSection = sectionId (statut → online)

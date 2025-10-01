@@ -110,12 +110,41 @@ router.patch('/:id/sections', requireUser, async (req, res) => {
 router.delete('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
 
-  // Delete associated sections first
-  await ProductionSection.deleteMany({ productionLine: id });
+  try {
+    // 1. Trouver toutes les sections de cette ligne de production
+    const sections = await ProductionSection.find({ productionLine: id }).lean();
+    const sectionIds = sections.map(section => section._id.toString());
+    
+    // 2. Mettre à jour tous les équipements assignés à ces sections
+    if (sectionIds.length > 0) {
+      const { Equipment } = require('../models/Equipment');
+      
+      // Trouver tous les équipements assignés aux sections de cette ligne
+      const equipmentToUpdate = await Equipment.find({ 
+        productionSection: { $in: sectionIds } 
+      });
+      
+      // Mettre à jour chaque équipement individuellement pour déclencher le middleware
+      for (const equipment of equipmentToUpdate) {
+        equipment.productionSection = null; // Cela déclenchera le passage à "offline"
+        await equipment.save();
+      }
+      
+      console.log(`Updated ${equipmentToUpdate.length} equipment to offline (production line ${id} deleted)`);
+    }
 
-  const deleted = await ProductionLine.findByIdAndDelete(id).lean();
-  if (!deleted) return res.status(404).json({ message: 'Production line not found' });
-  return res.status(200).json({ success: true });
+    // 3. Supprimer les sections associées
+    await ProductionSection.deleteMany({ productionLine: id });
+
+    // 4. Supprimer la ligne de production
+    const deleted = await ProductionLine.findByIdAndDelete(id).lean();
+    if (!deleted) return res.status(404).json({ message: 'Production line not found' });
+    
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error deleting production line:', error);
+    return res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
 });
 
 module.exports = router;

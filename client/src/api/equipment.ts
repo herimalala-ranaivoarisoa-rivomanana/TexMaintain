@@ -66,3 +66,34 @@ export const associatePartToEquipment = async (id: string, data: { partId: strin
   const response = await api.post(`/api/equipment/${id}/parts`, data);
   return response.data;
 };
+
+// Description: Change equipment status with business rules
+// Endpoint: PATCH /api/equipment/:id/status
+export const changeEquipmentStatus = async (id: string, data: { 
+  newStatus: string; 
+  reason?: string; 
+  notes?: string; 
+  interventionData?: {
+    title?: string;
+    priority?: 'Low' | 'Medium' | 'High' | 'Critical';
+    description?: string;
+    assignedTo?: string;
+  }
+}) => {
+  const response = await api.patch(`/api/equipment/${id}/status`, data);
+  return response.data;
+};
+
+// Description: Get available statuses for equipment
+// Endpoint: GET /api/equipment/:id/available-statuses
+export const getAvailableStatuses = async (id: string) => {
+  const response = await api.get(`/api/equipment/${id}/available-statuses`);
+  return response.data;
+};
+
+// Description: Get detailed equipment metrics
+// Endpoint: GET /api/equipment/:id/metrics
+export const getEquipmentMetrics = async (id: string) => {
+  const response = await api.get(`/api/equipment/${id}/metrics`);
+  return response.data.metrics;
+};
