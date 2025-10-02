@@ -37,10 +37,15 @@ interface Equipment {
   serialNumber?: string
   chipNumber?: string
   brand?: string
+  installationDate?: string
   lastMaintenance: string
   nextMaintenance: string
   mtbf: number
   mttr: number
+  timeSinceAcquisition: number
+  operatingTime: number
+  downtime: number
+  availability: number
 }
 
 interface Category {
@@ -83,7 +88,8 @@ export function Equipment() {
     model: "",
     serialNumber: "",
     chipNumber: "",
-    brand: ""
+    brand: "",
+    installationDate: ""
   })
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -118,31 +124,37 @@ export function Equipment() {
     fetchData()
   }, [toast])
 
-  useEffect(() => {
-    const fetchEquipment = async () => {
-      try {
-        console.log('Fetching equipment data...')
-        const params: any = { page, limit, sort, order }
-        if (statusFilter !== 'all') params.status = statusFilter
-        if (searchTerm) params.q = searchTerm
-        const response = await getEquipment(params)
-        setEquipment((response as any).equipment)
-        setTotal((response as any).total || 0)
-        console.log('Equipment data loaded successfully')
-      } catch (error) {
-        console.error('Error fetching equipment:', error)
-        toast({
-          title: "Error",
-          description: "Failed to load equipment data",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
+  const fetchEquipment = async () => {
+    try {
+      console.log('Fetching equipment data...')
+      const params: any = { page, limit, sort, order }
+      if (statusFilter !== 'all') params.status = statusFilter
+      if (searchTerm) params.q = searchTerm
+      const response = await getEquipment(params)
+      setEquipment((response as any).equipment)
+      setTotal((response as any).total || 0)
+      console.log('Equipment data loaded successfully')
+    } catch (error) {
+      console.error('Error fetching equipment:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load equipment data",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchEquipment()
   }, [toast, page, statusFilter, limit, sort, order])
+
+  useEffect(() => {
+    // Refresh data every 30 seconds for dynamic metrics
+    const interval = setInterval(fetchEquipment, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Sync state to URL
   useEffect(() => {
@@ -169,13 +181,13 @@ export function Equipment() {
 
   const openAddDialog = () => {
     setEditingItem(null)
-    setForm({ category: "cutting", type: "", status: "offline", location: "", model: "", serialNumber: "", chipNumber: "", brand: "" })
+    setForm({ category: "cutting", type: "", status: "offline", location: "", model: "", serialNumber: "", chipNumber: "", brand: "", installationDate: "" })
     setIsDialogOpen(true)
   }
 
   const openEditDialog = (item: Equipment) => {
     setEditingItem(item)
-    setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, model: item.model || "", serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: item.brand || "" })
+    setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, model: item.model || "", serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: item.brand || "", installationDate: item.installationDate ? new Date(item.installationDate).toISOString().split('T')[0] : "" })
     setIsDialogOpen(true)
   }
 
@@ -192,6 +204,7 @@ export function Equipment() {
           serialNumber: form.serialNumber,
           chipNumber: form.chipNumber,
           brand: form.brand,
+          installationDate: form.installationDate,
           category: categories.find(c => c._id === form.category) || e.category,
           type: types.find(t => t._id === form.type) || e.type
         } as Equipment : e)
@@ -214,8 +227,16 @@ export function Equipment() {
           status: form.status,
           location: form.location,
           model: form.model,
+          serialNumber: form.serialNumber,
+          chipNumber: form.chipNumber,
+          brand: form.brand,
+          installationDate: form.installationDate,
           mtbf: 0,
           mttr: 0,
+          timeSinceAcquisition: 0,
+          operatingTime: 0,
+          downtime: 0,
+          availability: 0,
           lastMaintenance: new Date().toISOString(),
           nextMaintenance: new Date().toISOString()
         }
@@ -292,6 +313,30 @@ export function Equipment() {
     } catch {
       return 'Invalid date'
     }
+  }
+
+  const formatTime = (hours: number, includeSeconds = false) => {
+    const totalSeconds = Math.floor(hours * 3600)
+    const days = Math.floor(totalSeconds / 86400)
+    const remainingSeconds = totalSeconds % 86400
+    const hrs = Math.floor(remainingSeconds / 3600)
+    const mins = Math.floor((remainingSeconds % 3600) / 60)
+    const secs = remainingSeconds % 60
+
+    if (days > 0) {
+      return includeSeconds ? `${days}d ${hrs}h ${mins}m ${secs}s` : `${days}d ${hrs}h ${mins}m`
+    } else if (hrs > 0) {
+      return includeSeconds ? `${hrs}h ${mins}m ${secs}s` : `${hrs}h ${mins}m`
+    } else if (mins > 0) {
+      return includeSeconds ? `${mins}m ${secs}s` : `${mins}m`
+    } else {
+      return includeSeconds ? `${secs}s` : '0m'
+    }
+  }
+
+  const formatDays = (days: number) => {
+    const totalHours = days * 24
+    return formatTime(totalHours)
   }
 
   const getEquipmentLocation = (equipmentId: string) => {
@@ -453,11 +498,33 @@ export function Equipment() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-slate-500">MTBF</p>
-                  <p className="font-semibold text-slate-900">{item.mtbf}h</p>
+                  <p className="font-semibold text-slate-900">{formatTime(item.mtbf)}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">MTTR</p>
-                  <p className="font-semibold text-slate-900">{item.mttr}h</p>
+                  <p className="font-semibold text-slate-900">{formatTime(item.mttr)}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-slate-500">Time Since Acquisition</p>
+                  <p className="font-semibold text-slate-900">{formatDays(item.timeSinceAcquisition)}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Operating Time</p>
+                  <p className="font-semibold text-slate-900">{formatTime(item.operatingTime)}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-slate-500">Downtime</p>
+                  <p className="font-semibold text-slate-900">{formatTime(item.downtime)}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Availability</p>
+                  <p className="font-semibold text-slate-900">{(item.availability || 0).toFixed(1)}%</p>
                 </div>
               </div>
 
@@ -582,6 +649,10 @@ export function Equipment() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="installationDate">Installation Date</Label>
+              <Input id="installationDate" type="date" value={form.installationDate} onChange={(e) => setForm({ ...form, installationDate: e.target.value })} placeholder="Select installation date" />
             </div>
           </div>
           <DialogFooter>

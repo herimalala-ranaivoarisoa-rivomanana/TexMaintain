@@ -25,6 +25,10 @@ const schema = new mongoose.Schema({
     enum: EQUIPMENT_STATUS,
     default: 'operational',
   },
+  lastStatusChange: {
+    type: Date,
+    default: Date.now,
+  },
   location: {
     type: String,
     required: true,
@@ -86,9 +90,12 @@ const schema = new mongoose.Schema({
   versionKey: false,
 });
 
-// Update the updatedAt field before saving
+// Update the updatedAt field and lastStatusChange before saving
 schema.pre('save', function(next) {
   this.updatedAt = Date.now();
+  if (this.isModified('status')) {
+    this.lastStatusChange = Date.now();
+  }
   next();
 });
 

@@ -1,8 +1,71 @@
 const express = require('express');
 const { requireUser, requireRole } = require('./middleware/auth');
 const { Equipment } = require('../models/Equipment');
+const { Intervention } = require('../models/Intervention');
 
 const router = express.Router();
+
+// Calculate maintenance metrics for equipment
+async function calculateMetrics(equipment) {
+  const interventions = await Intervention.find({
+    equipment: equipment.location,
+    type: { $in: ['Corrective', 'Emergency'] },
+    status: 'Completed'
+  }).sort({ createdDate: 1 }).lean();
+
+  let mtbf = 0;
+  let mttr = 0;
+  let downtime = 0;
+
+  if (interventions.length > 1) {
+    const intervals = [];
+    for (let i = 1; i < interventions.length; i++) {
+      intervals.push((interventions[i].createdDate - interventions[i - 1].createdDate) / (1000 * 60 * 60)); // hours
+    }
+    mtbf = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+  }
+
+  if (interventions.length > 0) {
+    const durations = interventions.filter(i => i.dueDate).map(i => (i.dueDate - i.createdDate) / (1000 * 60 * 60));
+    if (durations.length > 0) {
+      mttr = durations.reduce((a, b) => a + b, 0) / durations.length;
+      downtime = durations.reduce((a, b) => a + b, 0);
+    }
+  }
+
+  // Add current downtime if equipment is not online
+  let currentDowntime = 0;
+  if (equipment.status !== 'online' && equipment.lastStatusChange) {
+    currentDowntime = (Date.now() - new Date(equipment.lastStatusChange).getTime()) / (1000 * 60 * 60); // hours
+    downtime += currentDowntime;
+  }
+
+  let timeSinceAcquisition = 0;
+  let operatingTime = 0;
+  let availability = 0;
+
+  if (equipment.installationDate) {
+    timeSinceAcquisition = (Date.now() - new Date(equipment.installationDate).getTime()) / (1000 * 60 * 60 * 24); // days
+    operatingTime = timeSinceAcquisition * 24 - downtime; // hours
+    if (timeSinceAcquisition * 24 > 0) {
+      availability = (operatingTime / (timeSinceAcquisition * 24)) * 100;
+    }
+  }
+
+  // If equipment is currently not online, set availability to 0
+  if (equipment.status !== 'online') {
+    availability = 0;
+  }
+
+  return {
+    mtbf: Math.round(mtbf * 100) / 100,
+    mttr: Math.round(mttr * 100) / 100,
+    timeSinceAcquisition: Math.round(timeSinceAcquisition * 100) / 100,
+    operatingTime: Math.round(operatingTime * 100) / 100,
+    downtime: Math.round(downtime * 100) / 100,
+    availability: Math.round(availability * 100) / 100
+  };
+}
 
 // GET /api/equipment (with basic pagination & filters)
 router.get('/', requireUser, async (req, res) => {
@@ -20,16 +83,39 @@ router.get('/', requireUser, async (req, res) => {
     Equipment.find(query).sort(sortSpec).skip(skip).limit(Number(limit)).populate('category').populate('type').lean(),
     Equipment.countDocuments(query)
   ]);
+
+  // Calculate maintenance metrics for each equipment
+  const metricsPromises = items.map(item => calculateMetrics(item));
+  const metricsResults = await Promise.all(metricsPromises);
+  items.forEach((item, index) => {
+    item.mtbf = metricsResults[index].mtbf;
+    item.mttr = metricsResults[index].mttr;
+    item.timeSinceAcquisition = metricsResults[index].timeSinceAcquisition;
+    item.operatingTime = metricsResults[index].operatingTime;
+    item.downtime = metricsResults[index].downtime;
+    item.availability = metricsResults[index].availability;
+  });
+
   return res.status(200).json({ equipment: items, page: Number(page), total });
 });
 
 // GET /api/equipment/:id
 router.get('/:id', requireUser, async (req, res) => {
-  const { id } = req.params;
-  const equipment = await Equipment.findById(id).populate('category').populate('type').lean();
-  if (!equipment) return res.status(404).json({ message: 'Equipment not found' });
-  return res.status(200).json({ equipment });
-});
+   const { id } = req.params;
+   const equipment = await Equipment.findById(id).populate('category').populate('type').lean();
+   if (!equipment) return res.status(404).json({ message: 'Equipment not found' });
+
+   // Calculate maintenance metrics
+   const metrics = await calculateMetrics(equipment);
+   equipment.mtbf = metrics.mtbf;
+   equipment.mttr = metrics.mttr;
+   equipment.timeSinceAcquisition = metrics.timeSinceAcquisition;
+   equipment.operatingTime = metrics.operatingTime;
+   equipment.downtime = metrics.downtime;
+   equipment.availability = metrics.availability;
+
+   return res.status(200).json({ equipment });
+ });
  
 // POST /api/equipment
 const { z } = require('zod');
