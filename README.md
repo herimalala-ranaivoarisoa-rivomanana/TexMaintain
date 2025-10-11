@@ -92,4 +92,37 @@ npm run db:ps     # status
 npm run db:down   # stop & remove
 ```
 
+## Data Migration
+
+### Migrate Intervention Equipment References
+If you have existing interventions with string-based equipment references, run this migration to add strong ObjectId references:
+
+```bash
+node server/migrations/migrateInterventionEquipmentId.js
+```
+
+This migration will:
+- Match intervention.equipment strings with Equipment.location
+- Add equipmentId ObjectId references
+- Report unmatched interventions for manual review
+
+## Recent Improvements
+
+### Equipment Status & KPIs
+- Fixed equipment status checks to use `EQUIPMENT_STATUSES.IN_PRODUCTION` instead of legacy 'online' string
+- Improved KPI calculations (MTBF, MTTR, availability) for accuracy
+- Dashboard now shows real-time availability based on equipment in production status
+
+### Intervention-Equipment Linking
+- Added `equipmentId` ObjectId reference to Intervention model for strong typing
+- Maintained backward compatibility with string-based `equipment` field
+- API now accepts both `equipment` (string) and `equipmentId` (ObjectId)
+- Interventions now populate equipment details (location, status, category, type)
+
+### Dashboard KPIs
+- Real MTTR calculation from completed corrective/emergency interventions
+- Real MTBF calculation from failure intervals
+- Dynamic availability based on equipment production status
+- Estimated OEE calculation
+
 

@@ -19,6 +19,8 @@ import { useToast } from "@/hooks/useToast"
 import { getProductionLines, createProductionLine, updateProductionLine, deleteProductionLine } from "@/api/productionLines"
 import { getProductionSections, createProductionSection, updateProductionSection, updateProductionSectionEquipment } from "@/api/productionSections"
 import { getEquipment, updateEquipment } from "@/api/equipment"
+import { EQUIPMENT_STATUSES, getStatusColor as getEquipmentStatusColor, getStatusLabel } from "@/types/equipment"
+import type { EquipmentStatus } from "@/types/equipment"
 import {
   DndContext,
   closestCenter,
@@ -74,8 +76,6 @@ interface ProductionSection {
   order: number
 }
 
-
-
 interface Equipment {
   _id: string
   name: string
@@ -101,15 +101,6 @@ function SortableEquipment({ id, equipment, onDelete }: SortableEquipmentProps) 
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
   const style = transform ? { transform: CSS.Transform.toString(transform), transition } : undefined
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500'
-      case 'inactive': return 'bg-gray-500'
-      case 'maintenance': return 'bg-yellow-500'
-      default: return 'bg-gray-500'
-    }
-  }
-
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-2 p-2 bg-slate-50 rounded border">
       <div {...attributes} {...listeners} className="cursor-grab flex-shrink-0">
@@ -120,8 +111,8 @@ function SortableEquipment({ id, equipment, onDelete }: SortableEquipmentProps) 
           {equipment.equipmentId.category?.name} - {equipment.equipmentId.type?.name}
         </p>
       </div>
-      <Badge className={`${getStatusColor(equipment.equipmentId.status)} text-white text-xs`}>
-        {equipment.equipmentId.status}
+      <Badge className={`${getEquipmentStatusColor(equipment.equipmentId.status as EquipmentStatus)} text-white text-xs`}>
+        {getStatusLabel(equipment.equipmentId.status as EquipmentStatus)}
       </Badge>
       <Button variant="ghost" size="sm" onClick={onDelete} className="h-6 w-6 p-0 text-red-500 hover:text-red-700">
         <Trash className="h-3 w-3" />
@@ -183,6 +174,7 @@ export function ProductionLines() {
       const sections = (sectionsResponse as any).sections || []
       const equipment = (equipmentResponse as any).equipment || []
 
+      // Update state in correct order
       setProductionLines(lines)
       setSections(sections)
       setEquipment(equipment)
@@ -191,6 +183,7 @@ export function ProductionLines() {
       if (selectedLine) {
         const updatedLine = lines.find((line: ProductionLine) => line._id === selectedLine._id)
         if (updatedLine) {
+          console.log('Updating selected line with fresh data')
           setSelectedLine(updatedLine)
         }
       }
@@ -303,34 +296,52 @@ export function ProductionLines() {
     try {
       setIsSaving(true)
       console.log('Saving equipment to section:', selectedSectionForEquipment, 'with form:', equipmentForm)
-      if (selectedSectionForEquipment) {
-        // Find the current section to get existing equipment
-        const currentSection = sections.find(s => s._id === selectedSectionForEquipment)
-        if (currentSection) {
-          // Create the full equipment array: existing + new
-          const updatedEquipment = [
-            ...currentSection.equipment.map(eq => ({
-              equipmentId: eq.equipmentId._id,
-              order: eq.order
-            })),
-            {
-              equipmentId: equipmentForm.equipmentId,
-              order: equipmentForm.order
-            }
-          ]
-          await updateProductionSectionEquipment(selectedSectionForEquipment, updatedEquipment)
-          // Update equipment status to online
-          await updateEquipment(equipmentForm.equipmentId, { status: 'online' })
-          toast({ title: "Added", description: "Equipment added to section successfully" })
-        } else {
-          throw new Error('Section not found')
-        }
+      
+      if (!selectedSectionForEquipment || !selectedLine) {
+        throw new Error('No section or line selected')
       }
+
+      // Find the section in selectedLine (which has populated equipment)
+      const sectionWrapper = selectedLine.sections.find(s => s.sectionId._id === selectedSectionForEquipment)
+      
+      if (!sectionWrapper) {
+        throw new Error('Section not found in selected line')
+      }
+
+      const currentSection = sectionWrapper.sectionId
+      
+      // Create the full equipment array: existing + new
+      const updatedEquipment = [
+        ...currentSection.equipment.map(eq => ({
+          equipmentId: typeof eq.equipmentId === 'string' ? eq.equipmentId : eq.equipmentId._id,
+          order: eq.order
+        })),
+        {
+          equipmentId: equipmentForm.equipmentId,
+          order: currentSection.equipment.length // Auto-increment order
+        }
+      ]
+      
+      console.log('Updated equipment array:', updatedEquipment)
+      
+      // Update section equipment
+      await updateProductionSectionEquipment(selectedSectionForEquipment, updatedEquipment)
+      
+      // Update equipment status to setup_adjustment (transition from offline)
+      // Then it can be manually changed to in_production when ready
+      await updateEquipment(equipmentForm.equipmentId, { status: EQUIPMENT_STATUSES.SETUP_ADJUSTMENT })
+      
+      // Close dialog first
       setIsEquipmentDialogOpen(false)
-      fetchData()
-    } catch (error) {
+      
+      // Reload data and wait for completion
+      await fetchData()
+      
+      toast({ title: "Added", description: "Equipment added to section successfully" })
+    } catch (error: any) {
       console.error('Save equipment error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.error('Error response:', error.response?.data)
+      const errorMessage = error.response?.data?.message || error.message || 'Unknown error'
       toast({ title: "Error", description: `Failed to add equipment: ${errorMessage}`, variant: "destructive" })
     } finally {
       setIsSaving(false)
@@ -348,8 +359,8 @@ export function ProductionLines() {
           order: idx
         }))
         await updateProductionSectionEquipment(sectionId, updatedEquipment)
-        // Update equipment status to offline
-        await updateEquipment(equipmentId, { status: 'offline' })
+        // Update equipment status back to offline when removed from section
+        await updateEquipment(equipmentId, { status: EQUIPMENT_STATUSES.OFFLINE })
         const newEquipment = currentSection.equipment.filter(e => e.equipmentId._id !== equipmentId).map((e, idx) => ({ ...e, order: idx }))
         setSections(sections.map(s => s._id === sectionId ? { ...s, equipment: newEquipment } : s))
         setSelectedLine(prev => prev ? { ...prev, sections: prev.sections.map(s => s.sectionId._id === sectionId ? { ...s, sectionId: { ...s.sectionId, equipment: newEquipment } } : s) } : null)
@@ -370,7 +381,6 @@ export function ProductionLines() {
       toast({ title: "Error", description: "Failed to delete production line", variant: "destructive" })
     }
   }
-
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
@@ -454,7 +464,7 @@ export function ProductionLines() {
     }
   }
 
-  const getStatusColor = (status: string) => {
+  const getLineStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500'
       case 'inactive': return 'bg-gray-500'
@@ -546,7 +556,7 @@ export function ProductionLines() {
           </div>
         </DndContext>
 
-      {/* Add Section Button */}
+        {/* Add Section Button */}
         <div className="flex justify-center">
           <Button onClick={() => { console.log('Add Section button clicked for line:', selectedLine._id); openSectionDialog(selectedLine._id); }} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
             <Plus className="mr-2 h-4 w-4" />
@@ -576,7 +586,7 @@ export function ProductionLines() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-  
+
         {/* Add Equipment Dialog */}
         <Dialog open={isEquipmentDialogOpen} onOpenChange={setIsEquipmentDialogOpen}>
           <DialogContent className="sm:max-w-[500px] bg-white">
@@ -646,7 +656,7 @@ export function ProductionLines() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">{line.name}</CardTitle>
-                <Badge className={`${getStatusColor(line.status)} text-white`}>
+                <Badge className={`${getLineStatusColor(line.status)} text-white`}>
                   {line.status}
                 </Badge>
               </div>

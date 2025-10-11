@@ -1,12 +1,14 @@
 const mongoose = require('mongoose');
+const { EQUIPMENT_STATUSES, STATUS_METADATA } = require('./EquipmentStatusHistory');
 
-const EQUIPMENT_STATUS = [
-  'online',
-  'maintenance',
-  'breakdown',
-  'offline',
-  'scrapped'
-];
+// Legacy status mapping for backward compatibility
+const LEGACY_STATUS_MAP = {
+  'online': 'in_production',
+  'maintenance': 'scheduled_maintenance',
+  'breakdown': 'breakdown',
+  'offline': 'offline',
+  'scrapped': 'scrapped'
+};
 
 const schema = new mongoose.Schema({
   category: {
@@ -22,12 +24,26 @@ const schema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    enum: EQUIPMENT_STATUS,
-    default: 'operational',
+    enum: Object.values(EQUIPMENT_STATUSES),
+    default: EQUIPMENT_STATUSES.OFFLINE,
+  },
+  statusCategory: {
+    type: String,
+    enum: ['production', 'maintenance', 'out_of_service'],
+    default: 'out_of_service'
   },
   lastStatusChange: {
     type: Date,
     default: Date.now,
+  },
+  lastStatusChangedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  },
+  currentStatusDuration: {
+    type: Number, // Duration in minutes
+    default: 0
   },
   location: {
     type: String,
@@ -95,9 +111,50 @@ schema.pre('save', function(next) {
   this.updatedAt = Date.now();
   if (this.isModified('status')) {
     this.lastStatusChange = Date.now();
+    // Update status category based on new status
+    const metadata = STATUS_METADATA[this.status];
+    if (metadata) {
+      this.statusCategory = metadata.category;
+    }
   }
   next();
 });
 
+// Virtual for status metadata
+schema.virtual('statusMetadata').get(function() {
+  return STATUS_METADATA[this.status] || {};
+});
+
+// Method to check if status transition is allowed
+schema.methods.canTransitionTo = function(newStatus) {
+  const currentMetadata = STATUS_METADATA[this.status];
+  if (!currentMetadata) return false;
+  
+  // Scrapped is terminal state
+  if (this.status === EQUIPMENT_STATUSES.SCRAPPED) return false;
+  
+  // Check if transition is in allowed list
+  return currentMetadata.allowedTransitions.includes(newStatus);
+};
+
+// Method to get allowed transitions
+schema.methods.getAllowedTransitions = function() {
+  const currentMetadata = STATUS_METADATA[this.status];
+  if (!currentMetadata) return [];
+  return currentMetadata.allowedTransitions.map(status => ({
+    status,
+    metadata: STATUS_METADATA[status]
+  }));
+};
+
+// Static method to migrate legacy statuses
+schema.statics.migrateLegacyStatus = function(legacyStatus) {
+  return LEGACY_STATUS_MAP[legacyStatus] || legacyStatus;
+};
+
 const Equipment = mongoose.model('Equipment', schema);
-module.exports = { Equipment, EQUIPMENT_STATUS };
+module.exports = {
+  Equipment,
+  EQUIPMENT_STATUSES,
+  LEGACY_STATUS_MAP
+};

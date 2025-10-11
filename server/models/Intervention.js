@@ -9,7 +9,8 @@ const schema = new mongoose.Schema({
   type: { type: String, enum: INTERVENTION_TYPES, required: true },
   priority: { type: String, enum: PRIORITY_LEVELS, required: true },
   status: { type: String, enum: STATUS_VALUES, default: 'Pending', required: true },
-  equipment: { type: String, required: true, trim: true },
+  equipment: { type: String, required: true, trim: true }, // Legacy field for backward compatibility
+  equipmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Equipment', required: false, index: true }, // Strong reference
   assignedTo: { type: String, trim: true },
   description: { type: String, trim: true },
   createdDate: { type: Date, default: Date.now },

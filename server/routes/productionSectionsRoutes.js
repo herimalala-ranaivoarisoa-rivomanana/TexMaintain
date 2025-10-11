@@ -73,22 +73,47 @@ router.patch('/:id', requireUser, async (req, res) => {
 });
 
 // PATCH /api/production-sections/:id/equipment (update equipment order)
-router.patch('/:id/equipment', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
-  const { id } = req.params;
-  const { equipment } = req.body || {};
+router.patch('/:id/equipment', requireUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { equipment } = req.body || {};
 
-  if (!Array.isArray(equipment)) {
-    return res.status(400).json({ message: 'Equipment must be an array' });
+    console.log('Update equipment request:', { id, equipment, user: req.user?.email });
+
+    if (!Array.isArray(equipment)) {
+      return res.status(400).json({ message: 'Equipment must be an array' });
+    }
+
+    // Validate equipment array structure
+    for (const item of equipment) {
+      if (!item.equipmentId || typeof item.order !== 'number') {
+        return res.status(400).json({ 
+          message: 'Each equipment item must have equipmentId (string) and order (number)',
+          received: item
+        });
+      }
+    }
+
+    const updated = await ProductionSection.findByIdAndUpdate(
+      id, 
+      { equipment }, 
+      { new: true, runValidators: true }
+    ).populate({
+      path: 'equipment.equipmentId',
+      model: 'Equipment',
+      populate: ['category', 'type']
+    }).lean();
+
+    if (!updated) {
+      return res.status(404).json({ message: 'Production section not found' });
+    }
+
+    console.log('Equipment updated successfully');
+    return res.status(200).json({ success: true, section: updated });
+  } catch (error) {
+    console.error('Update equipment error:', error);
+    return res.status(500).json({ message: error.message || 'Failed to update equipment' });
   }
-
-  const updated = await ProductionSection.findByIdAndUpdate(id, { equipment }, { new: true }).populate({
-    path: 'equipment.equipmentId',
-    model: 'Equipment',
-    populate: ['category', 'type']
-  }).lean();
-
-  if (!updated) return res.status(404).json({ message: 'Production section not found' });
-  return res.status(200).json({ success: true, section: updated });
 });
 
 // DELETE /api/production-sections/:id

@@ -26,6 +26,8 @@ import { getBrands } from "@/api/brands"
 import api from "@/api/api"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
+import { EQUIPMENT_STATUSES, getStatusColor, getStatusLabel } from "@/types/equipment"
+import type { EquipmentStatus } from "@/types/equipment"
 
 interface Equipment {
   _id: string
@@ -80,10 +82,20 @@ export function Equipment() {
   const { toast } = useToast()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Equipment | null>(null)
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    category: string;
+    type: string;
+    status: string;
+    location: string;
+    model: string;
+    serialNumber: string;
+    chipNumber: string;
+    brand: string;
+    installationDate: string;
+  }>({
     category: "",
     type: "",
-    status: "offline",
+    status: EQUIPMENT_STATUSES.OFFLINE,
     location: "",
     model: "",
     serialNumber: "",
@@ -181,7 +193,7 @@ export function Equipment() {
 
   const openAddDialog = () => {
     setEditingItem(null)
-    setForm({ category: "cutting", type: "", status: "offline", location: "", model: "", serialNumber: "", chipNumber: "", brand: "", installationDate: "" })
+    setForm({ category: "cutting", type: "", status: EQUIPMENT_STATUSES.OFFLINE, location: "", model: "", serialNumber: "", chipNumber: "", brand: "", installationDate: "" })
     setIsDialogOpen(true)
   }
 
@@ -282,21 +294,10 @@ export function Equipment() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'online': return 'bg-blue-500'
-      case 'maintenance': return 'bg-yellow-500'
-      case 'breakdown': return 'bg-red-500'
-      case 'offline': return 'bg-gray-500'
-      case 'scrapped': return 'bg-red-900'
-      default: return 'bg-gray-500'
-    }
-  }
-
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'online': return <CheckCircle className="h-4 w-4" />
-      case 'maintenance': return <Clock className="h-4 w-4" />
+      case 'in_production': return <CheckCircle className="h-4 w-4" />
+      case 'scheduled_maintenance': return <Clock className="h-4 w-4" />
       case 'breakdown': return <AlertTriangle className="h-4 w-4" />
       case 'offline': return <Settings className="h-4 w-4" />
       case 'scrapped': return <AlertTriangle className="h-4 w-4" />
@@ -400,9 +401,20 @@ export function Equipment() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="online">Online</SelectItem>
-                <SelectItem value="maintenance">Maintenance</SelectItem>
+                <SelectItem value="in_production">In Production</SelectItem>
+                <SelectItem value="setup_adjustment">Setup/Adjustment</SelectItem>
+                <SelectItem value="paused_by_operator">Paused by Operator</SelectItem>
+                <SelectItem value="changeover">Changeover</SelectItem>
+                <SelectItem value="scheduled_maintenance">Scheduled Maintenance</SelectItem>
                 <SelectItem value="breakdown">Breakdown</SelectItem>
+                <SelectItem value="under_repair">Under Repair</SelectItem>
+                <SelectItem value="in_workshop">In Workshop</SelectItem>
+                <SelectItem value="waiting_spare_parts">Waiting Spare Parts</SelectItem>
+                <SelectItem value="testing_after_repair">Testing After Repair</SelectItem>
+                <SelectItem value="under_inspection">Under Inspection</SelectItem>
+                <SelectItem value="pending_validation">Pending Validation</SelectItem>
+                <SelectItem value="stored">Stored</SelectItem>
+                <SelectItem value="offline">Offline</SelectItem>
                 <SelectItem value="scrapped">Scrapped</SelectItem>
               </SelectContent>
             </Select>
@@ -447,9 +459,9 @@ export function Equipment() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg"><Link className="hover:underline" to={`/equipment/${item._id}`}>{item.category?.name} - {item.type?.name}</Link></CardTitle>
-                <Badge className={`${getStatusColor(item.status)} text-white flex items-center gap-1`}>
+                <Badge className={`${getStatusColor(item.status as EquipmentStatus)} text-white flex items-center gap-1`}>
                   {getStatusIcon(item.status)}
-                  {item.status}
+                  {getStatusLabel(item.status as EquipmentStatus)}
                 </Badge>
               </div>
             </CardHeader>
@@ -610,12 +622,66 @@ export function Equipment() {
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="online">Online</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="breakdown">Breakdown</SelectItem>
-                  <SelectItem value="offline">Offline</SelectItem>
-                  <SelectItem value="scrapped">Scrapped</SelectItem>
+                <SelectContent className="max-h-[400px]">
+                  {/* Production Status - Green background */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-green-700 bg-green-50 border-b border-green-200">
+                    🟢 PRODUCTION
+                  </div>
+                  <SelectItem value={EQUIPMENT_STATUSES.IN_PRODUCTION} className="pl-6 bg-green-50/30 hover:bg-green-100">
+                    In Production
+                  </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.SETUP_ADJUSTMENT} className="pl-6 bg-green-50/30 hover:bg-green-100">
+                    Setup/Adjustment
+                  </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.PAUSED_BY_OPERATOR} className="pl-6 bg-green-50/30 hover:bg-green-100">
+                    Paused by Operator
+                  </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.CHANGEOVER} className="pl-6 bg-green-50/30 hover:bg-green-100">
+                    Changeover
+                  </SelectItem>
+                  
+                  {/* Maintenance Status - Orange background */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-orange-700 bg-orange-50 border-b border-orange-200 mt-1">
+                    🟠 MAINTENANCE
+                  </div>
+                  <SelectItem value={EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                    Scheduled Maintenance
+                  </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.BREAKDOWN} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                    Breakdown
+                  </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.UNDER_REPAIR} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                    Under Repair
+                  </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.IN_WORKSHOP} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                    In Workshop
+                  </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.WAITING_SPARE_PARTS} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                    Waiting Spare Parts
+                  </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.TESTING_AFTER_REPAIR} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                    Testing After Repair
+                  </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.UNDER_INSPECTION} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                    Under Inspection
+                  </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.PENDING_VALIDATION} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                    Pending Validation
+                  </SelectItem>
+                  
+                  {/* Out of Service Status - Gray background */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border-b border-gray-200 mt-1">
+                    ⚫ OUT OF SERVICE
+                  </div>
+                  <SelectItem value={EQUIPMENT_STATUSES.STORED} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
+                    Stored
+                  </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.OFFLINE} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
+                    Offline
+                  </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.SCRAPPED} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
+                    Scrapped
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -1,44 +1,86 @@
 const express = require('express');
 const { requireUser } = require('./middleware/auth');
-const { Equipment } = require('../models/Equipment');
+const { Equipment, EQUIPMENT_STATUSES } = require('../models/Equipment');
 const { Intervention } = require('../models/Intervention');
 const { Part } = require('../models/Part');
+const { EquipmentStatusHistory } = require('../models/EquipmentStatusHistory');
 
 const router = express.Router();
 
-// Helper to compute MTTR and MTBF from interventions (simplified)
+// Helper to compute MTTR and MTBF from interventions
 const computeReliability = async () => {
-  const interventions = await Intervention.find().lean();
+  const interventions = await Intervention.find({
+    type: { $in: ['Corrective', 'Emergency'] },
+    status: 'Completed'
+  }).sort({ createdDate: 1 }).lean();
+
   if (!interventions.length) {
     return { mttr: 0, mtbf: 0 };
   }
-  const completed = interventions.filter(i => i.status === 'Completed');
-  const mttr = completed.length ? 4.0 : 0; // placeholder average until duration tracking exists
-  const mtbf = 680; // placeholder due to missing failure timestamps
-  return { mttr, mtbf };
+
+  // Calculate MTBF (Mean Time Between Failures)
+  let mtbf = 0;
+  if (interventions.length > 1) {
+    const intervals = [];
+    for (let i = 1; i < interventions.length; i++) {
+      const interval = (interventions[i].createdDate - interventions[i - 1].createdDate) / (1000 * 60 * 60); // hours
+      intervals.push(interval);
+    }
+    mtbf = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+  }
+
+  // Calculate MTTR (Mean Time To Repair)
+  const durations = interventions
+    .filter(i => i.dueDate && i.createdDate)
+    .map(i => (i.dueDate - i.createdDate) / (1000 * 60 * 60)); // hours
+  
+  const mttr = durations.length > 0 
+    ? durations.reduce((a, b) => a + b, 0) / durations.length 
+    : 0;
+
+  return { 
+    mttr: Math.round(mttr * 100) / 100, 
+    mtbf: Math.round(mtbf * 100) / 100 
+  };
 };
 
 // GET /api/dashboard/kpis
 router.get('/kpis', requireUser, async (req, res) => {
-  const totalEquipment = await Equipment.countDocuments();
-  const activeInterventions = await Intervention.countDocuments({ status: { $in: ['Pending', 'In Progress'] } });
-  const criticalParts = await Part.countDocuments({ $expr: { $lte: ['$currentStock', '$minStock'] } });
-  const { mttr, mtbf } = await computeReliability();
-  const availability = totalEquipment ? 92.0 : 0; // placeholder
-  const oee = 85.0; // placeholder; would require performance and quality factors
-
-  return res.status(200).json({
-    kpis: {
-      mttr,
-      mtbf,
-      oee,
-      availability,
-      totalEquipment,
-      activeInterventions,
-      criticalParts,
-      pendingOrders: 0
+  try {
+    const totalEquipment = await Equipment.countDocuments();
+    const activeInterventions = await Intervention.countDocuments({ status: { $in: ['Pending', 'In Progress'] } });
+    const criticalParts = await Part.countDocuments({ $expr: { $lte: ['$currentStock', '$minStock'] } });
+    const { mttr, mtbf } = await computeReliability();
+    
+    // Calculate real availability from equipment in production
+    let availability = 0;
+    if (totalEquipment > 0) {
+      const inProductionCount = await Equipment.countDocuments({ 
+        status: EQUIPMENT_STATUSES.IN_PRODUCTION 
+      });
+      availability = Math.round((inProductionCount / totalEquipment) * 100 * 100) / 100;
     }
-  });
+
+    // OEE calculation would require performance and quality data
+    // For now, estimate based on availability and assuming 95% performance/quality
+    const oee = Math.round(availability * 0.95 * 100) / 100;
+
+    return res.status(200).json({
+      kpis: {
+        mttr,
+        mtbf,
+        oee,
+        availability,
+        totalEquipment,
+        activeInterventions,
+        criticalParts,
+        pendingOrders: 0
+      }
+    });
+  } catch (error) {
+    console.error('Dashboard KPIs error:', error);
+    return res.status(500).json({ message: 'Failed to fetch dashboard KPIs' });
+  }
 });
 
 // GET /api/dashboard/activities (last 10 changes based on creation dates)

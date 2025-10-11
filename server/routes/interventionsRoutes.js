@@ -1,6 +1,7 @@
 const express = require('express');
 const { requireUser } = require('./middleware/auth');
 const { Intervention } = require('../models/Intervention');
+const { Equipment } = require('../models/Equipment');
 
 const router = express.Router();
 
@@ -19,7 +20,19 @@ router.get('/', requireUser, async (req, res) => {
   const skip = (Number(page) - 1) * Number(limit);
   const sortSpec = { [String(sort)]: String(order).toLowerCase() === 'asc' ? 1 : -1 };
   const [items, total] = await Promise.all([
-    Intervention.find(query).sort(sortSpec).skip(skip).limit(Number(limit)).lean(),
+    Intervention.find(query)
+      .sort(sortSpec)
+      .skip(skip)
+      .limit(Number(limit))
+      .populate({
+        path: 'equipmentId',
+        select: 'location status category type',
+        populate: [
+          { path: 'category', select: 'name' },
+          { path: 'type', select: 'name' }
+        ]
+      })
+      .lean(),
     Intervention.countDocuments(query)
   ]);
   return res.status(200).json({ interventions: items, page: Number(page), total });
@@ -28,7 +41,16 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/interventions/:id
 router.get('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
-  const intervention = await Intervention.findById(id).lean();
+  const intervention = await Intervention.findById(id)
+    .populate({
+      path: 'equipmentId',
+      select: 'location status category type',
+      populate: [
+        { path: 'category', select: 'name' },
+        { path: 'type', select: 'name' }
+      ]
+    })
+    .lean();
   if (!intervention) return res.status(404).json({ message: 'Intervention not found' });
   return res.status(200).json({ intervention });
 });
@@ -40,30 +62,86 @@ const interventionSchema = z.object({
   type: z.enum(['Corrective', 'Preventive', 'Emergency']),
   priority: z.enum(['Low', 'Medium', 'High', 'Critical']),
   status: z.enum(['Pending', 'In Progress', 'Completed', 'Cancelled']).optional(),
-  equipment: z.string().min(1),
+  equipment: z.string().min(1).optional(),
+  equipmentId: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid equipmentId').optional(),
   assignedTo: z.string().optional(),
   description: z.string().optional(),
   dueDate: z.coerce.date().optional(),
+}).refine((data) => !!(data.equipment || data.equipmentId), {
+  message: 'Either equipment or equipmentId is required',
+  path: ['equipment']
 });
 
 router.post('/', requireUser, async (req, res) => {
   const parse = interventionSchema.safeParse(req.body || {});
   if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
-  const created = await Intervention.create(parse.data);
-  return res.status(200).json({
-    success: true,
-    message: 'Intervention created successfully',
-    intervention: created
-  });
+
+  const data = { ...parse.data };
+  try {
+    // If equipmentId provided, validate and backfill equipment string
+    if (data.equipmentId) {
+      const eq = await Equipment.findById(data.equipmentId).lean();
+      if (!eq) return res.status(400).json({ message: 'Invalid equipmentId: equipment not found' });
+      if (!data.equipment) {
+        data.equipment = eq.location || `Equipment ${eq._id}`;
+      }
+    }
+
+    const created = await Intervention.create(data);
+    const populated = await Intervention.findById(created._id)
+      .populate({
+        path: 'equipmentId',
+        select: 'location status category type',
+        populate: [
+          { path: 'category', select: 'name' },
+          { path: 'type', select: 'name' }
+        ]
+      })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Intervention created successfully',
+      intervention: populated
+    });
+  } catch (error) {
+    console.error('Create intervention error:', error);
+    return res.status(500).json({ message: error.message || 'Failed to create intervention' });
+  }
 });
 
 // PATCH /api/interventions/:id
 router.patch('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
   const updates = req.body || {};
-  const updated = await Intervention.findByIdAndUpdate(id, updates, { new: true }).lean();
-  if (!updated) return res.status(404).json({ message: 'Intervention not found' });
-  return res.status(200).json({ success: true, intervention: updated });
+  
+  try {
+    // If equipmentId provided, validate and backfill equipment string
+    if (updates.equipmentId) {
+      const eq = await Equipment.findById(updates.equipmentId).lean();
+      if (!eq) return res.status(400).json({ message: 'Invalid equipmentId: equipment not found' });
+      if (!updates.equipment) {
+        updates.equipment = eq.location || `Equipment ${eq._id}`;
+      }
+    }
+
+    const updated = await Intervention.findByIdAndUpdate(id, updates, { new: true })
+      .populate({
+        path: 'equipmentId',
+        select: 'location status category type',
+        populate: [
+          { path: 'category', select: 'name' },
+          { path: 'type', select: 'name' }
+        ]
+      })
+      .lean();
+    
+    if (!updated) return res.status(404).json({ message: 'Intervention not found' });
+    return res.status(200).json({ success: true, intervention: updated });
+  } catch (error) {
+    console.error('Update intervention error:', error);
+    return res.status(500).json({ message: error.message || 'Failed to update intervention' });
+  }
 });
 
 // DELETE /api/interventions/:id

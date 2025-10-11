@@ -19,9 +19,19 @@ export const getInterventionById = async (id: string) => {
 
 // Description: Create a new intervention
 // Endpoint: POST /api/interventions
-// Request: { title: string, type: string, priority: string, equipment: string, description: string }
+// Request: { title: string, type: string, priority: string, equipment?: string, equipmentId?: string, description?: string, assignedTo?: string, dueDate?: string }
 // Response: { success: boolean, message: string, intervention: object }
-export const createIntervention = async (data: { title: string; type: string; priority: string; equipment: string; description: string }) => {
+export const createIntervention = async (data: { 
+  title: string; 
+  type: string; 
+  priority: string; 
+  equipment?: string; 
+  equipmentId?: string; 
+  description?: string; 
+  assignedTo?: string; 
+  dueDate?: string;
+  status?: string;
+}) => {
   const response = await api.post('/api/interventions', data);
   return response.data;
 };
