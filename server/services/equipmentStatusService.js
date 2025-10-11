@@ -13,11 +13,11 @@ class EquipmentStatusService {
    * @param {string} equipmentId - Equipment ID
    * @param {string} newStatus - New status to set
    * @param {string} userId - User making the change
-   * @param {object} options - Additional options (reason, notes, interventionId, metadata)
+   * @param {object} options - Additional options (reason, notes, interventionId, machinistId, metadata)
    * @returns {Promise<object>} Updated equipment and history entry
    */
   static async changeStatus(equipmentId, newStatus, userId, options = {}) {
-    const { reason, notes, interventionId, metadata = {} } = options;
+    const { reason, notes, interventionId, machinistId, metadata = {} } = options;
 
     // Validate equipment exists
     const equipment = await Equipment.findById(equipmentId);
@@ -68,6 +68,7 @@ class EquipmentStatusService {
       reason: reason || '',
       notes: notes || '',
       intervention: interventionId || null,
+      machinist: machinistId || null,
       metadata,
       timestamp: new Date()
     });
@@ -82,6 +83,9 @@ class EquipmentStatusService {
     // Populate the history entry
     await historyEntry.populate('changedBy', 'email role');
     await historyEntry.populate('intervention', 'title type status');
+    if (machinistId) {
+      await historyEntry.populate('machinist', 'matricule firstName lastName fullName');
+    }
 
     // Return updated equipment with populated fields
     const updatedEquipment = await Equipment.findById(equipmentId)

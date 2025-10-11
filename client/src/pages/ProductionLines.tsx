@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { getProductionLines, createProductionLine, updateProductionLine, deleteProductionLine } from "@/api/productionLines"
 import { getProductionSections, createProductionSection, updateProductionSection, updateProductionSectionEquipment } from "@/api/productionSections"
 import { getEquipment, updateEquipment } from "@/api/equipment"
+import { getMachinists } from "@/api/machinists"
 import { EQUIPMENT_STATUSES, getStatusColor as getEquipmentStatusColor, getStatusLabel } from "@/types/equipment"
 import type { EquipmentStatus } from "@/types/equipment"
 import {
@@ -195,6 +196,8 @@ export function ProductionLines() {
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [selectedEquipmentForStatus, setSelectedEquipmentForStatus] = useState<{id: string, currentStatus: string} | null>(null)
   const [newStatus, setNewStatus] = useState<string>("")
+  const [selectedMachinistId, setSelectedMachinistId] = useState<string>("")
+  const [machinists, setMachinists] = useState<any[]>([])
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -445,7 +448,7 @@ export function ProductionLines() {
     }
   }
 
-  const handleStatusClick = (equipmentId: string, currentStatus: string) => {
+  const handleStatusClick = async (equipmentId: string, currentStatus: string) => {
     const availableStatuses = getAvailableStatuses()
     
     if (availableStatuses.length === 0) {
@@ -457,17 +460,41 @@ export function ProductionLines() {
       return
     }
     
+    // Load machinists for production status changes
+    try {
+      const response = await getMachinists({ isActive: true, limit: 100 })
+      setMachinists(response.machinists)
+    } catch (error) {
+      console.error('Failed to load machinists:', error)
+    }
+    
     setSelectedEquipmentForStatus({ id: equipmentId, currentStatus })
     setNewStatus(currentStatus)
+    setSelectedMachinistId("")
     setIsStatusDialogOpen(true)
   }
 
   const handleChangeStatus = async () => {
     if (!selectedEquipmentForStatus || !newStatus) return
     
+    // Validate machinist selection for "In Production" status
+    if (newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId) {
+      toast({ 
+        title: "Machinist Required", 
+        description: "Please select a machinist for production", 
+        variant: "destructive" 
+      })
+      return
+    }
+    
     try {
       setIsSaving(true)
-      await updateEquipment(selectedEquipmentForStatus.id, { status: newStatus as EquipmentStatus })
+      const updateData: any = { status: newStatus as EquipmentStatus }
+      if (selectedMachinistId) {
+        updateData.machinistId = selectedMachinistId
+      }
+      
+      await updateEquipment(selectedEquipmentForStatus.id, updateData)
       
       setIsStatusDialogOpen(false)
       await fetchData()
@@ -855,10 +882,38 @@ export function ProductionLines() {
                   </SelectContent>
                 </Select>
               </div>
+              
+              {/* Machinist Selection - Only show when status is "In Production" */}
+              {newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && (
+                <div className="grid gap-2">
+                  <Label htmlFor="machinist">Machinist <span className="text-red-500">*</span></Label>
+                  <Select value={selectedMachinistId} onValueChange={setSelectedMachinistId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select machinist" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {machinists && machinists.length > 0 ? (
+                        machinists.map((machinist) => (
+                          <SelectItem key={machinist._id} value={machinist._id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{machinist.fullName}</span>
+                              <span className="text-xs text-slate-500">Matricule: {machinist.matricule}</span>
+                            </div>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-4 text-sm text-slate-500 text-center">
+                          No active machinists found
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)} disabled={isSaving}>Cancel</Button>
-              <Button onClick={handleChangeStatus} className="bg-gradient-to-r from-blue-600 to-indigo-600" disabled={isSaving || !newStatus || newStatus === selectedEquipmentForStatus?.currentStatus}>
+              <Button onClick={handleChangeStatus} className="bg-gradient-to-r from-blue-600 to-indigo-600" disabled={isSaving || !newStatus || newStatus === selectedEquipmentForStatus?.currentStatus || (newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId)}>
                 {isSaving ? 'Changing...' : 'Change Status'}
               </Button>
             </DialogFooter>

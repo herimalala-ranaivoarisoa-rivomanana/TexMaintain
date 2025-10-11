@@ -232,20 +232,25 @@ router.delete('/:id', requireUser, requireRole('admin'), async (req, res) => {
 
 // POST /api/equipment/:id/change-status
 // Change equipment status with tracking
-router.post('/:id/change-status', requireUser, requireRole(['admin','maintenance_manager','assistant_maintenance_manager','foreman','mechanic','electrician']), async (req, res) => {
+router.post('/:id/change-status', requireUser, requireRole(['admin','maintenance_manager','assistant_maintenance_manager','foreman','mechanic','electrician','production_manager','line_manager']), async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, reason, notes, interventionId } = req.body;
+    const { status, reason, notes, interventionId, machinistId } = req.body;
 
     if (!status) {
       return res.status(400).json({ message: 'Status is required' });
+    }
+
+    // If status is "in_production", machinistId is required
+    if (status === 'in_production' && !machinistId) {
+      return res.status(400).json({ message: 'Machinist is required when setting equipment to In Production' });
     }
 
     const result = await EquipmentStatusService.changeStatus(
       id,
       status,
       req.user._id,
-      { reason, notes, interventionId }
+      { reason, notes, interventionId, machinistId }
     );
 
     return res.status(200).json({

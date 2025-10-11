@@ -200,6 +200,11 @@ const equipmentStatusHistorySchema = new mongoose.Schema({
     ref: 'Intervention',
     required: false
   },
+  machinist: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Machinist',
+    required: false
+  },
   duration: {
     type: Number, // Duration in minutes (calculated when status changes again)
     default: null

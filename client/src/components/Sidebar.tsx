@@ -17,7 +17,8 @@ import {
   Factory,
   Tags,
   Layers,
-  Workflow
+  Workflow,
+  UserCog
 } from "lucide-react"
 
 const navigation = [
@@ -26,6 +27,7 @@ const navigation = [
   { name: "Equipment Categories", href: "/equipment-categories", icon: Tags },
   { name: "Equipment Types", href: "/equipment-types", icon: Layers },
   { name: "Production Lines", href: "/production-lines", icon: Workflow },
+  { name: "Machinists", href: "/machinists", icon: UserCog },
   { name: "Brands", href: "/brands", icon: Factory },
   { name: "Interventions", href: "/interventions", icon: Wrench },
   { name: "Inventory", href: "/inventory", icon: Package },
