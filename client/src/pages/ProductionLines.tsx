@@ -54,6 +54,9 @@ interface ProductionLine {
           category: { name: string }
           type: { name: string }
           status: string
+          location: string
+          model?: string
+          brand?: string
         }
         order: number
       }>
@@ -78,10 +81,13 @@ interface ProductionSection {
 
 interface Equipment {
   _id: string
-  name: string
+  name?: string
   category: { name: string }
   type: { name: string }
   status: string
+  location: string
+  model?: string
+  brand?: string
 }
 
 interface SortableEquipmentProps {
@@ -92,6 +98,9 @@ interface SortableEquipmentProps {
       category: { name: string }
       type: { name: string }
       status: string
+      location: string
+      model?: string
+      brand?: string
     }
   }
   onDelete: () => void
@@ -101,20 +110,47 @@ function SortableEquipment({ id, equipment, onDelete }: SortableEquipmentProps) 
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
   const style = transform ? { transform: CSS.Transform.toString(transform), transition } : undefined
 
+  const eq = equipment.equipmentId
+  
+  // Build equipment name: Brand Model or Category Type
+  const equipmentName = eq.brand && eq.model 
+    ? `${eq.brand} ${eq.model}`
+    : `${eq.category?.name} ${eq.type?.name}`
+  
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-2 p-2 bg-slate-50 rounded border">
-      <div {...attributes} {...listeners} className="cursor-grab flex-shrink-0">
-        <GripVertical className="h-3 w-3 text-slate-400" />
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className="group relative flex items-center gap-2 px-3 py-2.5 bg-white rounded-md border border-slate-200 hover:border-blue-400 hover:bg-blue-50/30 transition-colors"
+    >
+      {/* Status Badge - Top Right Corner */}
+      <Badge className={`absolute -top-2 -right-2 ${getEquipmentStatusColor(eq.status as EquipmentStatus)} text-white text-[9px] px-2 py-0.5 shadow-md border border-white`}>
+        {getStatusLabel(eq.status as EquipmentStatus)}
+      </Badge>
+      
+      <div 
+        {...attributes} 
+        {...listeners} 
+        className="cursor-grab active:cursor-grabbing flex-shrink-0"
+      >
+        <GripVertical className="h-3.5 w-3.5 text-slate-400" />
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">
-          {equipment.equipmentId.category?.name} - {equipment.equipmentId.type?.name}
+      
+      <div className="flex-1 min-w-0 pr-2">
+        <p className="text-sm font-semibold text-slate-900">
+          {equipmentName}
+        </p>
+        <p className="text-xs text-slate-500">
+          {eq.type?.name}
         </p>
       </div>
-      <Badge className={`${getEquipmentStatusColor(equipment.equipmentId.status as EquipmentStatus)} text-white text-xs`}>
-        {getStatusLabel(equipment.equipmentId.status as EquipmentStatus)}
-      </Badge>
-      <Button variant="ghost" size="sm" onClick={onDelete} className="h-6 w-6 p-0 text-red-500 hover:text-red-700">
+      
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        onClick={onDelete} 
+        className="absolute top-1/2 -translate-y-1/2 right-1 h-6 w-6 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
         <Trash className="h-3 w-3" />
       </Button>
     </div>
@@ -600,12 +636,21 @@ export function ProductionLines() {
                   <SelectTrigger>
                     <SelectValue placeholder="Choose equipment to add" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {equipment.filter((eq) => !sections.some((s) => s.equipment.some((e) => e.equipmentId._id === eq._id))).map((eq) => (
-                      <SelectItem key={eq._id} value={eq._id}>
-                        {eq.category?.name} - {eq.type?.name} ({eq.status})
-                      </SelectItem>
-                    ))}
+                  <SelectContent className="max-h-[400px]">
+                    {equipment.filter((eq) => !sections.some((s) => s.equipment.some((e) => e.equipmentId._id === eq._id))).map((eq) => {
+                      const equipmentName = eq.brand && eq.model 
+                        ? `${eq.brand} ${eq.model}`
+                        : `${eq.category?.name} ${eq.type?.name}`
+                      
+                      return (
+                        <SelectItem key={eq._id} value={eq._id} className="py-2.5">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-semibold text-sm">{equipmentName}</span>
+                            <span className="text-xs text-slate-500">{eq.type?.name}</span>
+                          </div>
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
               </div>
