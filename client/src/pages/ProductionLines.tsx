@@ -16,6 +16,7 @@ import {
   Trash
 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
+import { useAuth } from "@/contexts/AuthContext"
 import { getProductionLines, createProductionLine, updateProductionLine, deleteProductionLine } from "@/api/productionLines"
 import { getProductionSections, createProductionSection, updateProductionSection, updateProductionSectionEquipment } from "@/api/productionSections"
 import { getEquipment, updateEquipment } from "@/api/equipment"
@@ -104,9 +105,10 @@ interface SortableEquipmentProps {
     }
   }
   onDelete: () => void
+  onStatusClick: () => void
 }
 
-function SortableEquipment({ id, equipment, onDelete }: SortableEquipmentProps) {
+function SortableEquipment({ id, equipment, onDelete, onStatusClick }: SortableEquipmentProps) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
   const style = transform ? { transform: CSS.Transform.toString(transform), transition } : undefined
 
@@ -123,8 +125,14 @@ function SortableEquipment({ id, equipment, onDelete }: SortableEquipmentProps) 
       style={style} 
       className="group relative flex items-center gap-2 px-3 py-2.5 bg-white rounded-md border border-slate-200 hover:border-blue-400 hover:bg-blue-50/30 transition-colors"
     >
-      {/* Status Badge - Top Right Corner */}
-      <Badge className={`absolute -top-2 -right-2 ${getEquipmentStatusColor(eq.status as EquipmentStatus)} text-white text-[9px] px-2 py-0.5 shadow-md border border-white`}>
+      {/* Status Badge - Top Right Corner - Clickable */}
+      <Badge 
+        className={`absolute -top-2 -right-2 ${getEquipmentStatusColor(eq.status as EquipmentStatus)} text-white text-[9px] px-2 py-0.5 shadow-md border border-white cursor-pointer hover:scale-110 transition-transform`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onStatusClick();
+        }}
+      >
         {getStatusLabel(eq.status as EquipmentStatus)}
       </Badge>
       
@@ -184,12 +192,42 @@ export function ProductionLines() {
     order: 0
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
+  const [selectedEquipmentForStatus, setSelectedEquipmentForStatus] = useState<{id: string, currentStatus: string} | null>(null)
+  const [newStatus, setNewStatus] = useState<string>("")
   const { toast } = useToast()
+  const { user } = useAuth()
 
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor)
   )
+  
+  // Get available statuses based on user role
+  const getAvailableStatuses = (): EquipmentStatus[] => {
+    const productionRoles = ['production_manager', 'line_manager', 'foreman']
+    const maintenanceRoles = ['admin', 'maintenance_manager', 'mechanic', 'electrician', 'general_maintenance_agent', 'assistant_maintenance_manager']
+    
+    if (!user) return []
+    
+    // Production roles can only change production statuses
+    if (productionRoles.includes(user.role)) {
+      return [
+        EQUIPMENT_STATUSES.IN_PRODUCTION,
+        EQUIPMENT_STATUSES.SETUP_ADJUSTMENT,
+        EQUIPMENT_STATUSES.PAUSED_BY_OPERATOR,
+        EQUIPMENT_STATUSES.CHANGEOVER
+      ]
+    }
+    
+    // Maintenance roles can change all statuses
+    if (maintenanceRoles.includes(user.role)) {
+      return Object.values(EQUIPMENT_STATUSES)
+    }
+    
+    // Other roles have no permission
+    return []
+  }
 
   useEffect(() => {
     fetchData()
@@ -407,6 +445,50 @@ export function ProductionLines() {
     }
   }
 
+  const handleStatusClick = (equipmentId: string, currentStatus: string) => {
+    const availableStatuses = getAvailableStatuses()
+    
+    if (availableStatuses.length === 0) {
+      toast({ 
+        title: "Permission Denied", 
+        description: "You don't have permission to change equipment status", 
+        variant: "destructive" 
+      })
+      return
+    }
+    
+    setSelectedEquipmentForStatus({ id: equipmentId, currentStatus })
+    setNewStatus(currentStatus)
+    setIsStatusDialogOpen(true)
+  }
+
+  const handleChangeStatus = async () => {
+    if (!selectedEquipmentForStatus || !newStatus) return
+    
+    try {
+      setIsSaving(true)
+      await updateEquipment(selectedEquipmentForStatus.id, { status: newStatus as EquipmentStatus })
+      
+      setIsStatusDialogOpen(false)
+      await fetchData()
+      
+      toast({ 
+        title: "Status Updated", 
+        description: `Equipment status changed to ${getStatusLabel(newStatus as EquipmentStatus)}` 
+      })
+    } catch (error: any) {
+      console.error('Change status error:', error)
+      const errorMessage = error.response?.data?.message || error.message || 'Unknown error'
+      toast({ 
+        title: "Error", 
+        description: `Failed to change status: ${errorMessage}`, 
+        variant: "destructive" 
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const handleDeleteLine = async (id: string) => {
     try {
       await deleteProductionLine(id)
@@ -578,6 +660,7 @@ export function ProductionLines() {
                             id={`equipment-${section._id}-${equipmentWrapper.equipmentId._id}`}
                             equipment={equipmentWrapper}
                             onDelete={() => handleDeleteEquipment(section._id, equipmentWrapper.equipmentId._id)}
+                            onStatusClick={() => handleStatusClick(equipmentWrapper.equipmentId._id, equipmentWrapper.equipmentId.status)}
                           />
                         ))}
                         {sortedEquipment.length === 0 && (
@@ -669,6 +752,114 @@ export function ProductionLines() {
               <Button variant="outline" onClick={() => setIsEquipmentDialogOpen(false)} disabled={isSaving}>Cancel</Button>
               <Button onClick={handleSaveEquipment} className="bg-gradient-to-r from-blue-600 to-indigo-600" disabled={isSaving || !equipmentForm.equipmentId}>
                 {isSaving ? 'Adding...' : 'Add Equipment'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Change Status Dialog */}
+        <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+          <DialogContent className="sm:max-w-[500px] bg-white">
+            <DialogHeader>
+              <DialogTitle>Change Equipment Status</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Current Status</Label>
+                <div className="flex items-center gap-2">
+                  <Badge className={`${getEquipmentStatusColor(selectedEquipmentForStatus?.currentStatus as EquipmentStatus)} text-white`}>
+                    {getStatusLabel(selectedEquipmentForStatus?.currentStatus as EquipmentStatus)}
+                  </Badge>
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="newStatus">New Status</Label>
+                <Select value={newStatus} onValueChange={setNewStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select new status" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[400px]">
+                    {user?.role && ['production_manager', 'line_manager', 'foreman'].includes(user.role) && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-green-700 bg-green-50 border-b border-green-200">
+                          🟢 PRODUCTION
+                        </div>
+                        {getAvailableStatuses().map((status) => (
+                          <SelectItem key={status} value={status} className="pl-6 bg-green-50/30 hover:bg-green-100">
+                            {getStatusLabel(status)}
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                    
+                    {user?.role && ['admin', 'maintenance_manager', 'mechanic', 'electrician', 'general_maintenance_agent', 'assistant_maintenance_manager'].includes(user.role) && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-green-700 bg-green-50 border-b border-green-200">
+                          🟢 PRODUCTION
+                        </div>
+                        <SelectItem value={EQUIPMENT_STATUSES.IN_PRODUCTION} className="pl-6 bg-green-50/30 hover:bg-green-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.IN_PRODUCTION)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.SETUP_ADJUSTMENT} className="pl-6 bg-green-50/30 hover:bg-green-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.SETUP_ADJUSTMENT)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.PAUSED_BY_OPERATOR} className="pl-6 bg-green-50/30 hover:bg-green-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.PAUSED_BY_OPERATOR)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.CHANGEOVER} className="pl-6 bg-green-50/30 hover:bg-green-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.CHANGEOVER)}
+                        </SelectItem>
+                        
+                        <div className="px-2 py-1.5 text-xs font-semibold text-orange-700 bg-orange-50 border-b border-orange-200 mt-1">
+                          🟠 MAINTENANCE
+                        </div>
+                        <SelectItem value={EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.BREAKDOWN} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.BREAKDOWN)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.UNDER_REPAIR} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.UNDER_REPAIR)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.IN_WORKSHOP} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.IN_WORKSHOP)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.WAITING_SPARE_PARTS} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.WAITING_SPARE_PARTS)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.TESTING_AFTER_REPAIR} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.TESTING_AFTER_REPAIR)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.UNDER_INSPECTION} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.UNDER_INSPECTION)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.PENDING_VALIDATION} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.PENDING_VALIDATION)}
+                        </SelectItem>
+                        
+                        <div className="px-2 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border-b border-gray-200 mt-1">
+                          ⚫ OUT OF SERVICE
+                        </div>
+                        <SelectItem value={EQUIPMENT_STATUSES.STORED} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.STORED)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.OFFLINE} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.OFFLINE)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.SCRAPPED} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.SCRAPPED)}
+                        </SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)} disabled={isSaving}>Cancel</Button>
+              <Button onClick={handleChangeStatus} className="bg-gradient-to-r from-blue-600 to-indigo-600" disabled={isSaving || !newStatus || newStatus === selectedEquipmentForStatus?.currentStatus}>
+                {isSaving ? 'Changing...' : 'Change Status'}
               </Button>
             </DialogFooter>
           </DialogContent>
