@@ -193,7 +193,7 @@ export default function Machinists() {
 
           {isLoading ? (
             <div className="text-center py-8 text-slate-500">Loading...</div>
-          ) : filteredMachinists.length === 0 ? (
+          ) : filteredMachinists?.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
               No machinists found. Click "Add Machinist" to create one.
             </div>
@@ -211,7 +211,7 @@ export default function Machinists() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredMachinists.map((machinist) => (
+                  {filteredMachinists?.map((machinist) => (
                     <TableRow key={machinist._id}>
                       <TableCell className="font-medium">{machinist.matricule}</TableCell>
                       <TableCell>{machinist.firstName}</TableCell>

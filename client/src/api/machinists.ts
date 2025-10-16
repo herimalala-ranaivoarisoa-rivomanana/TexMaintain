@@ -33,25 +33,25 @@ export interface GetMachinistsResponse {
 }
 
 export const getMachinists = async (params?: GetMachinistsParams): Promise<GetMachinistsResponse> => {
-  const response = await api.get('/machinists', { params });
+  const response = await api.get('/api/machinists', { params });
   return response.data;
 };
 
 export const getMachinist = async (id: string): Promise<Machinist> => {
-  const response = await api.get(`/machinists/${id}`);
+  const response = await api.get(`/api/machinists/${id}`);
   return response.data;
 };
 
 export const createMachinist = async (data: MachinistFormData): Promise<Machinist> => {
-  const response = await api.post('/machinists', data);
+  const response = await api.post('/api/machinists', data);
   return response.data;
 };
 
 export const updateMachinist = async (id: string, data: Partial<MachinistFormData>): Promise<Machinist> => {
-  const response = await api.put(`/machinists/${id}`, data);
+  const response = await api.put(`/api/machinists/${id}`, data);
   return response.data;
 };
 
 export const deleteMachinist = async (id: string): Promise<void> => {
-  await api.delete(`/machinists/${id}`);
+  await api.delete(`/api/machinists/${id}`);
 };

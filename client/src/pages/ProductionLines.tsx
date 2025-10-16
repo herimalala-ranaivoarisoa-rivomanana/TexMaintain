@@ -219,7 +219,9 @@ export function ProductionLines() {
         EQUIPMENT_STATUSES.IN_PRODUCTION,
         EQUIPMENT_STATUSES.SETUP_ADJUSTMENT,
         EQUIPMENT_STATUSES.PAUSED_BY_OPERATOR,
-        EQUIPMENT_STATUSES.CHANGEOVER
+        EQUIPMENT_STATUSES.CHANGEOVER,
+        EQUIPMENT_STATUSES.BREAKDOWN,
+        EQUIPMENT_STATUSES.OFFLINE
       ]
     }
     
@@ -437,7 +439,7 @@ export function ProductionLines() {
         }))
         await updateProductionSectionEquipment(sectionId, updatedEquipment)
         // Update equipment status back to offline when removed from section
-        await updateEquipment(equipmentId, { status: EQUIPMENT_STATUSES.OFFLINE })
+        await updateEquipment(equipmentId, { status: EQUIPMENT_STATUSES.STORED })
         const newEquipment = currentSection.equipment.filter(e => e.equipmentId._id !== equipmentId).map((e, idx) => ({ ...e, order: idx }))
         setSections(sections.map(s => s._id === sectionId ? { ...s, equipment: newEquipment } : s))
         setSelectedLine(prev => prev ? { ...prev, sections: prev.sections.map(s => s.sectionId._id === sectionId ? { ...s, sectionId: { ...s.sectionId, equipment: newEquipment } } : s) } : null)
@@ -836,15 +838,18 @@ export function ProductionLines() {
                         <SelectItem value={EQUIPMENT_STATUSES.CHANGEOVER} className="pl-6 bg-green-50/30 hover:bg-green-100">
                           {getStatusLabel(EQUIPMENT_STATUSES.CHANGEOVER)}
                         </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.BREAKDOWN} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.BREAKDOWN)}
+                        </SelectItem>
+                        <SelectItem value={EQUIPMENT_STATUSES.OFFLINE} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
+                          {getStatusLabel(EQUIPMENT_STATUSES.OFFLINE)}
+                        </SelectItem>
                         
                         <div className="px-2 py-1.5 text-xs font-semibold text-orange-700 bg-orange-50 border-b border-orange-200 mt-1">
                           🟠 MAINTENANCE
                         </div>
                         <SelectItem value={EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
                           {getStatusLabel(EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE)}
-                        </SelectItem>
-                        <SelectItem value={EQUIPMENT_STATUSES.BREAKDOWN} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
-                          {getStatusLabel(EQUIPMENT_STATUSES.BREAKDOWN)}
                         </SelectItem>
                         <SelectItem value={EQUIPMENT_STATUSES.UNDER_REPAIR} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
                           {getStatusLabel(EQUIPMENT_STATUSES.UNDER_REPAIR)}
@@ -870,9 +875,6 @@ export function ProductionLines() {
                         </div>
                         <SelectItem value={EQUIPMENT_STATUSES.STORED} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
                           {getStatusLabel(EQUIPMENT_STATUSES.STORED)}
-                        </SelectItem>
-                        <SelectItem value={EQUIPMENT_STATUSES.OFFLINE} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
-                          {getStatusLabel(EQUIPMENT_STATUSES.OFFLINE)}
                         </SelectItem>
                         <SelectItem value={EQUIPMENT_STATUSES.SCRAPPED} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
                           {getStatusLabel(EQUIPMENT_STATUSES.SCRAPPED)}

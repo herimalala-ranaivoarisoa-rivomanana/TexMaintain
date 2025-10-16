@@ -172,7 +172,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
 });
 
 // PATCH /api/equipment/:id
-router.patch('/:id', requireUser, requireRole(['admin','maintenance_manager','assistant_maintenance_manager','foreman']), async (req, res) => {
+router.patch('/:id', requireUser, requireRole(['admin','maintenance_manager','assistant_maintenance_manager','line_manager']), async (req, res) => {
   try {
     const { id } = req.params;
     const updates = (req.body || {});

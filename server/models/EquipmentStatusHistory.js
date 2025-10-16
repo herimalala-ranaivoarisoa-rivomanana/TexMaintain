@@ -17,10 +17,11 @@ const EQUIPMENT_STATUSES = {
   SETUP_ADJUSTMENT: 'setup_adjustment',
   PAUSED_BY_OPERATOR: 'paused_by_operator',
   CHANGEOVER: 'changeover',
+  BREAKDOWN: 'breakdown',
+  OFFLINE: 'offline',
   
   // Maintenance States
   SCHEDULED_MAINTENANCE: 'scheduled_maintenance',
-  BREAKDOWN: 'breakdown',
   UNDER_REPAIR: 'under_repair',
   IN_WORKSHOP: 'in_workshop',
   WAITING_SPARE_PARTS: 'waiting_spare_parts',
@@ -30,7 +31,6 @@ const EQUIPMENT_STATUSES = {
   
   // Out of Service States
   STORED: 'stored',
-  OFFLINE: 'offline',
   SCRAPPED: 'scrapped'
 };
 
@@ -43,7 +43,7 @@ const STATUS_METADATA = {
     color: 'green',
     icon: 'play',
     description: 'Equipment is actively producing',
-    allowedTransitions: ['setup_adjustment', 'paused_by_operator', 'changeover', 'breakdown', 'scheduled_maintenance']
+    allowedTransitions: ['setup_adjustment', 'paused_by_operator', 'changeover', 'breakdown', 'scheduled_maintenance', 'offline', 'stored']
   },
   setup_adjustment: {
     label: 'Setup/Adjustment',
@@ -51,7 +51,7 @@ const STATUS_METADATA = {
     color: 'blue',
     icon: 'settings',
     description: 'Equipment being set up or adjusted before production',
-    allowedTransitions: ['in_production', 'breakdown', 'scheduled_maintenance']
+    allowedTransitions: ['in_production', 'breakdown', 'scheduled_maintenance','offline', 'stored']
   },
   paused_by_operator: {
     label: 'Paused by Operator',
@@ -59,7 +59,7 @@ const STATUS_METADATA = {
     color: 'yellow',
     icon: 'pause',
     description: 'Temporarily paused by operator',
-    allowedTransitions: ['in_production', 'changeover', 'breakdown', 'offline']
+    allowedTransitions: ['in_production', 'changeover','offline', 'stored']
   },
   changeover: {
     label: 'Changeover',
@@ -67,7 +67,7 @@ const STATUS_METADATA = {
     color: 'blue',
     icon: 'refresh',
     description: 'Changing product series or configuration',
-    allowedTransitions: ['setup_adjustment', 'in_production', 'breakdown']
+    allowedTransitions: ['setup_adjustment', 'in_production', 'breakdown', 'scheduled_maintenance', 'offline', 'stored']
   },
   
   // Maintenance States
@@ -77,7 +77,8 @@ const STATUS_METADATA = {
     color: 'orange',
     icon: 'calendar',
     description: 'Preventive maintenance in progress',
-    allowedTransitions: ['testing_after_repair', 'pending_validation', 'in_production', 'under_repair']
+    //allowedTransitions: ['testing_after_repair', 'pending_validation', 'in_production', 'under_repair']
+    allowedTransitions: ['in_production', 'offine', 'stored']
   },
   breakdown: {
     label: 'Breakdown',
@@ -93,7 +94,7 @@ const STATUS_METADATA = {
     color: 'red',
     icon: 'wrench',
     description: 'Equipment is being repaired',
-    allowedTransitions: ['waiting_spare_parts', 'testing_after_repair', 'in_workshop', 'pending_validation']
+    allowedTransitions: ['in_workshop', 'in_production', 'offline']
   },
   in_workshop: {
     label: 'In Workshop',
@@ -101,7 +102,7 @@ const STATUS_METADATA = {
     color: 'red',
     icon: 'tool',
     description: 'Equipment moved to workshop for repair',
-    allowedTransitions: ['under_repair', 'waiting_spare_parts', 'testing_after_repair', 'scrapped']
+    allowedTransitions: ['waiting_spare_parts', 'testing_after_repair','in_production','stored', 'scrapped']
   },
   waiting_spare_parts: {
     label: 'Waiting Spare Parts',
@@ -151,7 +152,7 @@ const STATUS_METADATA = {
     color: 'gray',
     icon: 'power',
     description: 'Equipment temporarily not in use',
-    allowedTransitions: ['stored', 'setup_adjustment', 'scheduled_maintenance', 'scrapped']
+    allowedTransitions: ['in_production','stored', 'setup_adjustment', 'scheduled_maintenance', 'scrapped']
   },
   scrapped: {
     label: 'Scrapped',

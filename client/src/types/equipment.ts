@@ -6,6 +6,7 @@ export const EQUIPMENT_STATUSES = {
   SETUP_ADJUSTMENT: 'setup_adjustment',
   PAUSED_BY_OPERATOR: 'paused_by_operator',
   CHANGEOVER: 'changeover',
+  OFFLINE: 'offline',
   
   // Maintenance States
   SCHEDULED_MAINTENANCE: 'scheduled_maintenance',
@@ -19,7 +20,6 @@ export const EQUIPMENT_STATUSES = {
   
   // Out of Service States
   STORED: 'stored',
-  OFFLINE: 'offline',
   SCRAPPED: 'scrapped'
 } as const;
 

@@ -95,7 +95,7 @@ export function Equipment() {
   }>({
     category: "",
     type: "",
-    status: EQUIPMENT_STATUSES.OFFLINE,
+    status: EQUIPMENT_STATUSES.STORED,
     location: "",
     model: "",
     serialNumber: "",
@@ -193,7 +193,7 @@ export function Equipment() {
 
   const openAddDialog = () => {
     setEditingItem(null)
-    setForm({ category: "cutting", type: "", status: EQUIPMENT_STATUSES.OFFLINE, location: "", model: "", serialNumber: "", chipNumber: "", brand: "", installationDate: "" })
+    setForm({ category: "cutting", type: "", status: EQUIPMENT_STATUSES.STORED, location: "", model: "", serialNumber: "", chipNumber: "", brand: "", installationDate: "" })
     setIsDialogOpen(true)
   }
 
@@ -639,6 +639,9 @@ export function Equipment() {
                   <SelectItem value={EQUIPMENT_STATUSES.CHANGEOVER} className="pl-6 bg-green-50/30 hover:bg-green-100">
                     Changeover
                   </SelectItem>
+                  <SelectItem value={EQUIPMENT_STATUSES.OFFLINE} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
+                    Offline
+                  </SelectItem>
                   
                   {/* Maintenance Status - Orange background */}
                   <div className="px-2 py-1.5 text-xs font-semibold text-orange-700 bg-orange-50 border-b border-orange-200 mt-1">
@@ -675,9 +678,6 @@ export function Equipment() {
                   </div>
                   <SelectItem value={EQUIPMENT_STATUSES.STORED} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
                     Stored
-                  </SelectItem>
-                  <SelectItem value={EQUIPMENT_STATUSES.OFFLINE} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
-                    Offline
                   </SelectItem>
                   <SelectItem value={EQUIPMENT_STATUSES.SCRAPPED} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
                     Scrapped

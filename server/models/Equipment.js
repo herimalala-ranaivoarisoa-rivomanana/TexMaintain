@@ -25,7 +25,7 @@ const schema = new mongoose.Schema({
     type: String,
     required: true,
     enum: Object.values(EQUIPMENT_STATUSES),
-    default: EQUIPMENT_STATUSES.OFFLINE,
+    default: EQUIPMENT_STATUSES.STORED,
   },
   statusCategory: {
     type: String,
