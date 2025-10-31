@@ -18,7 +18,10 @@ import {
   Tags,
   Layers,
   Workflow,
-  UserCog
+  UserCog,
+  Zap,
+  HardHat,
+  ClipboardCheck
 } from "lucide-react"
 
 const navigation = [
@@ -28,8 +31,11 @@ const navigation = [
   { name: "Equipment Types", href: "/equipment-types", icon: Layers },
   { name: "Production Lines", href: "/production-lines", icon: Workflow },
   { name: "Machinists", href: "/machinists", icon: UserCog },
+  { name: "Mechanics", href: "/mechanics", icon: Wrench },
+  { name: "Electricians", href: "/electricians", icon: Zap },
+  { name: "General Maintenance Workers", href: "/maintenance-workers", icon: HardHat },
   { name: "Brands", href: "/brands", icon: Factory },
-  { name: "Interventions", href: "/interventions", icon: Wrench },
+  { name: "Interventions", href: "/interventions", icon: ClipboardCheck },
   { name: "Inventory", href: "/inventory", icon: Package },
   { name: "Procurement", href: "/procurement", icon: ShoppingCart },
   { name: "Projects", href: "/projects", icon: FolderOpen },

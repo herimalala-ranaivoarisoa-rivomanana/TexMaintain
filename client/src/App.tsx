@@ -23,6 +23,9 @@ import EquipmentTypesPageWrapper from "./pages/EquipmentTypes"
 import BrandsPageWrapper from "./pages/Brands"
 import ProductionLinesPageWrapper from "./pages/ProductionLines"
 import Machinists from "./pages/Machinists"
+import Mechanics from "./pages/Mechanics"
+import Electricians from "./pages/Electricians"
+import MaintenanceWorkers from "./pages/MaintenanceWorkers"
 import { EquipmentParts } from "./pages/EquipmentParts"
 import { EquipmentInterventions } from "./pages/EquipmentInterventions"
 import { EquipmentConsumables } from "./pages/EquipmentConsumables"
@@ -47,6 +50,9 @@ function App() {
               <Route path="brands" element={<BrandsPageWrapper />} />
               <Route path="production-lines" element={<ProductionLinesPageWrapper />} />
               <Route path="machinists" element={<Machinists />} />
+              <Route path="mechanics" element={<Mechanics />} />
+              <Route path="electricians" element={<Electricians />} />
+              <Route path="maintenance-workers" element={<MaintenanceWorkers />} />
               <Route path="interventions" element={<Interventions />} />
               <Route path="interventions/:id" element={<InterventionDetailWrapper />} />
               <Route path="inventory" element={<Inventory />} />
