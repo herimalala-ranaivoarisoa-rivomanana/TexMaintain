@@ -2,7 +2,7 @@ const express = require('express');
 const { requireUser, requireRole } = require('./middleware/auth');
 const { Equipment, EQUIPMENT_STATUSES } = require('../models/Equipment');
 const { Intervention } = require('../models/Intervention');
-const { STATUS_METADATA } = require('../models/EquipmentStatusHistory');
+const { STATUS_METADATA, EquipmentStatusHistory } = require('../models/EquipmentStatusHistory');
 const EquipmentStatusService = require('../services/equipmentStatusService');
 const { z } = require('zod');
 const EquipmentPartsService = require('../services/equipmentPartsService');
@@ -328,18 +328,26 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
     const parse = equipmentSchema.safeParse(req.body || {});
     if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
     
-    const created = await Equipment.create({
+    // Transform empty strings to undefined for ObjectId fields
+    const equipmentData = {
       ...parse.data,
-      lastStatusChangedBy: req.user._id
-    });
+      brand: parse.data.brand && parse.data.brand.trim() !== '' ? parse.data.brand : undefined,
+      lastStatusChangedBy: req.user._id,
+      lastStatusChange: new Date()
+    };
     
-    // Create initial status history entry
-    await EquipmentStatusService.changeStatus(
-      created._id,
-      created.status,
-      req.user._id,
-      { reason: 'Initial equipment creation', notes: 'Equipment added to system' }
-    );
+    const created = await Equipment.create(equipmentData);
+    
+    // Create initial status history entry (without validation since it's the first status)
+    await EquipmentStatusHistory.create({
+      equipment: created._id,
+      previousStatus: null,
+      newStatus: created.status,
+      changedBy: req.user._id,
+      reason: 'Initial equipment creation',
+      notes: 'Equipment added to system',
+      timestamp: new Date()
+    });
     
     const populated = await Equipment.findById(created._id)
       .populate('category')

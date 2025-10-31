@@ -40,7 +40,7 @@ interface Equipment {
   model?: string
   serialNumber?: string
   chipNumber?: string
-  brand?: string
+  brand?: string | { _id: string; name: string }
   acquisitionDate?: string
   lastMaintenance: string
   nextMaintenance: string
@@ -202,7 +202,8 @@ export function Equipment() {
 
   const openEditDialog = (item: Equipment) => {
     setEditingItem(item)
-    setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, model: item.model || "", serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: item.brand || "", acquisitionDate: item.acquisitionDate ? new Date(item.acquisitionDate).toISOString().split('T')[0] : "" })
+    const brandId = typeof item.brand === 'object' && item.brand ? item.brand._id : (item.brand || "")
+    setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, model: item.model || "", serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: brandId, acquisitionDate: item.acquisitionDate ? new Date(item.acquisitionDate).toISOString().split('T')[0] : "" })
     setIsDialogOpen(true)
   }
 
@@ -741,7 +742,7 @@ export function Equipment() {
                 </SelectTrigger>
                 <SelectContent>
                   {brands.map((brand) => (
-                    <SelectItem key={brand._id} value={brand.name}>
+                    <SelectItem key={brand._id} value={brand._id}>
                       {brand.name}
                     </SelectItem>
                   ))}

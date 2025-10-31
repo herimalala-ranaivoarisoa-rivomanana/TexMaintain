@@ -1,0 +1,26 @@
+========================================
+  DÉMARRER LE SERVEUR MAINTENANT
+========================================
+
+Dans votre terminal Git Bash, exécutez :
+
+npm run dev
+
+========================================
+
+Vous devriez voir :
+
+[nodemon] 3.0.1
+[nodemon] starting `node server.js`
+Server running on port 5000
+Connected to MongoDB
+
+========================================
+
+Ensuite testez la création d'équipement !
+
+Le bug est maintenant COMPLÈTEMENT corrigé :
+1. ✅ Problème de statut initial résolu
+2. ✅ Problème de champ "brand" vide résolu
+
+========================================

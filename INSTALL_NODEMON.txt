@@ -1,0 +1,27 @@
+========================================
+  INSTALLATION DE NODEMON
+========================================
+
+Vous êtes dans Git Bash (MINGW64) - PARFAIT !
+
+COPIEZ ET COLLEZ CETTE COMMANDE :
+
+npm install
+
+Puis après l'installation :
+
+npm run dev
+
+========================================
+
+Si ça ne fonctionne pas, essayez :
+
+npx nodemon server.js
+
+========================================
+
+ALTERNATIVE : Utiliser node directement (sans nodemon)
+
+npm run dev:plain
+
+========================================
