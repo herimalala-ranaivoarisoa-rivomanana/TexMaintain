@@ -23,7 +23,39 @@ const productionSectionSchema = new mongoose.Schema({
     order: {
       type: Number,
       default: 0
-    }
+    },
+    breakdown:[{
+      lastBreakDown: {
+        type: Date,
+      },
+      startOfRepair: {
+        type: Date,
+      },
+      endOfRepair: {
+        type: Date,
+      },
+    }],
+
+    TimeSinceInsertion:{
+      type: Number,
+      default: 0
+    },
+    downTime:{
+      type: Number,
+      default: 0
+    },
+    workingTime:{
+      type: Number,
+      default: 0
+    },
+    mtbf: {
+      type: Number, // Mean Time Between Failures (hours)
+      default: 0,
+    },
+    mttr: {
+      type: Number, // Mean Time To Repair (hours)
+      default: 0,
+    },
   }],
   order: {
     type: Number,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams, Link, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,9 +18,11 @@ import {
   MapPin,
   Calendar,
   Pencil,
-  Trash
+  Trash,
+  History,
+  Package,
+  Droplet
 } from "lucide-react"
-import { Link } from "react-router-dom"
 import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from "@/api/equipment"
 import { getBrands } from "@/api/brands"
 import api from "@/api/api"
@@ -39,7 +41,7 @@ interface Equipment {
   serialNumber?: string
   chipNumber?: string
   brand?: string
-  installationDate?: string
+  acquisitionDate?: string
   lastMaintenance: string
   nextMaintenance: string
   mtbf: number
@@ -91,7 +93,7 @@ export function Equipment() {
     serialNumber: string;
     chipNumber: string;
     brand: string;
-    installationDate: string;
+    acquisitionDate: string;
   }>({
     category: "",
     type: "",
@@ -101,11 +103,12 @@ export function Equipment() {
     serialNumber: "",
     chipNumber: "",
     brand: "",
-    installationDate: ""
+    acquisitionDate: ""
   })
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   // Fetch categories, types, brands, and sections on mount
   useEffect(() => {
@@ -193,13 +196,13 @@ export function Equipment() {
 
   const openAddDialog = () => {
     setEditingItem(null)
-    setForm({ category: "cutting", type: "", status: EQUIPMENT_STATUSES.STORED, location: "", model: "", serialNumber: "", chipNumber: "", brand: "", installationDate: "" })
+    setForm({ category: "cutting", type: "", status: EQUIPMENT_STATUSES.STORED, location: "", model: "", serialNumber: "", chipNumber: "", brand: "", acquisitionDate: "" })
     setIsDialogOpen(true)
   }
 
   const openEditDialog = (item: Equipment) => {
     setEditingItem(item)
-    setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, model: item.model || "", serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: item.brand || "", installationDate: item.installationDate ? new Date(item.installationDate).toISOString().split('T')[0] : "" })
+    setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, model: item.model || "", serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: item.brand || "", acquisitionDate: item.acquisitionDate ? new Date(item.acquisitionDate).toISOString().split('T')[0] : "" })
     setIsDialogOpen(true)
   }
 
@@ -216,7 +219,7 @@ export function Equipment() {
           serialNumber: form.serialNumber,
           chipNumber: form.chipNumber,
           brand: form.brand,
-          installationDate: form.installationDate,
+          acquisitionDate: form.acquisitionDate,
           category: categories.find(c => c._id === form.category) || e.category,
           type: types.find(t => t._id === form.type) || e.type
         } as Equipment : e)
@@ -242,7 +245,7 @@ export function Equipment() {
           serialNumber: form.serialNumber,
           chipNumber: form.chipNumber,
           brand: form.brand,
-          installationDate: form.installationDate,
+          acquisitionDate: form.acquisitionDate,
           mtbf: 0,
           mttr: 0,
           timeSinceAcquisition: 0,
@@ -553,6 +556,35 @@ export function Equipment() {
                   </span>
                 </div>
               </div>
+              <div className="grid grid-cols-3 gap-2 pt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/equipment/${item._id}/interventions`)}
+                  className="text-xs"
+                >
+                  <History className="mr-1 h-3 w-3" />
+                  History
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/equipment/${item._id}/parts`)}
+                  className="text-xs"
+                >
+                  <Package className="mr-1 h-3 w-3" />
+                  Parts
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/equipment/${item._id}/consumable`)}
+                  className="text-xs"
+                >
+                  <Droplet className="mr-1 h-3 w-3" />
+                  Consommables
+                </Button>
+              </div>
 
               <div className="flex gap-2 pt-2">
                 {(user?.role === 'admin' || user?.role === 'maintenance_manager' || user?.role === 'assistant_maintenance_manager' || user?.role === 'foreman') && (
@@ -717,8 +749,8 @@ export function Equipment() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="installationDate">Installation Date</Label>
-              <Input id="installationDate" type="date" value={form.installationDate} onChange={(e) => setForm({ ...form, installationDate: e.target.value })} placeholder="Select installation date" />
+              <Label htmlFor="acquisitionDate">Acquisition Date</Label>
+              <Input id="acquisitionDate" type="date" value={form.acquisitionDate} onChange={(e) => setForm({ ...form, acquisitionDate: e.target.value })} placeholder="Select installation date" />
             </div>
           </div>
           <DialogFooter>

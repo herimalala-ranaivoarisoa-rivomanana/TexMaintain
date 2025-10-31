@@ -69,10 +69,11 @@ const schema = new mongoose.Schema({
     trim: true,
   },
   brand: {
-    type: String,
-    trim: true,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Brand',
+    required: false,
   },
-  installationDate: {
+  acquisitionDate: {
     type: Date,
   },
   lastMaintenance: {

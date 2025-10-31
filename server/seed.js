@@ -69,6 +69,15 @@ async function runSeeder() {
       console.error('❌ Error seeding parts:', error.message + '\n');
     }
 
+    // Seed equipment parts associations
+    console.log('🔗 Seeding equipment-parts associations...');
+    try {
+      results.equipmentParts = await SeedService.seedEquipmentParts();
+      console.log(`✅ Equipment-parts associations seeded: ${results.equipmentParts.created} created, ${results.equipmentParts.skipped} skipped\n`);
+    } catch (error) {
+      console.error('❌ Error seeding equipment-parts:', error.message + '\n');
+    }
+
     console.log('🎉 Database seeding completed successfully!');
     console.log('\n📊 Summary:');
     console.log(`   - Admin User: ${results.admin?.success ? 'Created' : 'Skipped'}`);
@@ -76,6 +85,7 @@ async function runSeeder() {
     console.log(`   - Types: ${results.types?.created || 0} created`);
     console.log(`   - Equipment: ${results.equipment?.created || 0} created`);
     console.log(`   - Parts: ${results.parts?.created || 0} created`);
+    console.log(`   - Equipment-Parts: ${results.equipmentParts?.created || 0} created`);
 
     if (results.admin?.credentials) {
       console.log('\n🔐 Admin Credentials:');

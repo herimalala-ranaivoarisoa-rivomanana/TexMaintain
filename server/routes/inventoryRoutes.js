@@ -1,26 +1,102 @@
 const express = require('express');
 const { requireUser, requireRole } = require('./middleware/auth');
 const { Part } = require('../models/Part');
+const { EquipmentPart } = require('../models/EquipmentPart');
 
 const router = express.Router();
 
 // GET /api/inventory (with basic pagination & filters)
 router.get('/', requireUser, async (req, res) => {
-  const { page = 1, limit = 50, category, q, sort = 'updatedAt', order = 'desc' } = req.query || {};
-  const query = {};
-  if (category) query.category = category;
-  if (q) query.$or = [
-    { name: { $regex: q, $options: 'i' } },
-    { partNumber: { $regex: q, $options: 'i' } },
-    { supplier: { $regex: q, $options: 'i' } }
-  ];
-  const skip = (Number(page) - 1) * Number(limit);
-  const sortSpec = { [String(sort)]: String(order).toLowerCase() === 'asc' ? 1 : -1 };
-  const [parts, total] = await Promise.all([
-    Part.find(query).sort(sortSpec).skip(skip).limit(Number(limit)).lean(),
-    Part.countDocuments(query)
+  const { page = 1, limit = 50, category, q, sort = 'updatedAt', order = 'desc', type } = req.query || {};
+  const and = [];
+  if (category) and.push({ category });
+  let tFilter = null;
+  if (typeof type === 'string') {
+    const t = String(type).toLowerCase();
+    if (t === 'part' || t === 'consumable') tFilter = t;
+  }
+  if (tFilter) and.push({ type: tFilter });
+  if (q) and.push({
+    $or: [
+      { name: { $regex: q, $options: 'i' } },
+      { partNumber: { $regex: q, $options: 'i' } },
+      { supplier: { $regex: q, $options: 'i' } }
+    ]
+  });
+  const query = and.length ? { $and: and } : {};
+  const sortSpec = { [String(sort)]: String(order).toLowerCase() === 'asc' ? 1 : -1, _id: 1 };
+  const lmt = Math.max(1, Number(limit));
+  const requestedPage = Math.max(1, Number(page));
+  
+  // Count filtered total first to clamp page
+  const total = await Part.countDocuments(query);
+  const totalPages = Math.max(1, Math.ceil(total / lmt));
+  const safePage = Math.min(requestedPage, totalPages);
+  const skip = (safePage - 1) * lmt;
+
+  // Get paginated results and GLOBAL statistics based on ALL parts
+  const [parts, globalStats, allCount] = await Promise.all([
+    Part.find(query).sort(sortSpec).skip(skip).limit(lmt).lean(),
+    Part.aggregate([
+      { $group: { _id: '$type', count: { $sum: 1 } } }
+    ]),
+    Part.countDocuments({})
   ]);
-  return res.status(200).json({ parts, page: Number(page), total });
+  
+  // Format global statistics (ALL parts in inventory)
+  const statistics = {
+    total: allCount,
+    parts: 0,
+    consumables: 0
+  };
+  
+  globalStats.forEach(stat => {
+    if (stat._id === 'part') statistics.parts = stat.count;
+    if (stat._id === 'consumable') statistics.consumables = stat.count;
+  });
+  
+  statistics.total = statistics.parts + statistics.consumables;
+
+  // Compute FILTERED aggregates (independent of pagination)
+  const filteredAgg = await Part.aggregate([
+    { $match: query },
+    {
+      $group: {
+        _id: null,
+        filteredTotal: { $sum: 1 },
+        filteredCritical: {
+          $sum: {
+            $cond: [ { $lte: [ { $ifNull: ['$currentStock', 0] }, { $ifNull: ['$minStock', 0] } ] }, 1, 0 ]
+          }
+        },
+        filteredTotalValue: { $sum: { $multiply: [ { $ifNull: ['$currentStock', 0] }, { $ifNull: ['$unitPrice', 0] } ] } }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        filteredTotal: 1,
+        filteredCritical: 1,
+        filteredTotalValue: 1,
+        filteredAverageValue: {
+          $cond: [ { $gt: ['$filteredTotal', 0] }, { $divide: ['$filteredTotalValue', '$filteredTotal'] }, 0 ]
+        }
+      }
+    }
+  ]);
+
+  const filtered = filteredAgg[0] || { filteredTotal: 0, filteredCritical: 0, filteredTotalValue: 0, filteredAverageValue: 0 };
+  
+  return res.status(200).json({
+    parts,
+    page: safePage,
+    total, // total matching current filters (for pagination)
+    statistics, // global tab counts (distinct equipment-attached)
+    filteredTotal: filtered.filteredTotal,
+    filteredCritical: filtered.filteredCritical,
+    filteredTotalValue: filtered.filteredTotalValue,
+    filteredAverageValue: filtered.filteredAverageValue,
+  });
 });
 
 // GET /api/inventory/:id
@@ -53,6 +129,7 @@ const partSchema = z.object({
   name: z.string().min(1),
   partNumber: z.string().min(1),
   category: z.string().min(1),
+  type: z.enum(['part', 'consumable']).optional(),
   currentStock: z.number().int().nonnegative().optional(),
   minStock: z.number().int().nonnegative().optional(),
   maxStock: z.number().int().nonnegative().optional(),

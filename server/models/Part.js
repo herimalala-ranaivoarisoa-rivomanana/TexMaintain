@@ -4,12 +4,20 @@ const schema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   partNumber: { type: String, required: true, trim: true, index: true },
   category: { type: String, required: true, trim: true },
+  type: { type: String, enum: ['part', 'consumable'], default: 'part' },
   currentStock: { type: Number, default: 0 },
   minStock: { type: Number, default: 0 },
   maxStock: { type: Number, default: 0 },
   unitPrice: { type: Number, default: 0 },
   supplier: { type: String, trim: true },
   location: { type: String, trim: true },
+  pendingOrders: [{
+    quantity: { type: Number, default: 0 },
+    status: { type: String, default: 'pending' },
+    orderDate: { type: Date, default: Date.now },
+    expectedDate: { type: Date }
+  }],
+  pendingQuantity: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now, immutable: true },
   updatedAt: { type: Date, default: Date.now },
 }, { versionKey: false });

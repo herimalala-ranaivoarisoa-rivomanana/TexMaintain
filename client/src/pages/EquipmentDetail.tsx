@@ -25,7 +25,7 @@ interface EquipmentDetailData {
   brand?: string
   serialNumber?: string
   chipNumber?: string
-  installationDate?: string
+  acquisitionDate?: string
   lastMaintenance?: string
   nextMaintenance?: string
   mtbf?: number
@@ -155,8 +155,8 @@ export function EquipmentDetail() {
                 <h3 className="text-lg font-semibold mb-4">Maintenance Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-slate-500">Installation Date</p>
-                    <p className="text-slate-900 flex items-center"><Calendar className="mr-2 h-4 w-4"/>{formatDate(data.installationDate)}</p>
+                    <p className="text-sm text-slate-500">Acquisition Date</p>
+                    <p className="text-slate-900 flex items-center"><Calendar className="mr-2 h-4 w-4"/>{formatDate(data.acquisitionDate)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-500">Last Maintenance</p>

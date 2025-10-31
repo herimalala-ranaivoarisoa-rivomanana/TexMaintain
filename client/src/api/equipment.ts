@@ -58,6 +58,20 @@ export const deleteEquipment = async (id: string) => {
   return response.data;
 };
 
+// Description: Get equipment interventions history
+// Endpoint: GET /api/equipment/:id/interventions
+export const getEquipmentInterventions = async (id: string, params?: { page?: number; limit?: number; type?: string; status?: string; q?: string; sort?: string; order?: 'asc'|'desc' }) => {
+  const response = await api.get(`/api/equipment/${id}/interventions`, { params });
+  return response.data;
+};
+
+// Description: Get equipment associated parts
+// Endpoint: GET /api/equipment/:id/parts
+export const getEquipmentParts = async (id: string) => {
+  const response = await api.get(`/api/equipment/${id}/parts`);
+  return response.data;
+};
+
 // ===== NEW STATUS MANAGEMENT ENDPOINTS =====
 
 // Description: Change equipment status with tracking

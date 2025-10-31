@@ -5,6 +5,8 @@ const { Intervention } = require('../models/Intervention');
 const { STATUS_METADATA } = require('../models/EquipmentStatusHistory');
 const EquipmentStatusService = require('../services/equipmentStatusService');
 const { z } = require('zod');
+const EquipmentPartsService = require('../services/equipmentPartsService');
+const { EquipmentPart } = require('../models/EquipmentPart');
 
 const router = express.Router();
 
@@ -51,8 +53,8 @@ async function calculateMetrics(equipment) {
   let operatingTime = 0;
   let availability = 0;
 
-  if (equipment.installationDate) {
-    timeSinceAcquisition = (Date.now() - new Date(equipment.installationDate).getTime()) / (1000 * 60 * 60 * 24); // days
+  if (equipment.acquisitionDate) {
+    timeSinceAcquisition = (Date.now() - new Date(equipment.acquisitionDate).getTime()) / (1000 * 60 * 60 * 24); // days
     operatingTime = timeSinceAcquisition * 24 - downtime; // hours
     if (timeSinceAcquisition * 24 > 0) {
       availability = (operatingTime / (timeSinceAcquisition * 24)) * 100;
@@ -123,6 +125,187 @@ router.get('/:id', requireUser, async (req, res) => {
 
    return res.status(200).json({ equipment });
  });
+
+ // GET /api/equipment/:id/parts
+router.get('/:id/parts', requireUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit, page = 1, startDate, endDate } = req.query;
+    
+    const skip = (parseInt(page) - 1) * (parseInt(limit) || 50);
+    
+    const result = await EquipmentPartsService.get(id,req.user._id,{
+      limit: parseInt(limit) || 50,
+      skip,
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Get status history error:', error);
+    return res.status(500).json({ message: error.message || 'Failed to get status history' });
+  }
+});
+
+// POST /api/equipment/:id/parts
+const partSchema = z.object({
+  part: z.string(),
+  quantity: z.number().min(1),
+});
+
+router.post('/:id/parts', requireUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const parse = partSchema.safeParse(req.body || {});
+    if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
+
+    const created = await EquipmentPart.create({
+      equipment: id,
+      part: parse.data.part,
+      quantity: parse.data.quantity,
+      changedBy: req.user._id
+    });
+
+    const populated = await EquipmentPart.findById(created._id)
+      .populate('part', 'name partNumber')
+      .populate('changedBy', 'email role')
+      .lean();
+
+    return res.status(201).json({ success: true, equipmentPart: populated });
+  } catch (error) {
+    console.error('Create equipment part error:', error);
+    return res.status(500).json({ message: error.message || 'Failed to create equipment part' });
+  }
+});
+
+// GET /api/equipment/:id/interventions
+router.get('/:id/interventions', requireUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 10, type, status, q, sort = 'createdDate', order = 'desc' } = req.query;
+
+    // Get equipment info
+    const equipment = await Equipment.findById(id)
+      .populate('category')
+      .populate('type')
+      .lean();
+
+    if (!equipment) {
+      return res.status(404).json({ message: 'Equipment not found' });
+    }
+
+    const query = { $or: [{ equipmentId: id }, { equipment: equipment.location }] };
+    if (type) query.type = type;
+    if (status) query.status = status;
+    if (q) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: q, $options: 'i' } },
+          { description: { $regex: q, $options: 'i' } }
+        ]
+      });
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const sortSpec = { [String(sort)]: String(order).toLowerCase() === 'asc' ? 1 : -1 };
+
+    const [interventions, total] = await Promise.all([
+      Intervention.find(query)
+        .sort(sortSpec)
+        .skip(skip)
+        .limit(Number(limit))
+        .lean(),
+      Intervention.countDocuments(query)
+    ]);
+
+    return res.status(200).json({
+      equipment,
+      interventions,
+      total,
+      page: Number(page),
+      limit: Number(limit)
+    });
+  } catch (error) {
+    console.error('Get equipment interventions error:', error);
+    return res.status(500).json({ message: error.message || 'Failed to get equipment interventions' });
+  }
+});
+
+// GET /api/equipment/:id/consumable
+router.get('/:id/consumable', requireUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 50, skip = 0 } = req.query;
+
+    // Get equipment info
+    const equipment = await Equipment.findById(id)
+      .populate('category')
+      .populate('type')
+      .lean();
+
+    if (!equipment) {
+      return res.status(404).json({ message: 'Equipment not found' });
+    }
+
+    const equipmentParts = await EquipmentPart.find({ 
+      equipment: id,
+      'part.type': 'consumable' 
+    })
+      .sort({ createdAt: -1 })
+      .skip(Number(skip))
+      .limit(Number(limit))
+      .populate('changedBy', 'email role')
+      .populate('part', 'name partNumber currentStock minStock maxStock unitPrice supplier location category type pendingOrders pendingQuantity')
+      .lean();
+
+    const total = await EquipmentPart.countDocuments({ 
+      equipment: id,
+      'part.type': 'consumable' 
+    });
+
+    return res.status(200).json({
+      equipment,
+      equipmentParts,
+      total,
+      page: Number(page),
+      limit: Number(limit)
+    });
+  } catch (error) {
+    console.error('Get equipment consumables error:', error);
+    return res.status(500).json({ message: error.message || 'Failed to get equipment consumables' });
+  }
+});
+
+// POST /api/equipment/:id/consumable
+const consumableSchema = z.object({
+  part: z.string(),
+  quantity: z.number().min(1),
+});
+
+router.post('/:id/consumable', requireUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const parse = consumableSchema.safeParse(req.body || {});
+    if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
+
+    const created = await EquipmentPart.create({
+      equipment: id,
+      part: parse.data.part,
+      quantity: parse.data.quantity,
+      changedBy: req.user._id
+    });
+
+    const populated = await EquipmentPart.findById(created._id)
+      .populate('part', 'name partNumber')
+      .populate('changedBy', 'email role')
+      .lean();
+
+    return res.status(201).json({ success: true, equipmentPart: populated });
+  } catch (error) {
+    console.error('Create equipment consumable error:', error);
+    return res.status(500).json({ message: error.message || 'Failed to create equipment consumable' });
+  }
+});
  
 // POST /api/equipment
 const equipmentSchema = z.object({
@@ -135,7 +318,7 @@ const equipmentSchema = z.object({
   serialNumber: z.string().optional(),
   chipNumber: z.string().optional(),
   brand: z.string().optional(),
-  installationDate: z.coerce.date().optional(),
+  acquisitionDate: z.coerce.date().optional(),
   lastMaintenance: z.coerce.date().optional(),
   nextMaintenance: z.coerce.date().optional(),
 });
@@ -232,6 +415,40 @@ router.delete('/:id', requireUser, requireRole('admin'), async (req, res) => {
 
 // POST /api/equipment/:id/change-status
 // Change equipment status with tracking
+router.post('/:id/', requireUser, requireRole(['admin','maintenance_manager','assistant_maintenance_manager','mechanic','electrician']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, reason, notes, interventionId, machinistId } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ message: 'Status is required' });
+    }
+
+    // If status is "in_production", machinistId is required
+    if (status === 'in_production' && !machinistId) {
+      return res.status(400).json({ message: 'Machinist is required when setting equipment to In Production' });
+    }
+
+    const result = await EquipmentStatusService.changeStatus(
+      id,
+      status,
+      req.user._id,
+      { reason, notes, interventionId, machinistId }
+    );
+
+    return res.status(200).json({
+      success: true,
+      equipment: result.equipment,
+      historyEntry: result.historyEntry
+    });
+  } catch (error) {
+    console.error('Change status error:', error);
+    return res.status(400).json({ message: error.message || 'Failed to change status' });
+  }
+});
+
+// POST /api/equipment/:id/change-status
+// Change equipment status with tracking
 router.post('/:id/change-status', requireUser, requireRole(['admin','maintenance_manager','assistant_maintenance_manager','foreman','mechanic','electrician','production_manager','line_manager']), async (req, res) => {
   try {
     const { id } = req.params;
@@ -265,7 +482,6 @@ router.post('/:id/change-status', requireUser, requireRole(['admin','maintenance
 });
 
 // GET /api/equipment/:id/status-history
-// Get status history for an equipment
 router.get('/:id/status-history', requireUser, async (req, res) => {
   try {
     const { id } = req.params;
@@ -286,6 +502,8 @@ router.get('/:id/status-history', requireUser, async (req, res) => {
     return res.status(500).json({ message: error.message || 'Failed to get status history' });
   }
 });
+
+
 
 // GET /api/equipment/:id/status-statistics
 // Get status statistics for an equipment
@@ -405,5 +623,7 @@ router.get('/statuses/metadata', requireUser, async (req, res) => {
     return res.status(500).json({ message: error.message || 'Failed to get status metadata' });
   }
 });
+
+
 
 module.exports = router;

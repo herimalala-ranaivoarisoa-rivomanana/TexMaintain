@@ -1,22 +1,24 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Search, 
   Filter, 
-  Plus, 
   Package, 
   AlertTriangle, 
   TrendingDown,
   TrendingUp,
   MapPin,
-  DollarSign
+  DollarSign,
+  Wrench,
+  Droplet
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { getInventory, updateStock, createPart, updatePart, deletePart } from "@/api/inventory"
@@ -29,6 +31,7 @@ interface InventoryItem {
   name: string
   partNumber: string
   category: string
+  type: 'part' | 'consumable'
   currentStock: number
   minStock: number
   maxStock: number
@@ -39,15 +42,24 @@ interface InventoryItem {
 
 export function Inventory() {
   const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [statistics, setStatistics] = useState({ total: 0, parts: 0, consumables: 0 })
+  const [filteredTotal, setFilteredTotal] = useState(0)
+  const [filteredCritical, setFilteredCritical] = useState(0)
+  const [filteredTotalValue, setFilteredTotalValue] = useState(0)
+  const [filteredAverageValue, setFilteredAverageValue] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [searchParams, setSearchParams] = useSearchParams()
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get('category') || "all")
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10) || 1)
-  const [total, setTotal] = useState(0)
   const [limit, setLimit] = useState<number>(() => parseInt(localStorage.getItem('inv_limit') || '12', 10) || 12)
   const [sort, setSort] = useState<string>(searchParams.get('sort') || 'updatedAt')
   const [order, setOrder] = useState<'asc'|'desc'>((searchParams.get('order') as any) || 'desc')
+  const initialType = (searchParams.get('type') || '').toLowerCase()
+  const initialTab: 'parts' | 'consumables' | 'all' = initialType === 'part' ? 'parts' : initialType === 'consumable' ? 'consumables' : 'all'
+  const [activeTab, setActiveTab] = useState<'parts' | 'consumables' | 'all'>(initialTab)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isPartDialogOpen, setIsPartDialogOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
@@ -61,6 +73,7 @@ export function Inventory() {
     name: '',
     partNumber: '',
     category: '',
+    type: 'part' as 'part' | 'consumable',
     currentStock: 0,
     minStock: 0,
     maxStock: 0,
@@ -77,14 +90,26 @@ export function Inventory() {
   useEffect(() => {
     const fetchInventory = async () => {
       try {
-        console.log('Fetching inventory data...')
         const params: any = { page, limit, sort, order }
         if (categoryFilter !== 'all') params.category = categoryFilter
-        if (searchTerm) params.q = searchTerm
+        if (debouncedSearch) params.q = debouncedSearch
+        const typeFromTab = activeTab === 'parts' ? 'part' : activeTab === 'consumables' ? 'consumable' : ''
+        const typeFromUrl = (searchParams.get('type') || '').toLowerCase()
+        const finalType = typeFromTab || (typeFromUrl === 'part' || typeFromUrl === 'consumable' ? typeFromUrl : '')
+        if (finalType) params.type = finalType
         const response = await getInventory(params)
+        const stats = (response as any).statistics || { total: 0, parts: 0, consumables: 0 }
         setInventory((response as any).parts)
-        setTotal((response as any).total || 0)
-        console.log('Inventory data loaded successfully')
+        setStatistics(stats)
+        setFilteredTotal((response as any).filteredTotal ?? (response as any).total ?? 0)
+        setFilteredCritical((response as any).filteredCritical ?? 0)
+        setFilteredTotalValue((response as any).filteredTotalValue ?? 0)
+        setFilteredAverageValue((response as any).filteredAverageValue ?? 0)
+        const apiTotal = Number((response as any).total || 0)
+        setTotalCount(apiTotal)
+        if (typeof (response as any).page === 'number') {
+          setPage((response as any).page)
+        }
       } catch (error) {
         console.error('Error fetching inventory:', error)
         toast({
@@ -98,7 +123,13 @@ export function Inventory() {
     }
 
     fetchInventory()
-  }, [toast, page, categoryFilter, limit, sort, order])
+  }, [toast, page, categoryFilter, limit, sort, order, activeTab, debouncedSearch])
+
+  // Debounce search term
+  useEffect(() => {
+    const h = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300)
+    return () => clearTimeout(h)
+  }, [searchTerm])
 
   // Sync state to URL
   useEffect(() => {
@@ -108,19 +139,33 @@ export function Inventory() {
     if (searchTerm) next.set('q', searchTerm)
     if (sort && sort !== 'updatedAt') next.set('sort', sort)
     if (order && order !== 'desc') next.set('order', order)
+    const tFromTab = activeTab === 'parts' ? 'part' : activeTab === 'consumables' ? 'consumable' : ''
+    const tFromUrl = (searchParams.get('type') || '').toLowerCase()
+    const finalT = tFromTab || (tFromUrl === 'part' || tFromUrl === 'consumable' ? tFromUrl : '')
+    if (finalT) next.set('type', finalT)
     setSearchParams(next, { replace: true })
-  }, [page, categoryFilter, searchTerm, sort, order, setSearchParams])
+  }, [page, categoryFilter, searchTerm, sort, order, activeTab, searchParams, setSearchParams])
+
+  // Keep activeTab in sync with URL changes (direct navigation)
+  useEffect(() => {
+    const t = (searchParams.get('type') || '').toLowerCase()
+    const tab: 'parts' | 'consumables' | 'all' = t === 'part' ? 'parts' : t === 'consumable' ? 'consumables' : 'all'
+    if (tab !== activeTab) {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
+
+  // Reset filters when switching tabs
+  useEffect(() => {
+    setPage(1)
+    setCategoryFilter('all')
+    setSearchTerm("")
+  }, [activeTab])
 
   // Persist limit
   useEffect(() => {
     localStorage.setItem('inv_limit', String(limit))
   }, [limit])
-
-  const rangeLabel = useMemo(() => {
-    const start = total === 0 ? 0 : (page - 1) * limit + 1
-    const end = Math.min(page * limit, total)
-    return `${start}-${end} of ${total}`
-  }, [page, limit, total])
 
   const getStockStatus = (item: InventoryItem) => {
     if (item.currentStock <= item.minStock) return 'critical'
@@ -205,8 +250,9 @@ export function Inventory() {
   }
 
   const openAddPartDialog = () => {
+    const defaultCategory = activeTab === 'parts' ? 'Mechanical Parts' : activeTab === 'consumables' ? 'Lubricants' : 'Mechanical Parts'
     setEditingPart(null)
-    setPartForm({ name: '', partNumber: '', category: '', currentStock: 0, minStock: 0, maxStock: 0, unitPrice: 0, supplier: '', location: '' })
+    setPartForm({ name: '', partNumber: '', category: defaultCategory, type: activeTab === 'parts' ? 'part' : activeTab === 'consumables' ? 'consumable' : 'part', currentStock: 0, minStock: 0, maxStock: 0, unitPrice: 0, supplier: '', location: '' })
     setIsPartDialogOpen(true)
   }
 
@@ -216,6 +262,7 @@ export function Inventory() {
       name: item.name,
       partNumber: item.partNumber,
       category: item.category,
+      type: item.type,
       currentStock: item.currentStock,
       minStock: item.minStock,
       maxStock: item.maxStock,
@@ -226,11 +273,6 @@ export function Inventory() {
     setIsPartDialogOpen(true)
   }
 
-  const refreshList = async () => {
-    const response = await getInventory()
-    setInventory((response as any).parts)
-  }
-
   const handleSavePart = async () => {
     try {
       setIsSavingPart(true)
@@ -239,7 +281,7 @@ export function Inventory() {
         setInventory(prev.map(p => p._id === editingPart._id ? { ...p, ...partForm } as InventoryItem : p))
         try {
           await updatePart(editingPart._id, partForm)
-          toast({ title: 'Updated', description: 'Part updated successfully' })
+          toast({ title: 'Updated', description: `${activeTab === 'parts' ? 'Part' : 'Consumable'} updated successfully` })
         } catch (err) {
           setInventory(prev)
           throw err
@@ -252,7 +294,7 @@ export function Inventory() {
           const res = await createPart(partForm)
           const created = (res as any).part
           setInventory(list => list.map(p => p._id === tempId ? { ...created } : p))
-          toast({ title: 'Created', description: 'Part created successfully' })
+          toast({ title: 'Created', description: `${activeTab === 'parts' ? 'Part' : 'Consumable'} created successfully` })
         } catch (err) {
           setInventory(list => list.filter(p => p._id !== tempId))
           throw err
@@ -261,7 +303,7 @@ export function Inventory() {
       setIsPartDialogOpen(false)
     } catch (error) {
       console.error('Save part error:', error)
-      toast({ title: 'Error', description: 'Failed to save part', variant: 'destructive' })
+      toast({ title: 'Error', description: `Failed to save ${activeTab === 'parts' ? 'part' : 'consumable'}`, variant: 'destructive' })
     }
     finally {
       setIsSavingPart(false)
@@ -275,54 +317,91 @@ export function Inventory() {
       setInventory(prev.filter(p => p._id !== id))
       try {
         await deletePart(id)
-        toast({ title: 'Deleted', description: 'Part deleted' })
+        toast({ title: 'Deleted', description: `${activeTab === 'parts' ? 'Part' : 'Consumable'} deleted` })
       } catch (err) {
         setInventory(prev)
         throw err
       }
     } catch (error) {
       console.error('Delete part error:', error)
-      toast({ title: 'Error', description: 'Failed to delete part', variant: 'destructive' })
+      toast({ title: 'Error', description: `Failed to delete ${activeTab === 'parts' ? 'part' : 'consumable'}`, variant: 'destructive' })
     }
     finally {
       setDeletingPartId(null)
     }
   }
 
-  const filteredInventory = inventory
+  // The API already returns the filtered/typed list; use it directly
+  const currentItems = inventory
 
-  const categories = [...new Set(inventory.map(item => item.category))]
+const getReferenceLabel = () => {
+return activeTab === 'parts' ? 'Part Number' : activeTab === 'consumables' ? 'Reference' : 'Part Number'
+}
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    )
+const getAddButtonText = () => {
+return activeTab === 'parts' ? 'Add Part' : activeTab === 'consumables' ? 'Add Consumable' : 'Add Item'
+}
+
+const getAddButtonIcon = () => {
+  return activeTab === 'parts' ? <Wrench className="mr-2 h-4 w-4" /> : activeTab === 'consumables' ? <Droplet className="mr-2 h-4 w-4" /> : <Package className="mr-2 h-4 w-4" />
+}
+
+const getCategoryOptions = () => {
+  if (activeTab === 'parts') {
+    return [
+      'Belts',
+      'Bearings',
+      'Gears',
+      'Motors',
+      'Pumps',
+      'Valves',
+      'Filters',
+      'Sensors',
+      'Actuators',
+      'Cables',
+      'Connectors',
+      'Switches',
+      'Relays',
+      'Circuit Boards',
+      'Mechanical Parts',
+      'Fasteners',
+      'Tools',
+      'Maintenance Equipment',
+      'Sewing Supplies',
+      'Cutting Tools'
+    ]
+  } else if (activeTab === 'consumables') {
+    return [
+      'Lubricants',
+      'Oils',
+      'Greases',
+      'Coolants',
+      'Cleaning Agents',
+      'Adhesives',
+      'Sealants',
+      'Paints',
+      'Coatings',
+      'Chemicals',
+      'Solvents',
+      'Fuels',
+      'Batteries',
+      'Filters',
+      'Cartridges',
+      'Tapes',
+      'Glues',
+      'Welding Supplies'
+    ]
+  } else {
+    // Pour 'all', retourner toutes les catégories
+    return [
+      'Belts', 'Bearings', 'Gears', 'Motors', 'Pumps', 'Valves', 'Filters', 'Sensors', 'Actuators', 'Cables', 'Connectors', 'Switches', 'Relays', 'Circuit Boards', 'Mechanical Parts', 'Fasteners', 'Tools', 'Maintenance Equipment', 'Sewing Supplies', 'Cutting Tools',
+      'Lubricants', 'Oils', 'Greases', 'Coolants', 'Cleaning Agents', 'Adhesives', 'Sealants', 'Paints', 'Coatings', 'Chemicals', 'Solvents', 'Fuels', 'Batteries', 'Cartridges', 'Tapes', 'Glues', 'Welding Supplies'
+    ]
   }
+}
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Inventory Management
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Track and manage spare parts inventory
-          </p>
-        </div>
-        <div className="flex gap-2">
-        <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
-        {(user?.role === 'admin' || user?.role === 'procurement_manager') && (
-        <Button onClick={openAddPartDialog} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Part
-        </Button>
-        )}
-        </div>
-      </div>
-
+  const PartList = ({ items }: { items: InventoryItem[] }) => (
+    <>
       {/* Filters */}
       <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
         <CardContent className="p-6">
@@ -330,20 +409,20 @@ export function Inventory() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Search parts..."
+                placeholder={`Search ${activeTab === 'parts' ? 'parts' : 'consumables'}...`}
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setPage(1); setSearchTerm(e.target.value) }}
                 className="pl-10"
               />
             </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter} onValueChange={(v) => { setPage(1); setCategoryFilter(v) }}>
               <SelectTrigger className="w-full sm:w-48">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Filter by category" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(category => (
+                {getCategoryOptions().map(category => (
                   <SelectItem key={category} value={category}>{category}</SelectItem>
                 ))}
               </SelectContent>
@@ -380,12 +459,72 @@ export function Inventory() {
               </SelectContent>
             </Select>
           </div>
+          {/* Pagination summary */}
+          <div className="mt-3 text-sm text-slate-600 flex items-center justify-between gap-2 flex-wrap">
+            <span>
+              {filteredTotal} results • Page {page} / {Math.max(1, Math.ceil(totalCount / limit))}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(1)}>«</Button>
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Previous</Button>
+              <Button variant="outline" size="sm" disabled={page >= Math.max(1, Math.ceil(totalCount / limit))} onClick={() => setPage(p => p + 1)}>Next</Button>
+              <Button variant="outline" size="sm" disabled={page >= Math.max(1, Math.ceil(totalCount / limit))} onClick={() => setPage(Math.max(1, Math.ceil(totalCount / limit)))}>»</Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600">Total {activeTab === 'parts' ? 'Parts' : activeTab === 'consumables' ? 'Consumables' : 'Items'}</p>
+                <p className="text-2xl font-bold">{filteredTotal}</p>
+              </div>
+              <Package className="h-6 w-6 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600">Critical Stock</p>
+                <p className="text-2xl font-bold text-red-600">{filteredCritical}</p>
+              </div>
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600">Total Value</p>
+                <p className="text-2xl font-bold text-green-600">${filteredTotalValue?.toFixed(2)}</p>
+              </div>
+              <DollarSign className="h-6 w-6 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600">Average Value</p>
+                <p className="text-2xl font-bold text-blue-600">${filteredAverageValue?.toFixed(2)}</p>
+              </div>
+              <TrendingUp className="h-6 w-6 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Inventory Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredInventory.map((item) => {
+        {items?.map((item) => {
           const status = getStockStatus(item)
           return (
             <Card key={item._id} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
@@ -472,13 +611,80 @@ export function Inventory() {
         })}
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-center gap-4">
-        <span className="text-sm text-muted-foreground">{rangeLabel}</span>
-        <Button variant="outline" disabled={loading || page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>{loading ? 'Loading…' : 'Previous'}</Button>
-        <span className="text-sm">Page {page}</span>
-        <Button variant="outline" disabled={loading || page * limit >= total} onClick={() => setPage(p => p + 1)}>{loading ? 'Loading…' : 'Next'}</Button>
+      {/* Message if no items */}
+      {items?.length === 0 && (
+        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
+          <CardContent className="p-12 text-center">
+            <Package className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+            <h3 className="text-lg font-medium text-slate-900 mb-2">
+              No {activeTab === 'parts' ? 'spare parts' : activeTab === 'consumables' ? 'consumables' : 'items'} found
+            </h3>
+            <p className="text-slate-600">Try adjusting your search or filter criteria.</p>
+          </CardContent>
+        </Card>
+      )}
+    </>
+  )
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            Inventory Management
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1">
+            Track and manage spare parts and consumables inventory
+          </p>
+        </div>
+        <div className="flex gap-2">
+        <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
+        {(user?.role === 'admin' || user?.role === 'procurement_manager') && (
+        <Button onClick={openAddPartDialog} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+          {getAddButtonIcon()}
+          {getAddButtonText()}
+        </Button>
+        )}
+        </div>
+      </div>
+
+      {/* Parts / Consumables Tabs */}
+      <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value as 'parts' | 'consumables' | 'all'); setPage(1); setCategoryFilter('all'); setSearchTerm(""); }} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="all" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            All ({statistics.total})
+          </TabsTrigger>
+          <TabsTrigger value="parts" className="flex items-center gap-2">
+            <Wrench className="h-4 w-4" />
+            Spare Parts ({statistics.parts})
+          </TabsTrigger>
+          <TabsTrigger value="consumables" className="flex items-center gap-2">
+            <Droplet className="h-4 w-4" />
+            Consumables ({statistics.consumables})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all" className="space-y-4">
+          <PartList items={currentItems} />
+        </TabsContent>
+
+        <TabsContent value="parts" className="space-y-4">
+          <PartList items={currentItems} />
+        </TabsContent>
+
+        <TabsContent value="consumables" className="space-y-4">
+          <PartList items={currentItems} />
+        </TabsContent>
+      </Tabs>
 
       {/* Stock Update Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -537,9 +743,9 @@ export function Inventory() {
       <Dialog open={isPartDialogOpen} onOpenChange={setIsPartDialogOpen}>
         <DialogContent className="sm:max-w-[520px] bg-white">
           <DialogHeader>
-            <DialogTitle>{editingPart ? 'Edit Part' : 'Add Part'}</DialogTitle>
+            <DialogTitle>{editingPart ? `Edit ${activeTab === 'parts' ? 'Part' : 'Consumable'}` : `Add ${activeTab === 'parts' ? 'Part' : 'Consumable'}`}</DialogTitle>
             <DialogDescription>
-              {editingPart ? 'Update the selected part details.' : 'Create a new inventory part.'}
+              {editingPart ? `Update the selected ${activeTab === 'parts' ? 'part' : 'consumable'} details.` : `Create a new inventory ${activeTab === 'parts' ? 'part' : 'consumable'}.`}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -548,12 +754,34 @@ export function Inventory() {
               <Input id="name" value={partForm.name} onChange={(e) => setPartForm({ ...partForm, name: e.target.value })} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="partNumber">Part Number</Label>
+              <Label htmlFor="partNumber">{getReferenceLabel()}</Label>
               <Input id="partNumber" value={partForm.partNumber} onChange={(e) => setPartForm({ ...partForm, partNumber: e.target.value })} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="category">Category</Label>
-              <Input id="category" value={partForm.category} onChange={(e) => setPartForm({ ...partForm, category: e.target.value })} />
+              <Select value={partForm.category} onValueChange={(value) => setPartForm({ ...partForm, category: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select or type a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getCategoryOptions().map(category => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                  {partForm.category && !getCategoryOptions().includes(partForm.category) && (
+                    <SelectItem value={partForm.category}>
+                      {partForm.category} (New)
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Or type a new category"
+                value={partForm.category}
+                onChange={(e) => setPartForm({ ...partForm, category: e.target.value })}
+                className="mt-1"
+              />
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-2">
@@ -589,7 +817,7 @@ export function Inventory() {
         </DialogContent>
       </Dialog>
 
-      {filteredInventory.length === 0 && (
+      {currentItems.length === 0 && (
         <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
           <CardContent className="p-12 text-center">
             <Package className="mx-auto h-12 w-12 text-slate-400 mb-4" />
