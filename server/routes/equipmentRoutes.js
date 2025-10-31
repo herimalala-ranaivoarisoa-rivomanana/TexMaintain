@@ -247,9 +247,15 @@ router.get('/:id/consumable', requireUser, async (req, res) => {
       return res.status(404).json({ message: 'Equipment not found' });
     }
 
+    // First, get all consumable part IDs
+    const { Part } = require('../models/Part');
+    const consumableParts = await Part.find({ type: 'consumable' }).select('_id').lean();
+    const consumablePartIds = consumableParts.map(p => p._id);
+
+    // Then filter EquipmentParts by equipment and consumable part IDs
     const equipmentParts = await EquipmentPart.find({ 
       equipment: id,
-      'part.type': 'consumable' 
+      part: { $in: consumablePartIds }
     })
       .sort({ createdAt: -1 })
       .skip(Number(skip))
@@ -260,7 +266,7 @@ router.get('/:id/consumable', requireUser, async (req, res) => {
 
     const total = await EquipmentPart.countDocuments({ 
       equipment: id,
-      'part.type': 'consumable' 
+      part: { $in: consumablePartIds }
     });
 
     return res.status(200).json({
