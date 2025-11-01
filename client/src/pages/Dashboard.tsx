@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { getDashboardKPIs, getRecentActivities } from "@/api/dashboard"
 import { useToast } from "@/hooks/useToast"
+import { ReorderAlertsWidget } from "@/components/ReorderAlertsWidget"
 
 interface KPIs {
   mttr: number
@@ -215,6 +216,9 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Reorder Alerts Widget */}
+      <ReorderAlertsWidget maxItems={5} showViewAll={true} />
 
       {/* Recent Activities */}
       <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">

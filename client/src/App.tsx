@@ -29,6 +29,8 @@ import MaintenanceWorkers from "./pages/MaintenanceWorkers"
 import { EquipmentParts } from "./pages/EquipmentParts"
 import { EquipmentInterventions } from "./pages/EquipmentInterventions"
 import { EquipmentConsumables } from "./pages/EquipmentConsumables"
+import PartDetails from "./pages/PartDetails"
+import ReorderAlerts from "./pages/ReorderAlerts"
 
 function App() {
   return (
@@ -57,6 +59,8 @@ function App() {
               <Route path="interventions/:id" element={<InterventionDetailWrapper />} />
               <Route path="inventory" element={<Inventory />} />
               <Route path="inventory/:id" element={<PartDetailWrapper />} />
+              <Route path="part-details" element={<PartDetails />} />
+              <Route path="reorder-alerts" element={<ReorderAlerts />} />
               <Route path="procurement" element={<Procurement />} />
               <Route path="projects" element={<Projects />} />
               <Route path="reports" element={<Reports />} />

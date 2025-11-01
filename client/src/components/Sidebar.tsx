@@ -21,7 +21,8 @@ import {
   UserCog,
   Zap,
   HardHat,
-  ClipboardCheck
+  ClipboardCheck,
+  AlertTriangle
 } from "lucide-react"
 
 const navigation = [
@@ -37,6 +38,7 @@ const navigation = [
   { name: "Brands", href: "/brands", icon: Factory },
   { name: "Interventions", href: "/interventions", icon: ClipboardCheck },
   { name: "Inventory", href: "/inventory", icon: Package },
+  { name: "Reorder Alerts", href: "/reorder-alerts", icon: AlertTriangle },
   { name: "Procurement", href: "/procurement", icon: ShoppingCart },
   { name: "Projects", href: "/projects", icon: FolderOpen },
   { name: "Reports", href: "/reports", icon: BarChart3 },
