@@ -57,6 +57,8 @@ interface Equipment {
   operatingTime: number
   downtime: number
   availability: number
+  lastBreakdownType?: string
+  lastBreakdownDescription?: string
 }
 
 interface Category {
@@ -340,16 +342,13 @@ export function Equipment() {
     
     // Load breakdown info if equipment is in breakdown status
     if (item.status === EQUIPMENT_STATUSES.BREAKDOWN) {
-      try {
-        const { getBreakdownMediaByEquipment } = await import('@/api/breakdownMedia')
-        const response = await getBreakdownMediaByEquipment(item._id)
-        if (response.breakdownMedia && response.breakdownMedia.length > 0) {
-          const latestBreakdown = response.breakdownMedia[0]
-          setBreakdownType(latestBreakdown.breakdownType)
-          setBreakdownDescription(latestBreakdown.description)
-        }
-      } catch (error) {
-        console.error('Error loading breakdown info:', error)
+      console.log('🔍 Loading breakdown info for equipment:', item._id)
+      if (item.lastBreakdownType) {
+        console.log('✅ Found breakdown info in equipment:', item.lastBreakdownType)
+        setBreakdownType(item.lastBreakdownType)
+        setBreakdownDescription(item.lastBreakdownDescription || '')
+      } else {
+        console.log('⚠️ No breakdown info found in equipment')
       }
     }
     
@@ -390,7 +389,7 @@ export function Equipment() {
     }
 
     // Validate maintenance personnel for maintenance statuses
-    const maintenanceStatuses: EquipmentStatus[] = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE]
+    const maintenanceStatuses: EquipmentStatus[] = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE, EQUIPMENT_STATUSES.IN_WORKSHOP]
     if (maintenanceStatuses.includes(form.status as EquipmentStatus)) {
       if (!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId) {
         toast({
@@ -424,7 +423,7 @@ export function Equipment() {
           const statusChanged = editingItem.status !== form.status
           const requiresPersonnel = 
             form.status === EQUIPMENT_STATUSES.IN_PRODUCTION ||
-            ([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE] as EquipmentStatus[]).includes(form.status as EquipmentStatus)
+            ([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE, EQUIPMENT_STATUSES.IN_WORKSHOP] as EquipmentStatus[]).includes(form.status as EquipmentStatus)
           
           if (statusChanged && requiresPersonnel) {
             // Step 1: Change status with personnel using changeEquipmentStatus
@@ -433,7 +432,9 @@ export function Equipment() {
               machinistId: selectedMachinistId || undefined,
               mechanicId: selectedMechanicId || undefined,
               electricianId: selectedElectricianId || undefined,
-              maintenanceWorkerId: selectedMaintenanceWorkerId || undefined
+              maintenanceWorkerId: selectedMaintenanceWorkerId || undefined,
+              breakdownType: breakdownType || undefined,
+              breakdownDescription: breakdownDescription || undefined
             })
           }
           
@@ -894,26 +895,37 @@ export function Equipment() {
                 const previousStatus = editingItem?.status || form.status
                 setForm({ ...form, status: value })
                 
-                // Auto-suggest personnel when changing to Under Repair from Breakdown
-                if (value === EQUIPMENT_STATUSES.UNDER_REPAIR && previousStatus === EQUIPMENT_STATUSES.BREAKDOWN && breakdownType) {
+                // Debug logs
+                console.log('=== AUTO-SUGGESTION DEBUG ===')
+                console.log('New Status:', value)
+                console.log('Previous Status:', previousStatus)
+                console.log('Breakdown Type:', breakdownType)
+                console.log('Is Under Repair?', value === EQUIPMENT_STATUSES.UNDER_REPAIR)
+                console.log('Was Breakdown?', previousStatus === EQUIPMENT_STATUSES.BREAKDOWN)
+                console.log('Has Breakdown Type?', !!breakdownType)
+                
+                // Auto-suggest personnel when changing to Under Repair or In Workshop from Breakdown
+                if ((value === EQUIPMENT_STATUSES.UNDER_REPAIR || value === EQUIPMENT_STATUSES.IN_WORKSHOP) && previousStatus === EQUIPMENT_STATUSES.BREAKDOWN && breakdownType) {
+                  console.log('✅ Conditions met! Looking for personnel...')
                   const selectedType = breakdownTypes.find(t => t.value === breakdownType)
+                  console.log('Selected Type:', selectedType)
                   if (selectedType?.suggestedPersonnel === 'mechanic' && mechanics.length > 0) {
                     setSelectedMechanicId(mechanics[0]._id)
                     toast({
-                      title: 'Personnel Suggéré',
-                      description: `Mécanicien pré-sélectionné selon le type de panne (${selectedType.label})`,
+                      title: 'Suggested Personnel',
+                      description: `Mechanic pre-selected based on breakdown type (${selectedType.label})`,
                     })
                   } else if (selectedType?.suggestedPersonnel === 'electrician' && electricians.length > 0) {
                     setSelectedElectricianId(electricians[0]._id)
                     toast({
-                      title: 'Personnel Suggéré',
-                      description: `Électricien pré-sélectionné selon le type de panne (${selectedType.label})`,
+                      title: 'Suggested Personnel',
+                      description: `Electrician pre-selected based on breakdown type (${selectedType.label})`,
                     })
                   } else if (selectedType?.suggestedPersonnel === 'worker' && maintenanceWorkers.length > 0) {
                     setSelectedMaintenanceWorkerId(maintenanceWorkers[0]._id)
                     toast({
-                      title: 'Personnel Suggéré',
-                      description: `Agent de maintenance pré-sélectionné selon le type de panne (${selectedType.label})`,
+                      title: 'Suggested Personnel',
+                      description: `Maintenance worker pre-selected based on breakdown type (${selectedType.label})`,
                     })
                   }
                 }
@@ -1139,7 +1151,7 @@ export function Equipment() {
             )}
 
             {/* Maintenance Personnel Selection - Only show for maintenance statuses */}
-            {([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE] as EquipmentStatus[]).includes(form.status as EquipmentStatus) && (
+            {([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE, EQUIPMENT_STATUSES.IN_WORKSHOP] as EquipmentStatus[]).includes(form.status as EquipmentStatus) && (
               <div className={`space-y-4 p-4 border rounded-lg ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'bg-red-50 border-red-300' : 'bg-orange-50'}`}>
                 <div className="flex items-center gap-2">
                   <Wrench className={`h-5 w-5 ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-600' : 'text-orange-600'}`} />

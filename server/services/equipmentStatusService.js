@@ -17,7 +17,7 @@ class EquipmentStatusService {
    * @returns {Promise<object>} Updated equipment and history entry
    */
   static async changeStatus(equipmentId, newStatus, userId, options = {}) {
-    const { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, metadata = {} } = options;
+    const { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, metadata = {} } = options;
 
     // Validate equipment exists
     const equipment = await Equipment.findById(equipmentId);
@@ -38,7 +38,7 @@ class EquipmentStatusService {
     }
 
     // Maintenance statuses requiring personnel
-    const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance'];
+    const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance', 'in_workshop'];
     if (maintenanceStatuses.includes(newStatus)) {
       if (!mechanicId && !electricianId && !maintenanceWorkerId) {
         const statusLabel = STATUS_METADATA[newStatus]?.label || newStatus;
@@ -95,6 +95,13 @@ class EquipmentStatusService {
     equipment.lastStatusChange = new Date();
     equipment.lastStatusChangedBy = userId;
     equipment.currentStatusDuration = 0;
+    
+    // Save breakdown info if status is breakdown
+    if (newStatus === 'breakdown') {
+      if (breakdownType) equipment.lastBreakdownType = breakdownType;
+      if (breakdownDescription) equipment.lastBreakdownDescription = breakdownDescription;
+    }
+    
     await equipment.save();
 
     // Populate the history entry

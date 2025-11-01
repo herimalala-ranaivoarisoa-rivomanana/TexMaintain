@@ -96,6 +96,8 @@ interface Equipment {
   location: string
   model?: string
   brand?: string
+  lastBreakdownType?: string
+  lastBreakdownDescription?: string
 }
 
 interface SortableEquipmentProps {
@@ -597,6 +599,25 @@ export function ProductionLines() {
     setBreakdownDescription("")
     setBreakdownMedia([])
     setBreakdownMediaPreviews([])
+    
+    // Load breakdown info if equipment is in breakdown status
+    if (currentStatus === EQUIPMENT_STATUSES.BREAKDOWN) {
+      console.log('🔍 Loading breakdown info for equipment:', equipmentId)
+      try {
+        // Find the equipment in our local state
+        const eq = equipment.find(e => e._id === equipmentId)
+        if (eq && eq.lastBreakdownType) {
+          console.log('✅ Found breakdown info in equipment:', eq.lastBreakdownType)
+          setBreakdownType(eq.lastBreakdownType)
+          setBreakdownDescription(eq.lastBreakdownDescription || '')
+        } else {
+          console.log('⚠️ No breakdown info found in equipment')
+        }
+      } catch (error) {
+        console.error('❌ Error loading breakdown info:', error)
+      }
+    }
+    
     setIsStatusDialogOpen(true)
   }
 
@@ -636,7 +657,7 @@ export function ProductionLines() {
     }
     
     // Validate maintenance personnel for maintenance statuses (same logic as EquipmentStatusDialog)
-    const maintenanceStatuses: EquipmentStatus[] = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE]
+    const maintenanceStatuses: EquipmentStatus[] = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE, EQUIPMENT_STATUSES.IN_WORKSHOP]
     if (maintenanceStatuses.includes(newStatus as EquipmentStatus)) {
       if (!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId) {
         toast({
@@ -657,7 +678,9 @@ export function ProductionLines() {
         machinistId: selectedMachinistId || undefined,
         mechanicId: selectedMechanicId || undefined,
         electricianId: selectedElectricianId || undefined,
-        maintenanceWorkerId: selectedMaintenanceWorkerId || undefined
+        maintenanceWorkerId: selectedMaintenanceWorkerId || undefined,
+        breakdownType: breakdownType || undefined,
+        breakdownDescription: breakdownDescription || undefined
       })
       
       // Upload breakdown media if status is Breakdown and there are files
@@ -991,26 +1014,40 @@ export function ProductionLines() {
                 <Select value={newStatus} onValueChange={(value) => {
                   setNewStatus(value)
                   
-                  // Auto-suggest personnel when changing to Under Repair from Breakdown
-                  if (value === EQUIPMENT_STATUSES.UNDER_REPAIR && selectedEquipmentForStatus?.currentStatus === EQUIPMENT_STATUSES.BREAKDOWN && breakdownType) {
+                  // Debug logs
+                  console.log('=== AUTO-SUGGESTION DEBUG (ProductionLines) ===')
+                  console.log('New Status:', value)
+                  console.log('Current Status:', selectedEquipmentForStatus?.currentStatus)
+                  console.log('Breakdown Type:', breakdownType)
+                  console.log('Is Under Repair?', value === EQUIPMENT_STATUSES.UNDER_REPAIR)
+                  console.log('Was Breakdown?', selectedEquipmentForStatus?.currentStatus === EQUIPMENT_STATUSES.BREAKDOWN)
+                  console.log('Has Breakdown Type?', !!breakdownType)
+                  console.log('Mechanics available:', mechanics.length)
+                  console.log('Electricians available:', electricians.length)
+                  console.log('Workers available:', maintenanceWorkers.length)
+                  
+                  // Auto-suggest personnel when changing to Under Repair or In Workshop from Breakdown
+                  if ((value === EQUIPMENT_STATUSES.UNDER_REPAIR || value === EQUIPMENT_STATUSES.IN_WORKSHOP) && selectedEquipmentForStatus?.currentStatus === EQUIPMENT_STATUSES.BREAKDOWN && breakdownType) {
+                    console.log('✅ Conditions met! Looking for personnel...')
                     const selectedType = breakdownTypes.find(t => t.value === breakdownType)
+                    console.log('Selected Type:', selectedType)
                     if (selectedType?.suggestedPersonnel === 'mechanic' && mechanics.length > 0) {
                       setSelectedMechanicId(mechanics[0]._id)
                       toast({
-                        title: 'Personnel Suggéré',
-                        description: `Mécanicien pré-sélectionné selon le type de panne (${selectedType.label})`,
+                        title: 'Suggested Personnel',
+                        description: `Mechanic pre-selected based on breakdown type (${selectedType.label})`,
                       })
                     } else if (selectedType?.suggestedPersonnel === 'electrician' && electricians.length > 0) {
                       setSelectedElectricianId(electricians[0]._id)
                       toast({
-                        title: 'Personnel Suggéré',
-                        description: `Électricien pré-sélectionné selon le type de panne (${selectedType.label})`,
+                        title: 'Suggested Personnel',
+                        description: `Electrician pre-selected based on breakdown type (${selectedType.label})`,
                       })
                     } else if (selectedType?.suggestedPersonnel === 'worker' && maintenanceWorkers.length > 0) {
                       setSelectedMaintenanceWorkerId(maintenanceWorkers[0]._id)
                       toast({
-                        title: 'Personnel Suggéré',
-                        description: `Agent de maintenance pré-sélectionné selon le type de panne (${selectedType.label})`,
+                        title: 'Suggested Personnel',
+                        description: `Maintenance worker pre-selected based on breakdown type (${selectedType.label})`,
                       })
                     }
                   }
@@ -1250,7 +1287,7 @@ export function ProductionLines() {
               )}
 
               {/* Maintenance Personnel Selection - Only show for maintenance statuses (same logic as EquipmentStatusDialog) */}
-              {([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE] as EquipmentStatus[]).includes(newStatus as EquipmentStatus) && (
+              {([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE, EQUIPMENT_STATUSES.IN_WORKSHOP] as EquipmentStatus[]).includes(newStatus as EquipmentStatus) && (
                 <div className={`space-y-4 p-4 border rounded-lg ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'bg-red-50 border-red-300' : 'bg-orange-50'}`}>
                   <div className="flex items-center gap-2">
                     <Wrench className={`h-5 w-5 ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-600' : 'text-orange-600'}`} />
@@ -1348,7 +1385,7 @@ export function ProductionLines() {
                 onClick={handleChangeStatus} 
                 className="bg-gradient-to-r from-blue-600 to-indigo-600" 
                 disabled={(() => {
-                  const maintenanceStatuses: EquipmentStatus[] = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE];
+                  const maintenanceStatuses: EquipmentStatus[] = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE, EQUIPMENT_STATUSES.IN_WORKSHOP];
                   const isMaintenanceStatus = maintenanceStatuses.includes(newStatus as EquipmentStatus);
                   const hasPersonnel = !!(selectedMechanicId || selectedElectricianId || selectedMaintenanceWorkerId);
                   

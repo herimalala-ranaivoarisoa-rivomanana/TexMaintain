@@ -466,7 +466,7 @@ router.post('/:id/', requireUser, requireRole(['admin','maintenance_manager','as
 router.post('/:id/change-status', requireUser, requireRole(['admin','maintenance_manager','assistant_maintenance_manager','foreman','mechanic','electrician','production_manager','line_manager']), async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId } = req.body;
+    const { status, reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription } = req.body;
 
     if (!status) {
       return res.status(400).json({ message: 'Status is required' });
@@ -478,7 +478,7 @@ router.post('/:id/change-status', requireUser, requireRole(['admin','maintenance
     }
 
     // Maintenance statuses requiring personnel
-    const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance'];
+    const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance', 'in_workshop'];
     if (maintenanceStatuses.includes(status) && !mechanicId && !electricianId && !maintenanceWorkerId) {
       const { STATUS_METADATA } = require('../models/EquipmentStatusHistory');
       const statusLabel = STATUS_METADATA[status]?.label || status;
@@ -491,7 +491,7 @@ router.post('/:id/change-status', requireUser, requireRole(['admin','maintenance
       id,
       status,
       req.user._id,
-      { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId }
+      { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription }
     );
 
     return res.status(200).json({

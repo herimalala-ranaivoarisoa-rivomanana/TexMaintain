@@ -99,6 +99,8 @@ export interface ChangeStatusRequest {
   mechanicId?: string;
   electricianId?: string;
   maintenanceWorkerId?: string;
+  breakdownType?: string;
+  breakdownDescription?: string;
 }
 
 export interface BulkChangeStatusRequest {
