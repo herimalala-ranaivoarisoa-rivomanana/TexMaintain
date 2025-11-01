@@ -15,7 +15,7 @@ export const uploadBreakdownMedia = async (
     formData.append('files', file)
   })
 
-  const response = await api.post('/breakdown-media', formData, {
+  const response = await api.post('/api/breakdown-media', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
@@ -24,16 +24,16 @@ export const uploadBreakdownMedia = async (
 }
 
 export const getBreakdownMediaByEquipment = async (equipmentId: string) => {
-  const response = await api.get(`/breakdown-media/equipment/${equipmentId}`)
+  const response = await api.get(`/api/breakdown-media/equipment/${equipmentId}`)
   return response.data
 }
 
 export const getBreakdownMedia = async (id: string) => {
-  const response = await api.get(`/breakdown-media/${id}`)
+  const response = await api.get(`/api/breakdown-media/${id}`)
   return response.data
 }
 
 export const deleteBreakdownMedia = async (id: string) => {
-  const response = await api.delete(`/breakdown-media/${id}`)
+  const response = await api.delete(`/api/breakdown-media/${id}`)
   return response.data
 }

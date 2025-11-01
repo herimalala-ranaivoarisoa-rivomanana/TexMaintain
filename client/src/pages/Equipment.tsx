@@ -455,11 +455,19 @@ export function Equipment() {
                 title: "Updated", 
                 description: `Equipment updated with ${breakdownMedia.length} media file(s)` 
               })
-            } catch (mediaErr) {
-              console.error('Error uploading media:', mediaErr)
+            } catch (mediaErr: any) {
+              console.error('❌ Error uploading media:', mediaErr)
+              console.error('Error details:', {
+                message: mediaErr?.message,
+                response: mediaErr?.response?.data,
+                status: mediaErr?.response?.status
+              })
+              
+              const errorMessage = mediaErr?.response?.data?.error || 'Media upload failed'
+              
               toast({ 
                 title: "Partially Updated", 
-                description: "Equipment updated but media upload failed",
+                description: `Equipment updated but ${errorMessage}`,
                 variant: "destructive"
               })
             }

@@ -696,11 +696,19 @@ export function ProductionLines() {
             title: "Status Updated", 
             description: `Equipment status changed with ${breakdownMedia.length} media file(s)` 
           })
-        } catch (mediaErr) {
-          console.error('Error uploading media:', mediaErr)
+        } catch (mediaErr: any) {
+          console.error('❌ Error uploading media:', mediaErr)
+          console.error('Error details:', {
+            message: mediaErr?.message,
+            response: mediaErr?.response?.data,
+            status: mediaErr?.response?.status
+          })
+          
+          const errorMessage = mediaErr?.response?.data?.error || 'Media upload failed'
+          
           toast({ 
             title: "Partially Updated", 
-            description: "Status changed but media upload failed",
+            description: `Status changed but ${errorMessage}`,
             variant: "destructive"
           })
         }

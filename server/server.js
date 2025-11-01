@@ -1,10 +1,16 @@
 // Load environment variables
 require("dotenv").config();
+
+// Validate environment variables first
+const { validateEnv } = require("./config/validateEnv");
+validateEnv();
+
 const mongoose = require("mongoose");
 const express = require("express");
 const session = require("express-session");
 const MongoStore = require('connect-mongo');
 const basicRoutes = require("./routes/index");
+const healthRoutes = require("./routes/healthRoutes");
 const authRoutes = require("./routes/authRoutes");
 const seedRoutes = require("./routes/seedRoutes");
 const equipmentRoutes = require("./routes/equipmentRoutes");
@@ -25,14 +31,11 @@ const { connectDB } = require("./config/database");
 const cors = require("cors");
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const compression = require('compression');
+const mongoSanitize = require('express-mongo-sanitize');
 const pino = require('pino');
 const pinoHttp = require('pino-http');
 const path = require('path');
-
-if (!process.env.DATABASE_URL) {
-  console.error("Error: DATABASE_URL variables in .env missing.");
-  process.exit(-1);
-}
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -41,19 +44,58 @@ app.enable('json spaces');
 // We want to be consistent with URL paths, so we enable strict routing
 app.enable('strict routing');
 
-app.use(cors({}));
+// Secure CORS configuration
+const allowedOrigins = process.env.FRONTEND_URL 
+  ? process.env.FRONTEND_URL.split(',') 
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS: Blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 600 // 10 minutes
+}));
+
 app.use(helmet());
+
+// Compress all responses
+app.use(compression());
+
+// Rate limiting
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
 }));
+
 // Structured request logging
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 app.use(pinoHttp({ logger }));
+
+// Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Sanitize data to prevent NoSQL injection
+app.use(mongoSanitize({
+  replaceWith: '_',
+  onSanitize: ({ req, key }) => {
+    logger.warn(`Sanitized potentially malicious input: ${key}`);
+  }
+}));
 
 // Serve static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -68,6 +110,8 @@ app.on("error", (error) => {
 
 // Basic Routes
 app.use(basicRoutes);
+// Health Check Routes (no auth required)
+app.use('/api', healthRoutes);
 // Authentication Routes
 app.use('/api/auth', authRoutes);
 // Seed Routes

@@ -3,11 +3,9 @@ require('dotenv').config();
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.DATABASE_URL, {
-      // These options are to handle deprecation warnings
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    // Remove deprecated options (useNewUrlParser, useUnifiedTopology)
+    // They have no effect since MongoDB Driver v4.0.0
+    const conn = await mongoose.connect(process.env.DATABASE_URL);
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
 

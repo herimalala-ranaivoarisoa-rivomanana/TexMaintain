@@ -23,33 +23,88 @@ const storage = multer.diskStorage({
   }
 });
 
-const fileFilter = (req, file, cb) => {
-  // Accept images and videos only
-  if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image and video files are allowed!'), false);
-  }
-};
-
+// Secure upload configuration with validation
 const upload = multer({
   storage: storage,
-  fileFilter: fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB max per file
+    files: 5 // Maximum 5 files per request
+  },
+  fileFilter: function (req, file, cb) {
+    // Allowed MIME types
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'video/mp4',
+      'video/mpeg',
+      'video/quicktime'
+    ];
+    
+    // Allowed extensions
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mpeg', '.mov'];
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      return cb(new Error(`Invalid file type. Allowed types: images and videos only`), false);
+    }
+    
+    if (!allowedExtensions.includes(fileExtension)) {
+      return cb(new Error(`Invalid file extension. Allowed: ${allowedExtensions.join(', ')}`), false);
+    }
+    
+    cb(null, true);
   }
 });
 
 // POST /api/breakdown-media - Upload breakdown media
-router.post('/', requireUser, upload.array('files', 10), async (req, res) => {
+// Error handling middleware for multer errors
+const handleUpload = (req, res, next) => {
+  upload.array('files', 5)(req, res, (err) => {
+    if (err) {
+      console.error('Multer upload error:', err);
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ 
+          error: 'File too large. Maximum size is 10MB per file.' 
+        });
+      }
+      if (err.code === 'LIMIT_FILE_COUNT') {
+        return res.status(400).json({ 
+          error: 'Too many files. Maximum is 5 files per upload.' 
+        });
+      }
+      if (err.message) {
+        return res.status(400).json({ error: err.message });
+      }
+      return res.status(400).json({ error: 'File upload failed' });
+    }
+    next();
+  });
+};
+
+router.post('/', requireUser, handleUpload, async (req, res) => {
   try {
     const { equipmentId, breakdownType, description } = req.body;
+    
+    console.log('📤 Breakdown media upload request:', {
+      equipmentId,
+      breakdownType,
+      description,
+      filesCount: req.files ? req.files.length : 0,
+      user: req.user.email
+    });
 
     if (!equipmentId || !breakdownType || !description) {
       // Clean up uploaded files if validation fails
       if (req.files) {
         req.files.forEach(file => {
-          fs.unlinkSync(file.path);
+          try {
+            fs.unlinkSync(file.path);
+          } catch (err) {
+            console.error('Error deleting file:', err);
+          }
         });
       }
       return res.status(400).json({ error: 'Equipment ID, breakdown type, and description are required' });
@@ -72,6 +127,12 @@ router.post('/', requireUser, upload.array('files', 10), async (req, res) => {
     });
 
     await breakdownMedia.save();
+    
+    console.log('✅ Breakdown media uploaded successfully:', {
+      id: breakdownMedia._id,
+      equipment: equipmentId,
+      filesCount: files.length
+    });
 
     res.status(201).json({
       message: 'Breakdown media uploaded successfully',
