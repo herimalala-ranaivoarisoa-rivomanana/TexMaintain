@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { 
   Search, 
   Filter, 
@@ -30,6 +31,7 @@ import { getMachinists } from "@/api/machinists"
 import { getMechanics } from "@/api/mechanics"
 import { getElectricians } from "@/api/electricians"
 import { getMaintenanceWorkers } from "@/api/maintenanceWorkers"
+import { uploadBreakdownMedia } from "@/api/breakdownMedia"
 import api from "@/api/api"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
@@ -122,6 +124,24 @@ export function Equipment() {
   const [selectedElectricianId, setSelectedElectricianId] = useState('')
   const [maintenanceWorkers, setMaintenanceWorkers] = useState<any[]>([])
   const [selectedMaintenanceWorkerId, setSelectedMaintenanceWorkerId] = useState('')
+  
+  // Breakdown information
+  const [breakdownType, setBreakdownType] = useState('')
+  const [breakdownDescription, setBreakdownDescription] = useState('')
+  const [breakdownMedia, setBreakdownMedia] = useState<File[]>([])
+  const [breakdownMediaPreviews, setBreakdownMediaPreviews] = useState<string[]>([])
+  
+  // Breakdown types (extensible list)
+  const breakdownTypes = [
+    { value: 'mechanical', label: 'Panne Mécanique', suggestedPersonnel: 'mechanic' },
+    { value: 'electrical', label: 'Panne Électrique', suggestedPersonnel: 'electrician' },
+    { value: 'hydraulic', label: 'Panne Hydraulique', suggestedPersonnel: 'mechanic' },
+    { value: 'pneumatic', label: 'Panne Pneumatique', suggestedPersonnel: 'mechanic' },
+    { value: 'electronic', label: 'Panne Électronique', suggestedPersonnel: 'electrician' },
+    { value: 'software', label: 'Panne Logicielle', suggestedPersonnel: 'electrician' },
+    { value: 'structural', label: 'Panne Structurelle', suggestedPersonnel: 'worker' },
+    { value: 'other', label: 'Autre', suggestedPersonnel: null }
+  ]
   
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -229,6 +249,64 @@ export function Equipment() {
   }, [page, limit, total])
 
 
+  // Handle media file upload
+  const handleMediaUpload = (files: FileList | null) => {
+    if (!files) return
+    
+    const newFiles = Array.from(files).filter(file => {
+      const isImage = file.type.startsWith('image/')
+      const isVideo = file.type.startsWith('video/')
+      const isUnder10MB = file.size <= 10 * 1024 * 1024 // 10MB limit
+      
+      if (!isImage && !isVideo) {
+        toast({
+          title: 'Type de fichier non supporté',
+          description: `${file.name} n'est pas une image ou vidéo`,
+          variant: 'destructive'
+        })
+        return false
+      }
+      
+      if (!isUnder10MB) {
+        toast({
+          title: 'Fichier trop volumineux',
+          description: `${file.name} dépasse 10MB`,
+          variant: 'destructive'
+        })
+        return false
+      }
+      
+      return true
+    })
+    
+    if (newFiles.length === 0) return
+    
+    // Create previews
+    const newPreviews = newFiles.map(file => URL.createObjectURL(file))
+    
+    setBreakdownMedia(prev => [...prev, ...newFiles])
+    setBreakdownMediaPreviews(prev => [...prev, ...newPreviews])
+  }
+  
+  // Remove media file
+  const removeMedia = (index: number) => {
+    URL.revokeObjectURL(breakdownMediaPreviews[index])
+    setBreakdownMedia(prev => prev.filter((_, i) => i !== index))
+    setBreakdownMediaPreviews(prev => prev.filter((_, i) => i !== index))
+  }
+  
+  // Handle drag and drop
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    handleMediaUpload(e.dataTransfer.files)
+  }
+
   const openAddDialog = () => {
     setEditingItem(null)
     setForm({ category: "cutting", type: "", status: EQUIPMENT_STATUSES.STORED, location: "", model: "", serialNumber: "", chipNumber: "", brand: "", acquisitionDate: "" })
@@ -237,10 +315,15 @@ export function Equipment() {
     setSelectedMechanicId('')
     setSelectedElectricianId('')
     setSelectedMaintenanceWorkerId('')
+    // Reset breakdown info
+    setBreakdownType('')
+    setBreakdownDescription('')
+    setBreakdownMedia([])
+    setBreakdownMediaPreviews([])
     setIsDialogOpen(true)
   }
 
-  const openEditDialog = (item: Equipment) => {
+  const openEditDialog = async (item: Equipment) => {
     setEditingItem(item)
     const brandId = typeof item.brand === 'object' && item.brand ? item.brand._id : (item.brand || "")
     setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, model: item.model || "", serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: brandId, acquisitionDate: item.acquisitionDate ? new Date(item.acquisitionDate).toISOString().split('T')[0] : "" })
@@ -249,6 +332,27 @@ export function Equipment() {
     setSelectedMechanicId('')
     setSelectedElectricianId('')
     setSelectedMaintenanceWorkerId('')
+    // Reset breakdown info
+    setBreakdownType('')
+    setBreakdownDescription('')
+    setBreakdownMedia([])
+    setBreakdownMediaPreviews([])
+    
+    // Load breakdown info if equipment is in breakdown status
+    if (item.status === EQUIPMENT_STATUSES.BREAKDOWN) {
+      try {
+        const { getBreakdownMediaByEquipment } = await import('@/api/breakdownMedia')
+        const response = await getBreakdownMediaByEquipment(item._id)
+        if (response.breakdownMedia && response.breakdownMedia.length > 0) {
+          const latestBreakdown = response.breakdownMedia[0]
+          setBreakdownType(latestBreakdown.breakdownType)
+          setBreakdownDescription(latestBreakdown.description)
+        }
+      } catch (error) {
+        console.error('Error loading breakdown info:', error)
+      }
+    }
+    
     setIsDialogOpen(true)
   }
 
@@ -263,8 +367,30 @@ export function Equipment() {
       return
     }
 
+    // Validate breakdown type and description for "Breakdown" status
+    if (form.status === EQUIPMENT_STATUSES.BREAKDOWN) {
+      if (!breakdownType) {
+        toast({
+          title: 'Type de Panne Requis',
+          description: 'Veuillez sélectionner le type de panne',
+          variant: 'destructive'
+        })
+        return
+      }
+      if (!breakdownDescription.trim()) {
+        toast({
+          title: 'Description Requise',
+          description: 'Veuillez décrire la panne',
+          variant: 'destructive'
+        })
+        return
+      }
+      // Note: Media files are collected but not sent to API yet
+      // TODO: Create separate API endpoint for file uploads
+    }
+
     // Validate maintenance personnel for maintenance statuses
-    const maintenanceStatuses = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE]
+    const maintenanceStatuses: EquipmentStatus[] = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE]
     if (maintenanceStatuses.includes(form.status as EquipmentStatus)) {
       if (!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId) {
         toast({
@@ -298,7 +424,7 @@ export function Equipment() {
           const statusChanged = editingItem.status !== form.status
           const requiresPersonnel = 
             form.status === EQUIPMENT_STATUSES.IN_PRODUCTION ||
-            [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(form.status as EquipmentStatus)
+            ([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE] as EquipmentStatus[]).includes(form.status as EquipmentStatus)
           
           if (statusChanged && requiresPersonnel) {
             // Step 1: Change status with personnel using changeEquipmentStatus
@@ -315,7 +441,30 @@ export function Equipment() {
           const { status, ...otherFields } = form
           await updateEquipment(editingItem._id, otherFields)
           
-          toast({ title: "Updated", description: "Equipment updated successfully" })
+          // Step 3: Upload breakdown media if status is Breakdown and there are files
+          if (form.status === EQUIPMENT_STATUSES.BREAKDOWN && breakdownMedia.length > 0) {
+            try {
+              await uploadBreakdownMedia(
+                editingItem._id,
+                breakdownType,
+                breakdownDescription,
+                breakdownMedia
+              )
+              toast({ 
+                title: "Updated", 
+                description: `Equipment updated with ${breakdownMedia.length} media file(s)` 
+              })
+            } catch (mediaErr) {
+              console.error('Error uploading media:', mediaErr)
+              toast({ 
+                title: "Partially Updated", 
+                description: "Equipment updated but media upload failed",
+                variant: "destructive"
+              })
+            }
+          } else {
+            toast({ title: "Updated", description: "Equipment updated successfully" })
+          }
         } catch (err) {
           setEquipment(prev)
           throw err
@@ -741,7 +890,34 @@ export function Equipment() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="status">Status</Label>
-              <Select value={form.status} onValueChange={(value) => setForm({ ...form, status: value })}>
+              <Select value={form.status} onValueChange={(value) => {
+                const previousStatus = editingItem?.status || form.status
+                setForm({ ...form, status: value })
+                
+                // Auto-suggest personnel when changing to Under Repair from Breakdown
+                if (value === EQUIPMENT_STATUSES.UNDER_REPAIR && previousStatus === EQUIPMENT_STATUSES.BREAKDOWN && breakdownType) {
+                  const selectedType = breakdownTypes.find(t => t.value === breakdownType)
+                  if (selectedType?.suggestedPersonnel === 'mechanic' && mechanics.length > 0) {
+                    setSelectedMechanicId(mechanics[0]._id)
+                    toast({
+                      title: 'Personnel Suggéré',
+                      description: `Mécanicien pré-sélectionné selon le type de panne (${selectedType.label})`,
+                    })
+                  } else if (selectedType?.suggestedPersonnel === 'electrician' && electricians.length > 0) {
+                    setSelectedElectricianId(electricians[0]._id)
+                    toast({
+                      title: 'Personnel Suggéré',
+                      description: `Électricien pré-sélectionné selon le type de panne (${selectedType.label})`,
+                    })
+                  } else if (selectedType?.suggestedPersonnel === 'worker' && maintenanceWorkers.length > 0) {
+                    setSelectedMaintenanceWorkerId(maintenanceWorkers[0]._id)
+                    toast({
+                      title: 'Personnel Suggéré',
+                      description: `Agent de maintenance pré-sélectionné selon le type de panne (${selectedType.label})`,
+                    })
+                  }
+                }
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
@@ -837,8 +1013,133 @@ export function Equipment() {
               </div>
             )}
 
+            {/* Breakdown Information - Only show when status is "Breakdown" */}
+            {form.status === EQUIPMENT_STATUSES.BREAKDOWN && (
+              <div className={`space-y-4 p-4 border rounded-lg ${!breakdownType || !breakdownDescription ? 'bg-red-50 border-red-300' : 'bg-yellow-50 border-yellow-300'}`}>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className={`h-5 w-5 ${!breakdownType || !breakdownDescription ? 'text-red-600' : 'text-yellow-600'}`} />
+                  <Label className={`text-base font-semibold ${!breakdownType || !breakdownDescription ? 'text-red-900' : 'text-yellow-900'}`}>
+                    Informations sur la Panne <span className="text-red-500">*</span>
+                  </Label>
+                </div>
+                <p className={`text-sm ${!breakdownType || !breakdownDescription ? 'text-red-700 font-medium' : 'text-yellow-700'}`}>
+                  {!breakdownType || !breakdownDescription ? '⚠️ Veuillez renseigner le type et la description de la panne' : 'Ces informations aideront à suggérer le bon personnel de maintenance'}
+                </p>
+                
+                {/* Breakdown Type */}
+                <div className="grid gap-2">
+                  <Label htmlFor="breakdownType">Type de Panne <span className="text-red-500">*</span></Label>
+                  <Select value={breakdownType} onValueChange={(value) => {
+                    setBreakdownType(value)
+                    // Auto-suggest personnel based on breakdown type
+                    const selectedType = breakdownTypes.find(t => t.value === value)
+                    if (selectedType?.suggestedPersonnel === 'mechanic' && mechanics.length > 0) {
+                      setSelectedMechanicId(mechanics[0]._id)
+                    } else if (selectedType?.suggestedPersonnel === 'electrician' && electricians.length > 0) {
+                      setSelectedElectricianId(electricians[0]._id)
+                    } else if (selectedType?.suggestedPersonnel === 'worker' && maintenanceWorkers.length > 0) {
+                      setSelectedMaintenanceWorkerId(maintenanceWorkers[0]._id)
+                    }
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner le type de panne" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {breakdownTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Breakdown Description */}
+                <div className="grid gap-2">
+                  <Label htmlFor="breakdownDescription">Description de la Panne <span className="text-red-500">*</span></Label>
+                  <Textarea
+                    id="breakdownDescription"
+                    value={breakdownDescription}
+                    onChange={(e) => setBreakdownDescription(e.target.value)}
+                    placeholder="Décrivez la panne en détail..."
+                    rows={3}
+                  />
+                  <p className="text-xs text-slate-500">
+                    Cette information sera utilisée pour suggérer le personnel approprié lors du passage en "Under Repair"
+                  </p>
+                </div>
+
+                {/* Media Upload - Photos/Videos */}
+                <div className="grid gap-2">
+                  <Label htmlFor="breakdownMedia">Photos / Vidéos (optionnel)</Label>
+                  <div
+                    className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-slate-400 transition-colors cursor-pointer"
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onClick={() => document.getElementById('breakdownMediaInput')?.click()}
+                  >
+                    <Package className="h-12 w-12 mx-auto text-slate-400 mb-2" />
+                    <p className="text-sm text-slate-600 mb-1">
+                      Glissez-déposez vos fichiers ici ou cliquez pour sélectionner
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Images et vidéos acceptées (max 10MB par fichier)
+                    </p>
+                    <input
+                      id="breakdownMediaInput"
+                      type="file"
+                      accept="image/*,video/*"
+                      capture="environment"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleMediaUpload(e.target.files)}
+                    />
+                  </div>
+                  
+                  {/* Media Previews */}
+                  {breakdownMediaPreviews.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {breakdownMediaPreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          {breakdownMedia[index].type.startsWith('image/') ? (
+                            <img
+                              src={preview}
+                              alt={`Preview ${index + 1}`}
+                              className="w-full h-24 object-cover rounded border"
+                            />
+                          ) : (
+                            <video
+                              src={preview}
+                              className="w-full h-24 object-cover rounded border"
+                              controls={false}
+                            />
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              removeMedia(index)
+                            }}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash className="h-3 w-3" />
+                          </button>
+                          <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
+                            {breakdownMedia[index].type.startsWith('image/') ? '📷' : '🎥'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500">
+                    {breakdownMedia.length} fichier(s) sélectionné(s)
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Maintenance Personnel Selection - Only show for maintenance statuses */}
-            {[EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(form.status as EquipmentStatus) && (
+            {([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE] as EquipmentStatus[]).includes(form.status as EquipmentStatus) && (
               <div className={`space-y-4 p-4 border rounded-lg ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'bg-red-50 border-red-300' : 'bg-orange-50'}`}>
                 <div className="flex items-center gap-2">
                   <Wrench className={`h-5 w-5 ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-600' : 'text-orange-600'}`} />
@@ -851,8 +1152,13 @@ export function Equipment() {
                 </p>
                 
                 {/* Mechanic */}
-                <div className="grid gap-2">
-                  <Label htmlFor="mechanic">Mechanic</Label>
+                <div className={`grid gap-2 ${breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'mechanic' ? 'p-3 border-2 border-green-400 rounded-lg bg-green-50' : ''}`}>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="mechanic">Mechanic</Label>
+                    {breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'mechanic' && (
+                      <Badge className="bg-green-500 text-white text-xs">✓ Suggéré</Badge>
+                    )}
+                  </div>
                   <Select value={selectedMechanicId} onValueChange={(val) => setSelectedMechanicId(val === 'none' ? '' : val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select mechanic (optional)" />
@@ -872,8 +1178,13 @@ export function Equipment() {
                 </div>
 
                 {/* Electrician */}
-                <div className="grid gap-2">
-                  <Label htmlFor="electrician">Electrician</Label>
+                <div className={`grid gap-2 ${breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'electrician' ? 'p-3 border-2 border-green-400 rounded-lg bg-green-50' : ''}`}>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="electrician">Electrician</Label>
+                    {breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'electrician' && (
+                      <Badge className="bg-green-500 text-white text-xs">✓ Suggéré</Badge>
+                    )}
+                  </div>
                   <Select value={selectedElectricianId} onValueChange={(val) => setSelectedElectricianId(val === 'none' ? '' : val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select electrician (optional)" />
@@ -893,8 +1204,13 @@ export function Equipment() {
                 </div>
 
                 {/* Maintenance Worker */}
-                <div className="grid gap-2">
-                  <Label htmlFor="maintenanceWorker">Maintenance Worker</Label>
+                <div className={`grid gap-2 ${breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'worker' ? 'p-3 border-2 border-green-400 rounded-lg bg-green-50' : ''}`}>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="maintenanceWorker">Maintenance Worker</Label>
+                    {breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'worker' && (
+                      <Badge className="bg-green-500 text-white text-xs">✓ Suggéré</Badge>
+                    )}
+                  </div>
                   <Select value={selectedMaintenanceWorkerId} onValueChange={(val) => setSelectedMaintenanceWorkerId(val === 'none' ? '' : val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select maintenance worker (optional)" />

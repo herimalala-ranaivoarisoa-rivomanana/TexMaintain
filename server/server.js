@@ -20,12 +20,14 @@ const machinistRoutes = require("./routes/machinistRoutes");
 const mechanicRoutes = require("./routes/mechanicRoutes");
 const electricianRoutes = require("./routes/electricianRoutes");
 const maintenanceWorkerRoutes = require("./routes/maintenanceWorkerRoutes");
+const breakdownMediaRoutes = require("./routes/breakdownMedia");
 const { connectDB } = require("./config/database");
 const cors = require("cors");
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const pino = require('pino');
 const pinoHttp = require('pino-http');
+const path = require('path');
 
 if (!process.env.DATABASE_URL) {
   console.error("Error: DATABASE_URL variables in .env missing.");
@@ -52,6 +54,9 @@ const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 app.use(pinoHttp({ logger }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files for uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Database connection
 connectDB();
@@ -81,6 +86,7 @@ app.use('/api/machinists', machinistRoutes);
 app.use('/api/mechanics', mechanicRoutes);
 app.use('/api/electricians', electricianRoutes);
 app.use('/api/maintenance-workers', maintenanceWorkerRoutes);
+app.use('/api/breakdown-media', breakdownMediaRoutes);
 
 // If no routes handled the request, it's a 404
 app.use((req, res, next) => {
