@@ -95,6 +95,10 @@ export interface ChangeStatusRequest {
   reason?: string;
   notes?: string;
   interventionId?: string;
+  machinistId?: string;
+  mechanicId?: string;
+  electricianId?: string;
+  maintenanceWorkerId?: string;
 }
 
 export interface BulkChangeStatusRequest {

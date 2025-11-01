@@ -206,6 +206,21 @@ const equipmentStatusHistorySchema = new mongoose.Schema({
     ref: 'Machinist',
     required: false
   },
+  mechanic: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Mechanic',
+    required: false
+  },
+  electrician: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Electrician',
+    required: false
+  },
+  maintenanceWorker: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MaintenanceWorker',
+    required: false
+  },
   duration: {
     type: Number, // Duration in minutes (calculated when status changes again)
     default: null

@@ -17,7 +17,7 @@ class EquipmentStatusService {
    * @returns {Promise<object>} Updated equipment and history entry
    */
   static async changeStatus(equipmentId, newStatus, userId, options = {}) {
-    const { reason, notes, interventionId, machinistId, metadata = {} } = options;
+    const { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, metadata = {} } = options;
 
     // Validate equipment exists
     const equipment = await Equipment.findById(equipmentId);
@@ -31,6 +31,20 @@ class EquipmentStatusService {
     }
 
     const previousStatus = equipment.status;
+
+    // Validate required personnel for specific statuses
+    if (newStatus === 'in_production' && !machinistId) {
+      throw new Error('Machinist is required when setting equipment to In Production');
+    }
+
+    // Maintenance statuses requiring personnel
+    const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance'];
+    if (maintenanceStatuses.includes(newStatus)) {
+      if (!mechanicId && !electricianId && !maintenanceWorkerId) {
+        const statusLabel = STATUS_METADATA[newStatus]?.label || newStatus;
+        throw new Error(`At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting equipment to ${statusLabel}`);
+      }
+    }
 
     // Check if transition is allowed (skip for initial status or same status)
     if (previousStatus && previousStatus !== newStatus) {
@@ -69,6 +83,9 @@ class EquipmentStatusService {
       notes: notes || '',
       intervention: interventionId || null,
       machinist: machinistId || null,
+      mechanic: mechanicId || null,
+      electrician: electricianId || null,
+      maintenanceWorker: maintenanceWorkerId || null,
       metadata,
       timestamp: new Date()
     });
@@ -85,6 +102,15 @@ class EquipmentStatusService {
     await historyEntry.populate('intervention', 'title type status');
     if (machinistId) {
       await historyEntry.populate('machinist', 'matricule firstName lastName fullName');
+    }
+    if (mechanicId) {
+      await historyEntry.populate('mechanic', 'matricule firstName lastName fullName');
+    }
+    if (electricianId) {
+      await historyEntry.populate('electrician', 'matricule firstName lastName fullName');
+    }
+    if (maintenanceWorkerId) {
+      await historyEntry.populate('maintenanceWorker', 'matricule firstName lastName fullName');
     }
 
     // Return updated equipment with populated fields

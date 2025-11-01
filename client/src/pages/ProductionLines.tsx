@@ -19,8 +19,11 @@ import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
 import { getProductionLines, createProductionLine, updateProductionLine, deleteProductionLine } from "@/api/productionLines"
 import { getProductionSections, createProductionSection, updateProductionSection, updateProductionSectionEquipment } from "@/api/productionSections"
-import { getEquipment, updateEquipment } from "@/api/equipment"
+import { getEquipment, updateEquipment, changeEquipmentStatus } from "@/api/equipment"
 import { getMachinists } from "@/api/machinists"
+import { getMechanics } from "@/api/mechanics"
+import { getElectricians } from "@/api/electricians"
+import { getMaintenanceWorkers } from "@/api/maintenanceWorkers"
 import { EQUIPMENT_STATUSES, getStatusColor as getEquipmentStatusColor, getStatusLabel } from "@/types/equipment"
 import type { EquipmentStatus } from "@/types/equipment"
 import {
@@ -198,6 +201,14 @@ export function ProductionLines() {
   const [newStatus, setNewStatus] = useState<string>("")
   const [selectedMachinistId, setSelectedMachinistId] = useState<string>("")
   const [machinists, setMachinists] = useState<any[]>([])
+  
+  // Maintenance personnel states
+  const [selectedMechanicId, setSelectedMechanicId] = useState<string>("")
+  const [selectedElectricianId, setSelectedElectricianId] = useState<string>("")
+  const [selectedMaintenanceWorkerId, setSelectedMaintenanceWorkerId] = useState<string>("")
+  const [mechanics, setMechanics] = useState<any[]>([])
+  const [electricians, setElectricians] = useState<any[]>([])
+  const [maintenanceWorkers, setMaintenanceWorkers] = useState<any[]>([])
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -236,6 +247,8 @@ export function ProductionLines() {
 
   useEffect(() => {
     fetchData()
+    fetchMachinists()
+    fetchMaintenancePersonnel()
   }, [])
 
   const fetchData = async () => {
@@ -450,6 +463,30 @@ export function ProductionLines() {
     }
   }
 
+  const fetchMachinists = async () => {
+    try {
+      const response = await getMachinists({ isActive: true, limit: 100 })
+      setMachinists(response.machinists || [])
+    } catch (error) {
+      console.error('Error fetching machinists:', error)
+    }
+  }
+
+  const fetchMaintenancePersonnel = async () => {
+    try {
+      const [mechanicsRes, electriciansRes, workersRes] = await Promise.all([
+        getMechanics({ isActive: true }),
+        getElectricians({ isActive: true }),
+        getMaintenanceWorkers({ isActive: true })
+      ])
+      setMechanics(mechanicsRes.mechanics || [])
+      setElectricians(electriciansRes.electricians || [])
+      setMaintenanceWorkers(workersRes.workers || [])
+    } catch (error) {
+      console.error('Error fetching maintenance personnel:', error)
+    }
+  }
+
   const handleStatusClick = async (equipmentId: string, currentStatus: string) => {
     const availableStatuses = getAvailableStatuses()
     
@@ -473,6 +510,9 @@ export function ProductionLines() {
     setSelectedEquipmentForStatus({ id: equipmentId, currentStatus })
     setNewStatus(currentStatus)
     setSelectedMachinistId("")
+    setSelectedMechanicId("")
+    setSelectedElectricianId("")
+    setSelectedMaintenanceWorkerId("")
     setIsStatusDialogOpen(true)
   }
 
@@ -489,14 +529,30 @@ export function ProductionLines() {
       return
     }
     
+    // Validate maintenance personnel for maintenance statuses (same logic as EquipmentStatusDialog)
+    const maintenanceStatuses = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE]
+    if (maintenanceStatuses.includes(newStatus as EquipmentStatus)) {
+      if (!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please select at least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker)',
+          variant: 'destructive'
+        })
+        return
+      }
+    }
+    
     try {
       setIsSaving(true)
-      const updateData: any = { status: newStatus as EquipmentStatus }
-      if (selectedMachinistId) {
-        updateData.machinistId = selectedMachinistId
-      }
       
-      await updateEquipment(selectedEquipmentForStatus.id, updateData)
+      // Use changeEquipmentStatus API (same as EquipmentStatusDialog)
+      await changeEquipmentStatus(selectedEquipmentForStatus.id, {
+        status: newStatus as EquipmentStatus,
+        machinistId: selectedMachinistId || undefined,
+        mechanicId: selectedMechanicId || undefined,
+        electricianId: selectedElectricianId || undefined,
+        maintenanceWorkerId: selectedMaintenanceWorkerId || undefined
+      })
       
       setIsStatusDialogOpen(false)
       await fetchData()
@@ -912,10 +968,120 @@ export function ProductionLines() {
                   </Select>
                 </div>
               )}
+
+              {/* Maintenance Personnel Selection - Only show for maintenance statuses (same logic as EquipmentStatusDialog) */}
+              {[EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(newStatus as EquipmentStatus) && (
+                <div className={`space-y-4 p-4 border rounded-lg ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'bg-red-50 border-red-300' : 'bg-orange-50'}`}>
+                  <div className="flex items-center gap-2">
+                    <Wrench className={`h-5 w-5 ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-600' : 'text-orange-600'}`} />
+                    <Label className={`text-base font-semibold ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-900' : 'text-orange-900'}`}>
+                      Maintenance Personnel <span className="text-red-500">*</span>
+                    </Label>
+                  </div>
+                  <p className={`text-sm ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-700 font-medium' : 'text-orange-700'}`}>
+                    {!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? '⚠️ Please select at least one maintenance personnel to continue' : 'Select at least one maintenance personnel who will perform the maintenance work'}
+                  </p>
+                  
+                  {/* Mechanic */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="mechanic">Mechanic</Label>
+                    <Select value={selectedMechanicId} onValueChange={(val) => setSelectedMechanicId(val === 'none' ? '' : val)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select mechanic (optional)" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        <SelectItem value="none">None</SelectItem>
+                        {mechanics.map((mechanic) => (
+                          <SelectItem key={mechanic._id} value={mechanic._id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{mechanic.fullName}</span>
+                              <span className="text-xs text-slate-500">Matricule: {mechanic.matricule}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Electrician */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="electrician">Electrician</Label>
+                    <Select value={selectedElectricianId} onValueChange={(val) => setSelectedElectricianId(val === 'none' ? '' : val)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select electrician (optional)" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        <SelectItem value="none">None</SelectItem>
+                        {electricians.map((electrician) => (
+                          <SelectItem key={electrician._id} value={electrician._id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{electrician.fullName}</span>
+                              <span className="text-xs text-slate-500">Matricule: {electrician.matricule}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Maintenance Worker */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="maintenanceWorker">Maintenance Worker</Label>
+                    <Select value={selectedMaintenanceWorkerId} onValueChange={(val) => setSelectedMaintenanceWorkerId(val === 'none' ? '' : val)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select maintenance worker (optional)" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        <SelectItem value="none">None</SelectItem>
+                        {maintenanceWorkers.map((worker) => (
+                          <SelectItem key={worker._id} value={worker._id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{worker.fullName}</span>
+                              <span className="text-xs text-slate-500">Matricule: {worker.matricule}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)} disabled={isSaving}>Cancel</Button>
-              <Button onClick={handleChangeStatus} className="bg-gradient-to-r from-blue-600 to-indigo-600" disabled={isSaving || !newStatus || newStatus === selectedEquipmentForStatus?.currentStatus || (newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId)}>
+              <Button 
+                onClick={handleChangeStatus} 
+                className="bg-gradient-to-r from-blue-600 to-indigo-600" 
+                disabled={(() => {
+                  const maintenanceStatuses = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE];
+                  const isMaintenanceStatus = maintenanceStatuses.includes(newStatus as EquipmentStatus);
+                  const hasPersonnel = !!(selectedMechanicId || selectedElectricianId || selectedMaintenanceWorkerId);
+                  
+                  console.log('=== BUTTON DISABLED CHECK ===');
+                  console.log('New Status:', newStatus);
+                  console.log('Is Maintenance Status:', isMaintenanceStatus);
+                  console.log('Selected Mechanic ID:', selectedMechanicId);
+                  console.log('Selected Electrician ID:', selectedElectricianId);
+                  console.log('Selected Maintenance Worker ID:', selectedMaintenanceWorkerId);
+                  console.log('Has Personnel:', hasPersonnel);
+                  console.log('Is Saving:', isSaving);
+                  console.log('No Status:', !newStatus);
+                  console.log('Same Status:', newStatus === selectedEquipmentForStatus?.currentStatus);
+                  console.log('In Production without Machinist:', newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId);
+                  console.log('Maintenance without Personnel:', isMaintenanceStatus && !hasPersonnel);
+                  
+                  const result = isSaving || 
+                    !newStatus || 
+                    newStatus === selectedEquipmentForStatus?.currentStatus || 
+                    (newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId) ||
+                    (isMaintenanceStatus && !hasPersonnel);
+                  
+                  console.log('BUTTON DISABLED:', result);
+                  console.log('=============================');
+                  
+                  return result;
+                })()}
+              >
                 {isSaving ? 'Changing...' : 'Change Status'}
               </Button>
             </DialogFooter>

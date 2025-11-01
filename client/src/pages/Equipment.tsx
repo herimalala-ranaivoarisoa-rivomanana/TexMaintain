@@ -21,10 +21,15 @@ import {
   Trash,
   History,
   Package,
-  Droplet
+  Droplet,
+  Wrench
 } from "lucide-react"
-import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from "@/api/equipment"
+import { getEquipment, createEquipment, updateEquipment, deleteEquipment, changeEquipmentStatus } from "@/api/equipment"
 import { getBrands } from "@/api/brands"
+import { getMachinists } from "@/api/machinists"
+import { getMechanics } from "@/api/mechanics"
+import { getElectricians } from "@/api/electricians"
+import { getMaintenanceWorkers } from "@/api/maintenanceWorkers"
 import api from "@/api/api"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
@@ -107,8 +112,37 @@ export function Equipment() {
   })
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  
+  // Personnel states (same as ProductionLines)
+  const [machinists, setMachinists] = useState<any[]>([])
+  const [selectedMachinistId, setSelectedMachinistId] = useState('')
+  const [mechanics, setMechanics] = useState<any[]>([])
+  const [selectedMechanicId, setSelectedMechanicId] = useState('')
+  const [electricians, setElectricians] = useState<any[]>([])
+  const [selectedElectricianId, setSelectedElectricianId] = useState('')
+  const [maintenanceWorkers, setMaintenanceWorkers] = useState<any[]>([])
+  const [selectedMaintenanceWorkerId, setSelectedMaintenanceWorkerId] = useState('')
+  
   const { user } = useAuth()
   const navigate = useNavigate()
+
+  // Fetch personnel
+  const fetchPersonnel = async () => {
+    try {
+      const [machinistsRes, mechanicsRes, electriciansRes, workersRes] = await Promise.all([
+        getMachinists({ isActive: true, limit: 100 }),
+        getMechanics({ isActive: true }),
+        getElectricians({ isActive: true }),
+        getMaintenanceWorkers({ isActive: true })
+      ])
+      setMachinists(machinistsRes.machinists || [])
+      setMechanics(mechanicsRes.mechanics || [])
+      setElectricians(electriciansRes.electricians || [])
+      setMaintenanceWorkers(workersRes.workers || [])
+    } catch (error) {
+      console.error('Error fetching personnel:', error)
+    }
+  }
 
   // Fetch categories, types, brands, and sections on mount
   useEffect(() => {
@@ -137,6 +171,7 @@ export function Equipment() {
     }
 
     fetchData()
+    fetchPersonnel()
   }, [toast])
 
   const fetchEquipment = async () => {
@@ -197,6 +232,11 @@ export function Equipment() {
   const openAddDialog = () => {
     setEditingItem(null)
     setForm({ category: "cutting", type: "", status: EQUIPMENT_STATUSES.STORED, location: "", model: "", serialNumber: "", chipNumber: "", brand: "", acquisitionDate: "" })
+    // Reset personnel selections
+    setSelectedMachinistId('')
+    setSelectedMechanicId('')
+    setSelectedElectricianId('')
+    setSelectedMaintenanceWorkerId('')
     setIsDialogOpen(true)
   }
 
@@ -204,10 +244,38 @@ export function Equipment() {
     setEditingItem(item)
     const brandId = typeof item.brand === 'object' && item.brand ? item.brand._id : (item.brand || "")
     setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, model: item.model || "", serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: brandId, acquisitionDate: item.acquisitionDate ? new Date(item.acquisitionDate).toISOString().split('T')[0] : "" })
+    // Reset personnel selections
+    setSelectedMachinistId('')
+    setSelectedMechanicId('')
+    setSelectedElectricianId('')
+    setSelectedMaintenanceWorkerId('')
     setIsDialogOpen(true)
   }
 
   const handleSave = async () => {
+    // Validate machinist for "In Production" status
+    if (form.status === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId) {
+      toast({
+        title: 'Machinist Required',
+        description: 'Please select a machinist for production status',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Validate maintenance personnel for maintenance statuses
+    const maintenanceStatuses = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE]
+    if (maintenanceStatuses.includes(form.status as EquipmentStatus)) {
+      if (!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId) {
+        toast({
+          title: 'Maintenance Personnel Required',
+          description: 'Please select at least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker)',
+          variant: 'destructive'
+        })
+        return
+      }
+    }
+
     try {
       setIsSaving(true)
       if (editingItem) {
@@ -226,7 +294,27 @@ export function Equipment() {
         } as Equipment : e)
         setEquipment(optimistic)
         try {
-          await updateEquipment(editingItem._id, form)
+          // Check if status changed and requires personnel
+          const statusChanged = editingItem.status !== form.status
+          const requiresPersonnel = 
+            form.status === EQUIPMENT_STATUSES.IN_PRODUCTION ||
+            [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(form.status as EquipmentStatus)
+          
+          if (statusChanged && requiresPersonnel) {
+            // Step 1: Change status with personnel using changeEquipmentStatus
+            await changeEquipmentStatus(editingItem._id, {
+              status: form.status as EquipmentStatus,
+              machinistId: selectedMachinistId || undefined,
+              mechanicId: selectedMechanicId || undefined,
+              electricianId: selectedElectricianId || undefined,
+              maintenanceWorkerId: selectedMaintenanceWorkerId || undefined
+            })
+          }
+          
+          // Step 2: Update other fields (excluding status to avoid conflicts)
+          const { status, ...otherFields } = form
+          await updateEquipment(editingItem._id, otherFields)
+          
           toast({ title: "Updated", description: "Equipment updated successfully" })
         } catch (err) {
           setEquipment(prev)
@@ -487,7 +575,9 @@ export function Equipment() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-slate-500">Brand</p>
-                  <p className="text-slate-900">{item.brand || '-'}</p>
+                  <p className="text-slate-900">
+                    {typeof item.brand === 'object' && item.brand ? item.brand.name : (item.brand || '-')}
+                  </p>
                 </div>
                 <div>
                   <p className="text-slate-500">Serial Number</p>
@@ -718,6 +808,113 @@ export function Equipment() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Machinist Selection - Only show when status is "In Production" */}
+            {form.status === EQUIPMENT_STATUSES.IN_PRODUCTION && (
+              <div className="grid gap-2">
+                <Label htmlFor="machinist">Machinist <span className="text-red-500">*</span></Label>
+                <Select value={selectedMachinistId} onValueChange={setSelectedMachinistId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select machinist" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {machinists && machinists.length > 0 ? (
+                      machinists.map((machinist) => (
+                        <SelectItem key={machinist._id} value={machinist._id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{machinist.fullName}</span>
+                            <span className="text-xs text-slate-500">Matricule: {machinist.matricule}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-4 text-sm text-slate-500 text-center">
+                        No active machinists found
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Maintenance Personnel Selection - Only show for maintenance statuses */}
+            {[EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(form.status as EquipmentStatus) && (
+              <div className={`space-y-4 p-4 border rounded-lg ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'bg-red-50 border-red-300' : 'bg-orange-50'}`}>
+                <div className="flex items-center gap-2">
+                  <Wrench className={`h-5 w-5 ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-600' : 'text-orange-600'}`} />
+                  <Label className={`text-base font-semibold ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-900' : 'text-orange-900'}`}>
+                    Maintenance Personnel <span className="text-red-500">*</span>
+                  </Label>
+                </div>
+                <p className={`text-sm ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-700 font-medium' : 'text-orange-700'}`}>
+                  {!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? '⚠️ Please select at least one maintenance personnel to continue' : 'Select at least one maintenance personnel who will perform the maintenance work'}
+                </p>
+                
+                {/* Mechanic */}
+                <div className="grid gap-2">
+                  <Label htmlFor="mechanic">Mechanic</Label>
+                  <Select value={selectedMechanicId} onValueChange={(val) => setSelectedMechanicId(val === 'none' ? '' : val)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select mechanic (optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      <SelectItem value="none">None</SelectItem>
+                      {mechanics.map((mechanic) => (
+                        <SelectItem key={mechanic._id} value={mechanic._id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{mechanic.fullName}</span>
+                            <span className="text-xs text-slate-500">Matricule: {mechanic.matricule}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Electrician */}
+                <div className="grid gap-2">
+                  <Label htmlFor="electrician">Electrician</Label>
+                  <Select value={selectedElectricianId} onValueChange={(val) => setSelectedElectricianId(val === 'none' ? '' : val)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select electrician (optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      <SelectItem value="none">None</SelectItem>
+                      {electricians.map((electrician) => (
+                        <SelectItem key={electrician._id} value={electrician._id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{electrician.fullName}</span>
+                            <span className="text-xs text-slate-500">Matricule: {electrician.matricule}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Maintenance Worker */}
+                <div className="grid gap-2">
+                  <Label htmlFor="maintenanceWorker">Maintenance Worker</Label>
+                  <Select value={selectedMaintenanceWorkerId} onValueChange={(val) => setSelectedMaintenanceWorkerId(val === 'none' ? '' : val)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select maintenance worker (optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      <SelectItem value="none">None</SelectItem>
+                      {maintenanceWorkers.map((worker) => (
+                        <SelectItem key={worker._id} value={worker._id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{worker.fullName}</span>
+                            <span className="text-xs text-slate-500">Matricule: {worker.matricule}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-2">
               <Label htmlFor="location">Location</Label>
               <Input id="location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Enter location" />

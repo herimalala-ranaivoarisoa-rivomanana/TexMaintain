@@ -9,7 +9,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   AlertCircle, 
   CheckCircle, 
-  Clock, 
   Wrench, 
   Package, 
   Search,
@@ -22,10 +21,13 @@ import {
   Pause,
   RefreshCw,
   Calendar,
-  AlertTriangle,
-  Tool
+  AlertTriangle
 } from 'lucide-react';
 import { changeEquipmentStatus, getAllowedTransitions } from '@/api/equipment';
+import { getMachinists } from '@/api/machinists';
+import { getMechanics } from '@/api/mechanics';
+import { getElectricians } from '@/api/electricians';
+import { getMaintenanceWorkers } from '@/api/maintenanceWorkers';
 import { useToast } from '@/hooks/useToast';
 import type { EquipmentStatus, StatusTransition } from '@/types/equipment';
 import { getStatusColor, getStatusLabel } from '@/types/equipment';
@@ -47,7 +49,7 @@ const statusIcons: Record<string, any> = {
   scheduled_maintenance: Calendar,
   breakdown: AlertTriangle,
   under_repair: Wrench,
-  in_workshop: Tool,
+  in_workshop: Wrench,
   waiting_spare_parts: Package,
   testing_after_repair: CheckCircle,
   under_inspection: Search,
@@ -71,13 +73,39 @@ export function EquipmentStatusDialog({
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingTransitions, setLoadingTransitions] = useState(false);
+  
+  // Machinist for production
+  const [machinists, setMachinists] = useState<any[]>([]);
+  const [selectedMachinist, setSelectedMachinist] = useState('');
+  
+  // Maintenance personnel
+  const [mechanics, setMechanics] = useState<any[]>([]);
+  const [electricians, setElectricians] = useState<any[]>([]);
+  const [maintenanceWorkers, setMaintenanceWorkers] = useState<any[]>([]);
+  const [selectedMechanic, setSelectedMechanic] = useState('');
+  const [selectedElectrician, setSelectedElectrician] = useState('');
+  const [selectedMaintenanceWorker, setSelectedMaintenanceWorker] = useState('');
+  
   const { toast } = useToast();
 
   useEffect(() => {
     if (open && equipmentId) {
       fetchAllowedTransitions();
+      fetchMachinists();
+      fetchMaintenancePersonnel();
     }
   }, [open, equipmentId]);
+
+  // Debug: Log when selectedStatus changes
+  useEffect(() => {
+    const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance'];
+    const isRequired = maintenanceStatuses.includes(selectedStatus);
+    console.log('Selected Status:', selectedStatus);
+    console.log('Is Maintenance Personnel Required:', isRequired);
+    console.log('Mechanics:', mechanics.length);
+    console.log('Electricians:', electricians.length);
+    console.log('Maintenance Workers:', maintenanceWorkers.length);
+  }, [selectedStatus, mechanics, electricians, maintenanceWorkers]);
 
   const fetchAllowedTransitions = async () => {
     try {
@@ -96,6 +124,38 @@ export function EquipmentStatusDialog({
     }
   };
 
+  const fetchMachinists = async () => {
+    try {
+      const response = await getMachinists({ isActive: true, limit: 100 });
+      setMachinists(response.machinists || []);
+    } catch (error) {
+      console.error('Error fetching machinists:', error);
+    }
+  };
+
+  const fetchMaintenancePersonnel = async () => {
+    try {
+      const [mechanicsRes, electriciansRes, workersRes] = await Promise.all([
+        getMechanics({ isActive: true }),
+        getElectricians({ isActive: true }),
+        getMaintenanceWorkers({ isActive: true })
+      ]);
+      console.log('Fetched Mechanics:', mechanicsRes);
+      console.log('Fetched Electricians:', electriciansRes);
+      console.log('Fetched Workers:', workersRes);
+      
+      setMechanics(mechanicsRes.mechanics || []);
+      setElectricians(electriciansRes.electricians || []);
+      setMaintenanceWorkers(workersRes.workers || []);
+      
+      console.log('Set Mechanics:', mechanicsRes.mechanics?.length || 0);
+      console.log('Set Electricians:', electriciansRes.electricians?.length || 0);
+      console.log('Set Workers:', workersRes.workers?.length || 0);
+    } catch (error) {
+      console.error('Error fetching maintenance personnel:', error);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!selectedStatus) {
       toast({
@@ -106,12 +166,39 @@ export function EquipmentStatusDialog({
       return;
     }
 
+    // Validate machinist for "In Production" status (same as ProductionLines)
+    if (selectedStatus === 'in_production' && !selectedMachinist) {
+      toast({
+        title: 'Machinist Required',
+        description: 'Please select a machinist for production',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validate maintenance personnel for maintenance statuses
+    const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance'];
+    if (maintenanceStatuses.includes(selectedStatus)) {
+      if (!selectedMechanic && !selectedElectrician && !selectedMaintenanceWorker) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please select at least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker)',
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       await changeEquipmentStatus(equipmentId, {
         status: selectedStatus as EquipmentStatus,
         reason,
-        notes
+        notes,
+        machinistId: selectedMachinist || undefined,
+        mechanicId: selectedMechanic || undefined,
+        electricianId: selectedElectrician || undefined,
+        maintenanceWorkerId: selectedMaintenanceWorker || undefined
       });
 
       toast({
@@ -123,6 +210,10 @@ export function EquipmentStatusDialog({
       setSelectedStatus('');
       setReason('');
       setNotes('');
+      setSelectedMachinist('');
+      setSelectedMechanic('');
+      setSelectedElectrician('');
+      setSelectedMaintenanceWorker('');
       
       // Close dialog and notify parent
       onOpenChange(false);
@@ -147,6 +238,26 @@ export function EquipmentStatusDialog({
   };
 
   const selectedTransition = allowedTransitions.find(t => t.status === selectedStatus);
+
+  // Check if maintenance personnel is required (same logic as in_production with machinist)
+  const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance'];
+  const requiresMaintenancePersonnel = maintenanceStatuses.includes(selectedStatus);
+  const hasMaintenancePersonnel = !!(selectedMechanic || selectedElectrician || selectedMaintenanceWorker);
+  
+  // Debug logs
+  console.log('Selected Status:', selectedStatus);
+  console.log('Requires Maintenance Personnel:', requiresMaintenancePersonnel);
+  console.log('Selected Mechanic:', selectedMechanic);
+  console.log('Selected Electrician:', selectedElectrician);
+  console.log('Selected Maintenance Worker:', selectedMaintenanceWorker);
+  console.log('Has Maintenance Personnel:', hasMaintenancePersonnel);
+  
+  // Disable button if: loading, no status selected, transitions loading, in_production without machinist, or maintenance status without personnel
+  const isSubmitDisabled = loading || !selectedStatus || loadingTransitions || 
+    (selectedStatus === 'in_production' && !selectedMachinist) ||
+    (requiresMaintenancePersonnel && !hasMaintenancePersonnel);
+  
+  console.log('Is Submit Disabled:', isSubmitDisabled);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -183,7 +294,10 @@ export function EquipmentStatusDialog({
                 </AlertDescription>
               </Alert>
             ) : (
-              <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as EquipmentStatus)}>
+              <Select value={selectedStatus} onValueChange={(value) => {
+                console.log('STATUS CHANGED TO:', value);
+                setSelectedStatus(value as EquipmentStatus);
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select new status" />
                 </SelectTrigger>
@@ -245,6 +359,103 @@ export function EquipmentStatusDialog({
               {notes.length}/1000
             </div>
           </div>
+
+          {/* Machinist Selection - Only show when status is "In Production" (same as ProductionLines) */}
+          {selectedStatus === 'in_production' && (
+            <div className="grid gap-2">
+              <Label htmlFor="machinist">Machinist <span className="text-red-500">*</span></Label>
+              <Select value={selectedMachinist} onValueChange={setSelectedMachinist}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select machinist" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {machinists && machinists.length > 0 ? (
+                    machinists.map((machinist) => (
+                      <SelectItem key={machinist._id} value={machinist._id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{machinist.fullName}</span>
+                          <span className="text-xs text-slate-500">Matricule: {machinist.matricule}</span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-4 text-sm text-slate-500 text-center">
+                      No active machinists found
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Maintenance Personnel Selection - Only show when status requires maintenance personnel (same as machinist for in_production) */}
+          {requiresMaintenancePersonnel && (
+            <div className={`space-y-4 p-4 border rounded-lg ${!hasMaintenancePersonnel ? 'bg-red-50 border-red-300' : 'bg-orange-50'}`}>
+              <div className="flex items-center gap-2">
+                <Wrench className={`h-5 w-5 ${!hasMaintenancePersonnel ? 'text-red-600' : 'text-orange-600'}`} />
+                <Label className={`text-base font-semibold ${!hasMaintenancePersonnel ? 'text-red-900' : 'text-orange-900'}`}>
+                  Maintenance Personnel *
+                </Label>
+              </div>
+              <p className={`text-sm ${!hasMaintenancePersonnel ? 'text-red-700 font-medium' : 'text-orange-700'}`}>
+                {!hasMaintenancePersonnel ? '⚠️ Please select at least one maintenance personnel to continue' : 'Select at least one maintenance personnel who will perform the maintenance work'}
+              </p>
+              
+              {/* Mechanic */}
+              <div className="space-y-2">
+                <Label htmlFor="mechanic">Mechanic</Label>
+                <Select value={selectedMechanic} onValueChange={(val) => setSelectedMechanic(val === 'none' ? '' : val)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select mechanic (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {mechanics.map((mechanic) => (
+                      <SelectItem key={mechanic._id} value={mechanic._id}>
+                        {mechanic.fullName} ({mechanic.matricule})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Electrician */}
+              <div className="space-y-2">
+                <Label htmlFor="electrician">Electrician</Label>
+                <Select value={selectedElectrician} onValueChange={(val) => setSelectedElectrician(val === 'none' ? '' : val)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select electrician (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {electricians.map((electrician) => (
+                      <SelectItem key={electrician._id} value={electrician._id}>
+                        {electrician.fullName} ({electrician.matricule})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Maintenance Worker */}
+              <div className="space-y-2">
+                <Label htmlFor="maintenanceWorker">Maintenance Worker</Label>
+                <Select value={selectedMaintenanceWorker} onValueChange={(val) => setSelectedMaintenanceWorker(val === 'none' ? '' : val)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select maintenance worker (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {maintenanceWorkers.map((worker) => (
+                      <SelectItem key={worker._id} value={worker._id}>
+                        {worker.fullName} ({worker.matricule})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -257,7 +468,7 @@ export function EquipmentStatusDialog({
           </Button>
           <Button 
             onClick={handleSubmit}
-            disabled={loading || !selectedStatus || loadingTransitions}
+            disabled={isSubmitDisabled}
             className="bg-gradient-to-r from-blue-600 to-indigo-600"
           >
             {loading ? 'Changing...' : 'Change Status'}
