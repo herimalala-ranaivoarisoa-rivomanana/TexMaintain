@@ -419,14 +419,11 @@ export function Equipment() {
         } as Equipment : e)
         setEquipment(optimistic)
         try {
-          // Check if status changed and requires personnel
+          // Check if status changed
           const statusChanged = editingItem.status !== form.status
-          const requiresPersonnel = 
-            form.status === EQUIPMENT_STATUSES.IN_PRODUCTION ||
-            ([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE, EQUIPMENT_STATUSES.IN_WORKSHOP] as EquipmentStatus[]).includes(form.status as EquipmentStatus)
           
-          if (statusChanged && requiresPersonnel) {
-            // Step 1: Change status with personnel using changeEquipmentStatus
+          if (statusChanged) {
+            // Step 1: Change status (with or without personnel)
             await changeEquipmentStatus(editingItem._id, {
               status: form.status as EquipmentStatus,
               machinistId: selectedMachinistId || undefined,
@@ -436,11 +433,16 @@ export function Equipment() {
               breakdownType: breakdownType || undefined,
               breakdownDescription: breakdownDescription || undefined
             })
+            
+            // Step 2: Update other fields (excluding status to avoid conflicts)
+            const { status, ...otherFields } = form
+            if (Object.keys(otherFields).length > 0) {
+              await updateEquipment(editingItem._id, otherFields)
+            }
+          } else {
+            // No status change, just update all fields
+            await updateEquipment(editingItem._id, form)
           }
-          
-          // Step 2: Update other fields (excluding status to avoid conflicts)
-          const { status, ...otherFields } = form
-          await updateEquipment(editingItem._id, otherFields)
           
           // Step 3: Upload breakdown media if status is Breakdown and there are files
           if (form.status === EQUIPMENT_STATUSES.BREAKDOWN && breakdownMedia.length > 0) {
@@ -473,6 +475,14 @@ export function Equipment() {
             }
           } else {
             toast({ title: "Updated", description: "Equipment updated successfully" })
+          }
+          
+          // Reload data from server to ensure UI reflects actual database state
+          try {
+            await fetchEquipment()
+          } catch (fetchErr) {
+            console.error('Failed to reload data after save:', fetchErr)
+            // Don't throw - the save was successful, just the reload failed
           }
         } catch (err) {
           setEquipment(prev)
@@ -508,6 +518,14 @@ export function Equipment() {
           const created = (res as any).equipment
           setEquipment((list) => list.map((e) => e._id === tempId ? { ...created } : e))
           toast({ title: "Created", description: "Equipment created successfully" })
+          
+          // Reload data from server to ensure UI reflects actual database state
+          try {
+            await fetchEquipment()
+          } catch (fetchErr) {
+            console.error('Failed to reload data after create:', fetchErr)
+            // Don't throw - the creation was successful, just the reload failed
+          }
         } catch (err) {
           setEquipment((list) => list.filter((e) => e._id !== tempId))
           throw err
@@ -862,11 +880,11 @@ export function Equipment() {
 
       {/* Add/Edit Equipment Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] bg-white">
+        <DialogContent className="sm:max-w-[500px] bg-white max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{editingItem ? 'Edit Equipment' : 'Add Equipment'}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 overflow-y-auto flex-1 pr-2">
             <div className="grid gap-2">
               <Label htmlFor="category">Category</Label>
               <Select value={form.category} onValueChange={(value) => setForm({ ...form, category: value, type: "" })}>

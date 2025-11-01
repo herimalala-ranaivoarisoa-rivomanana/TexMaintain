@@ -374,6 +374,13 @@ router.patch('/:id', requireUser, requireRole(['admin','maintenance_manager','as
     const { id } = req.params;
     const updates = (req.body || {});
     
+    // Transform empty strings to undefined for ObjectId fields
+    if (updates.brand !== undefined) {
+      if (typeof updates.brand === 'string' && updates.brand.trim() === '') {
+        delete updates.brand;
+      }
+    }
+    
     // If status is being changed, use the status service
     if (updates.status) {
       const equipment = await Equipment.findById(id);
