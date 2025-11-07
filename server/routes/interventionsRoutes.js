@@ -2,6 +2,7 @@ const express = require('express');
 const { requireUser } = require('./middleware/auth');
 const { Intervention } = require('../models/Intervention');
 const { Equipment } = require('../models/Equipment');
+const EquipmentStatusService = require('../services/equipmentStatusService');
 
 const router = express.Router();
 
@@ -26,10 +27,11 @@ router.get('/', requireUser, async (req, res) => {
       .limit(Number(limit))
       .populate({
         path: 'equipmentId',
-        select: 'location status category type',
+        select: 'location status category type model serialNumber chipNumber brand',
         populate: [
           { path: 'category', select: 'name' },
-          { path: 'type', select: 'name' }
+          { path: 'type', select: 'name' },
+          { path: 'brand', select: 'name' }
         ]
       })
       .lean(),
@@ -44,10 +46,11 @@ router.get('/:id', requireUser, async (req, res) => {
   const intervention = await Intervention.findById(id)
     .populate({
       path: 'equipmentId',
-      select: 'location status category type',
+      select: 'location status category type model serialNumber chipNumber brand',
       populate: [
         { path: 'category', select: 'name' },
-        { path: 'type', select: 'name' }
+        { path: 'type', select: 'name' },
+        { path: 'brand', select: 'name' }
       ]
     })
     .lean();
@@ -85,16 +88,32 @@ router.post('/', requireUser, async (req, res) => {
       if (!data.equipment) {
         data.equipment = eq.location || `Equipment ${eq._id}`;
       }
+      
+      // Check if there's already an active intervention for this equipment
+      const activeIntervention = await Intervention.findOne({
+        $or: [
+          { equipmentId: data.equipmentId },
+          { equipment: eq.location }
+        ],
+        status: { $in: ['Pending', 'In Progress'] }
+      }).lean();
+      
+      if (activeIntervention) {
+        return res.status(400).json({ 
+          message: `Une intervention est déjà en cours pour cet équipement (${activeIntervention.title})` 
+        });
+      }
     }
 
     const created = await Intervention.create(data);
     const populated = await Intervention.findById(created._id)
       .populate({
         path: 'equipmentId',
-        select: 'location status category type',
+        select: 'location status category type model serialNumber chipNumber brand',
         populate: [
           { path: 'category', select: 'name' },
-          { path: 'type', select: 'name' }
+          { path: 'type', select: 'name' },
+          { path: 'brand', select: 'name' }
         ]
       })
       .lean();
@@ -113,15 +132,79 @@ router.post('/', requireUser, async (req, res) => {
 // PATCH /api/interventions/:id
 router.patch('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
-  const updates = req.body || {};
+  const { equipmentStatus, equipmentStatusReason, equipmentStatusNotes, mechanicId, electricianId, maintenanceWorkerId, machinistId, ...updates } = req.body || {};
   
   try {
+    // Get current intervention to check equipment
+    const currentIntervention = await Intervention.findById(id).lean();
+    if (!currentIntervention) {
+      return res.status(404).json({ message: 'Intervention not found' });
+    }
+    
     // If equipmentId provided, validate and backfill equipment string
     if (updates.equipmentId) {
       const eq = await Equipment.findById(updates.equipmentId).lean();
       if (!eq) return res.status(400).json({ message: 'Invalid equipmentId: equipment not found' });
       if (!updates.equipment) {
         updates.equipment = eq.location || `Equipment ${eq._id}`;
+      }
+    }
+
+    // If status is being changed to In Progress, set startedDate
+    if (updates.status === 'In Progress') {
+      updates.startedDate = new Date();
+      
+      // Auto-change equipment status from breakdown to under_repair when starting intervention
+      if (currentIntervention.equipmentId && !equipmentStatus) {
+        const equipment = await Equipment.findById(currentIntervention.equipmentId).lean();
+        if (equipment && equipment.status === 'breakdown') {
+          try {
+            await EquipmentStatusService.changeStatus(
+              currentIntervention.equipmentId,
+              'under_repair',
+              req.user._id,
+              {
+                reason: `Intervention started: ${currentIntervention.title}`,
+                notes: 'Equipment moved from breakdown to under repair automatically',
+                interventionId: id
+              }
+            );
+          } catch (statusError) {
+            console.error('Failed to auto-change equipment status:', statusError.message);
+            // Don't fail the intervention update if status change fails
+          }
+        }
+      }
+    }
+    
+    // If status is being changed to Completed or Cancelled, set completedDate
+    if (updates.status === 'Completed' || updates.status === 'Cancelled') {
+      updates.completedDate = new Date();
+    }
+
+    // If equipment status change is requested, apply it (this overrides auto-change)
+    if (equipmentStatus && currentIntervention.equipmentId) {
+      try {
+        const statusOptions = {
+          reason: equipmentStatusReason || `Intervention status changed to ${updates.status || currentIntervention.status}`,
+          notes: equipmentStatusNotes,
+          interventionId: id
+        };
+        
+        // Add personnel IDs if provided
+        if (mechanicId) statusOptions.mechanicId = mechanicId;
+        if (electricianId) statusOptions.electricianId = electricianId;
+        if (maintenanceWorkerId) statusOptions.maintenanceWorkerId = maintenanceWorkerId;
+        if (machinistId) statusOptions.machinistId = machinistId;
+        
+        await EquipmentStatusService.changeStatus(
+          currentIntervention.equipmentId,
+          equipmentStatus,
+          req.user._id,
+          statusOptions
+        );
+      } catch (statusError) {
+        return res.status(400).json({ message: `Failed to change equipment status: ${statusError.message}` });
       }
     }
 

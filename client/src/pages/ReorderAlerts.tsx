@@ -330,7 +330,7 @@ export default function ReorderAlerts() {
                         </span>
                         <div>
                           <Link
-                            to={`/part-details?id=${alert.part._id}`}
+                            to={`/inventory/${alert.part._id}`}
                             className="font-semibold text-lg hover:underline"
                           >
                             {alert.part.name}
@@ -383,7 +383,7 @@ export default function ReorderAlerts() {
                   </div>
 
                   <div className="flex items-center justify-between pt-3 border-t">
-                    <Link to={`/part-details?id=${alert.part._id}`}>
+                    <Link to={`/inventory/${alert.part._id}`}>
                       <Button variant="outline" size="sm">
                         Voir détails
                       </Button>

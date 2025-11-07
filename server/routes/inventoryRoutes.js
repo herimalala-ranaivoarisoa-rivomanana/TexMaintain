@@ -102,9 +102,16 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/inventory/:id
 router.get('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
-  const part = await Part.findById(id).lean();
+  const part = await Part.findById(id);
   if (!part) return res.status(404).json({ message: 'Part not found' });
-  return res.status(200).json({ part });
+  
+  // Calculer le statut du stock
+  const stockStatus = part.getStockStatus();
+  
+  return res.status(200).json({ 
+    part: part.toObject(),
+    stockStatus
+  });
 });
 
 // PUT /api/inventory/:id/stock
@@ -160,6 +167,145 @@ router.delete('/:id', requireUser, requireRole('admin'), async (req, res) => {
   const deleted = await Part.findByIdAndDelete(id).lean();
   if (!deleted) return res.status(404).json({ message: 'Part not found' });
   return res.status(200).json({ success: true });
+});
+
+// === NOUVELLES ROUTES POUR COMMANDES ET CALCUL AUTOMATIQUE ===
+
+/**
+ * POST /api/inventory/:id/order
+ * Créer une commande pour une pièce
+ */
+router.post('/:id/order', requireUser, requireRole(['admin','procurement_manager','maintenance_manager']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { quantity, expectedDate, supplier, orderNumber, notes } = req.body;
+    
+    if (!quantity || quantity <= 0) {
+      return res.status(400).json({ message: 'Quantity must be greater than 0' });
+    }
+    
+    const part = await Part.findById(id);
+    if (!part) return res.status(404).json({ message: 'Part not found' });
+    
+    await part.addOrder({
+      quantity: Number(quantity),
+      status: 'ordered',
+      expectedDate: expectedDate ? new Date(expectedDate) : undefined,
+      supplier: supplier || part.supplier,
+      orderNumber,
+      notes
+    });
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Order created successfully',
+      part: part.toObject(),
+      stockStatus: part.getStockStatus()
+    });
+  } catch (error) {
+    console.error('Error creating order:', error);
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * PATCH /api/inventory/:id/order/:orderId
+ * Mettre à jour le statut d'une commande
+ */
+router.patch('/:id/order/:orderId', requireUser, requireRole(['admin','procurement_manager','maintenance_manager']), async (req, res) => {
+  try {
+    const { id, orderId } = req.params;
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ message: 'Status is required' });
+    }
+    
+    const validStatuses = ['pending', 'ordered', 'in_transit', 'received', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+    
+    const part = await Part.findById(id);
+    if (!part) return res.status(404).json({ message: 'Part not found' });
+    
+    await part.updateOrderStatus(orderId, status);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Order status updated successfully',
+      part: part.toObject(),
+      stockStatus: part.getStockStatus()
+    });
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * POST /api/inventory/:id/calculate-min-max
+ * Calculer automatiquement min/max à partir des associations
+ */
+router.post('/:id/calculate-min-max', requireUser, requireRole(['admin','procurement_manager','maintenance_manager']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await Part.updateMinMaxFromAssociations(id);
+    
+    if (!result) {
+      return res.status(200).json({
+        success: true,
+        message: 'No equipment associations found. Min/Max not updated.',
+        calculated: false
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Min/Max calculated and updated successfully',
+      calculated: true,
+      minStock: result.minStock,
+      maxStock: result.maxStock,
+      globalStock: result.globalStock
+    });
+  } catch (error) {
+    console.error('Error calculating min/max:', error);
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+/**
+ * GET /api/inventory/:id/stock-status
+ * Obtenir le statut détaillé du stock
+ */
+router.get('/:id/stock-status', requireUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const part = await Part.findById(id);
+    if (!part) return res.status(404).json({ message: 'Part not found' });
+    
+    const stockStatus = part.getStockStatus();
+    
+    // Récupérer aussi les associations pour plus d'infos
+    const associations = await EquipmentPart.find({ part: id })
+      .populate('equipment', 'model serialNumber location')
+      .lean();
+    
+    return res.status(200).json({
+      success: true,
+      stockStatus,
+      currentStock: part.currentStock,
+      minStock: part.minStock,
+      maxStock: part.maxStock,
+      pendingQuantity: part.pendingQuantity,
+      pendingOrders: part.pendingOrders,
+      associatedEquipmentCount: associations.length
+    });
+  } catch (error) {
+    console.error('Error getting stock status:', error);
+    return res.status(500).json({ message: error.message });
+  }
 });
 
 

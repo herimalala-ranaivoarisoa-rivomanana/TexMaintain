@@ -18,7 +18,10 @@ export interface EquipmentPart {
     name: string
     partNumber: string
     category: string
+    type: 'part' | 'consumable'
     currentStock: number
+    minStock: number
+    maxStock: number
     unitPrice?: number
     supplier?: string
   }
@@ -233,13 +236,18 @@ export const deleteEquipmentPart = async (id: string) => {
 }
 
 /**
- * Enregistre un remplacement de pièce
+ * Enregistre un remplacement de pièce (pour parts)
  */
-export const recordReplacement = async (id: string, data: {
-  quantityUsed: number
-  notes?: string
-}) => {
+export const recordReplacement = async (id: string, data: { quantity: number; notes?: string }) => {
   const response = await api.post(`/api/equipment-parts/${id}/record-replacement`, data)
+  return response.data
+}
+
+/**
+ * Enregistre une utilisation de consommable (pour consumables)
+ */
+export const recordUsage = async (id: string, data: { quantity: number; notes?: string }) => {
+  const response = await api.post(`/api/equipment-parts/${id}/record-usage`, data)
   return response.data
 }
 
@@ -250,10 +258,10 @@ export const recordReplacement = async (id: string, data: {
  */
 export const getCriticalityLabel = (criticality: Criticality): string => {
   const labels: Record<Criticality, string> = {
-    low: 'Basse',
-    medium: 'Moyenne',
-    high: 'Haute',
-    critical: 'Critique'
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High',
+    critical: 'Critical'
   }
   return labels[criticality]
 }
@@ -312,23 +320,23 @@ export const getStockStatusColor = (status: 'ok' | 'warning' | 'critical'): stri
  * Formate une fréquence de remplacement
  */
 export const formatReplacementFrequency = (frequency: number): string => {
-  if (frequency === 0) return 'Jamais'
-  if (frequency === 1) return '1 fois/an'
+  if (frequency === 0) return 'Never'
+  if (frequency === 1) return '1 time/year'
   if (frequency < 1) {
     const years = Math.round(1 / frequency)
-    return `Tous les ${years} ans`
+    return `Every ${years} years`
   }
   if (frequency === Math.floor(frequency)) {
-    return `${frequency} fois/an`
+    return `${frequency} times/year`
   }
   const months = Math.round(12 / frequency)
-  return `Tous les ${months} mois`
+  return `Every ${months} months`
 }
 
 /**
  * Formate une consommation
  */
-export const formatConsumption = (value: number, unit: string = 'pièces'): string => {
+export const formatConsumption = (value: number, unit: string = 'pieces'): string => {
   if (value === 0) return `0 ${unit}`
   if (value < 0.01) return `< 0.01 ${unit}`
   if (value < 1) return `${value.toFixed(2)} ${unit}`

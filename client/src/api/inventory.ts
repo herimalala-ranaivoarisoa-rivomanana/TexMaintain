@@ -46,3 +46,60 @@ export const deletePart = async (id: string) => {
   const response = await api.delete(`/api/inventory/${id}`);
   return response.data;
 };
+
+// === NOUVELLES FONCTIONS POUR COMMANDES ET STATUT ===
+
+export interface StockStatus {
+  status: 'critical' | 'low' | 'normal' | 'high';
+  label: string;
+  color: string;
+  icon: string;
+  message: string;
+  needsOrder: boolean;
+  suggestedOrderQty: number;
+}
+
+export interface PendingOrder {
+  _id: string;
+  quantity: number;
+  status: 'pending' | 'ordered' | 'in_transit' | 'received' | 'cancelled';
+  orderDate: string;
+  expectedDate?: string;
+  supplier?: string;
+  orderNumber?: string;
+  notes?: string;
+}
+
+// Description: Create an order for a part
+// Endpoint: POST /api/inventory/:id/order
+export const createOrder = async (id: string, data: {
+  quantity: number;
+  expectedDate?: string;
+  supplier?: string;
+  orderNumber?: string;
+  notes?: string;
+}) => {
+  const response = await api.post(`/api/inventory/${id}/order`, data);
+  return response.data;
+};
+
+// Description: Update order status
+// Endpoint: PATCH /api/inventory/:id/order/:orderId
+export const updateOrderStatus = async (id: string, orderId: string, status: string) => {
+  const response = await api.patch(`/api/inventory/${id}/order/${orderId}`, { status });
+  return response.data;
+};
+
+// Description: Calculate min/max automatically from equipment associations
+// Endpoint: POST /api/inventory/:id/calculate-min-max
+export const calculateMinMax = async (id: string) => {
+  const response = await api.post(`/api/inventory/${id}/calculate-min-max`);
+  return response.data;
+};
+
+// Description: Get detailed stock status
+// Endpoint: GET /api/inventory/:id/stock-status
+export const getStockStatus = async (id: string) => {
+  const response = await api.get(`/api/inventory/${id}/stock-status`);
+  return response.data;
+};

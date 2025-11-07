@@ -21,15 +21,15 @@ export function EquipmentParts() {
       <div className="flex items-center gap-4">
         <Button variant="ghost" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Retour
+          Back
         </Button>
         <div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2">
             <Wrench className="h-7 w-7" />
-            Pièces de Rechange
+            Spare Parts
           </h1>
           <p className="text-slate-600 mt-1">
-            Gestion avancée des pièces avec calculs automatiques
+            Advanced parts management with automatic calculations
           </p>
         </div>
       </div>

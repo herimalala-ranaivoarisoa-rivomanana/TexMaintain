@@ -169,6 +169,25 @@ schema.pre('save', function(next) {
     this.safetyStock + (this.dailyConsumption * this.leadTimeDays)
   );
   
+  // Calcul de la prochaine date de remplacement
+  // Recalculer si:
+  // - On a une date de dernier remplacement ET
+  // - La fréquence > 0 ET
+  // - (La fréquence a changé OU la date de dernier remplacement a changé OU c'est une nouvelle association)
+  if (this.lastReplacementDate && this.replacementFrequencyPerYear > 0) {
+    const shouldRecalculate = this.isModified('replacementFrequencyPerYear') || 
+                              this.isModified('lastReplacementDate') || 
+                              this.isNew;
+    
+    if (shouldRecalculate) {
+      const daysUntilNext = Math.round(365 / this.replacementFrequencyPerYear);
+      this.nextReplacementDate = new Date(
+        this.lastReplacementDate.getTime() + daysUntilNext * 24 * 60 * 60 * 1000
+      );
+      console.log(`📅 Next replacement recalculated for part: ${this.part} - ${this.nextReplacementDate.toLocaleDateString()}`);
+    }
+  }
+  
   next();
 });
 

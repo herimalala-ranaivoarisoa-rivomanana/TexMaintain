@@ -104,6 +104,154 @@ class EquipmentStatusService {
     
     await equipment.save();
 
+    // Define all maintenance statuses
+    const allMaintenanceStatuses = [
+      'scheduled_maintenance',
+      'under_repair',
+      'in_workshop',
+      'waiting_spare_parts',
+      'under_inspection',
+      'pending_validation',
+      'breakdown'
+    ];
+
+    // Auto-complete interventions when leaving maintenance status
+    const wasInMaintenance = previousStatus && allMaintenanceStatuses.includes(previousStatus);
+    const isNowInMaintenance = allMaintenanceStatuses.includes(newStatus);
+    
+    if (wasInMaintenance && !isNowInMaintenance) {
+      // Equipment is leaving maintenance status, complete any active interventions
+      const activeInterventions = await Intervention.find({
+        $or: [
+          { equipmentId: equipmentId },
+          { equipment: equipment.location }
+        ],
+        status: { $in: ['Pending', 'In Progress'] }
+      });
+
+      if (activeInterventions.length > 0) {
+        for (const intervention of activeInterventions) {
+          intervention.status = 'Completed';
+          intervention.completedDate = new Date();
+          await intervention.save();
+          console.log(`✅ Auto-completed intervention ${intervention._id} for equipment ${equipment.location} (status changed from ${STATUS_METADATA[previousStatus]?.label} to ${STATUS_METADATA[newStatus]?.label})`);
+        }
+      }
+    }
+
+    // Auto-create intervention for maintenance statuses (except breakdown)
+    const maintenanceStatusesForIntervention = [
+      'scheduled_maintenance',
+      'under_repair',
+      'in_workshop',
+      'waiting_spare_parts',
+      'under_inspection',
+      'pending_validation'
+    ];
+
+    let createdIntervention = null;
+    if (maintenanceStatusesForIntervention.includes(newStatus) && !interventionId) {
+      // Determine intervention type based on status
+      let interventionType = 'Preventive';
+      let priority = 'Medium';
+      
+      if (newStatus === 'scheduled_maintenance') {
+        interventionType = 'Preventive';
+        priority = 'Medium';
+      } else if (['under_repair', 'in_workshop'].includes(newStatus)) {
+        interventionType = 'Corrective';
+        priority = 'High';
+      } else if (newStatus === 'waiting_spare_parts') {
+        interventionType = 'Corrective';
+        priority = 'Medium';
+      } else {
+        interventionType = 'Preventive';
+        priority = 'Low';
+      }
+
+      // Determine assigned personnel
+      let assignedTo = 'Non assigné';
+      if (mechanicId) {
+        const { Mechanic } = require('../models/Mechanic');
+        const mechanic = await Mechanic.findById(mechanicId).lean();
+        if (mechanic) assignedTo = mechanic.fullName || `${mechanic.firstName} ${mechanic.lastName}`;
+      } else if (electricianId) {
+        const { Electrician } = require('../models/Electrician');
+        const electrician = await Electrician.findById(electricianId).lean();
+        if (electrician) assignedTo = electrician.fullName || `${electrician.firstName} ${electrician.lastName}`;
+      } else if (maintenanceWorkerId) {
+        const { MaintenanceWorker } = require('../models/MaintenanceWorker');
+        const worker = await MaintenanceWorker.findById(maintenanceWorkerId).lean();
+        if (worker) assignedTo = worker.fullName || `${worker.firstName} ${worker.lastName}`;
+      }
+
+      // Calculate due date based on type and priority
+      const now = new Date();
+      let dueDate = null;
+      
+      if (interventionType === 'Emergency') {
+        // Emergency: 24 hours
+        dueDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      } else if (interventionType === 'Corrective') {
+        // Corrective: depends on priority
+        if (priority === 'High') {
+          dueDate = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000); // 2 days
+        } else if (priority === 'Medium') {
+          dueDate = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000); // 5 days
+        } else {
+          dueDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
+        }
+      } else if (interventionType === 'Preventive') {
+        // Preventive: depends on priority
+        if (priority === 'Medium') {
+          dueDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
+        } else {
+          dueDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days
+        }
+      }
+
+      // Create intervention
+      const statusLabel = STATUS_METADATA[newStatus]?.label || newStatus;
+      
+      // Use description/reason/notes as title if available, otherwise use default format
+      let interventionTitle;
+      let interventionDescription;
+      
+      if (newStatus === 'breakdown' && breakdownDescription) {
+        // For breakdown, use breakdown description
+        interventionTitle = breakdownDescription;
+        interventionDescription = breakdownDescription;
+      } else if (reason || notes) {
+        // For other statuses, use reason or notes as title
+        interventionTitle = reason || notes;
+        interventionDescription = reason || notes;
+      } else if (equipment.lastBreakdownDescription) {
+        // If no reason/notes, try to use the equipment's last breakdown description
+        interventionTitle = equipment.lastBreakdownDescription;
+        interventionDescription = equipment.lastBreakdownDescription;
+      } else {
+        // Fallback to default format
+        interventionTitle = `${statusLabel} - ${equipment.location}`;
+        interventionDescription = `Intervention automatique créée lors du changement de statut vers ${statusLabel}`;
+      }
+      
+      createdIntervention = await Intervention.create({
+        title: interventionTitle,
+        type: interventionType,
+        priority: priority,
+        status: 'Pending',
+        equipment: equipment.location,
+        equipmentId: equipmentId,
+        assignedTo: assignedTo,
+        description: interventionDescription,
+        breakdownType: breakdownType || undefined,
+        createdDate: new Date(),
+        dueDate: dueDate
+      });
+
+      console.log(`✅ Auto-created intervention ${createdIntervention._id} for equipment ${equipment.location} (${statusLabel})`);
+    }
+
     // Populate the history entry
     await historyEntry.populate('changedBy', 'email role');
     await historyEntry.populate('intervention', 'title type status');
@@ -128,7 +276,8 @@ class EquipmentStatusService {
 
     return {
       equipment: updatedEquipment,
-      historyEntry
+      historyEntry,
+      createdIntervention: createdIntervention || null
     };
   }
 

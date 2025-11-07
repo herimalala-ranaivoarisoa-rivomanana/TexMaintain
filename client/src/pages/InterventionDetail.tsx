@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -13,10 +13,69 @@ interface InterventionData {
   priority: string
   status: string
   equipment: string
+  equipmentId?: {
+    model?: string
+    serialNumber?: string
+    chipNumber?: string
+    brand?: {
+      name?: string
+    }
+  }
   assignedTo?: string
   description?: string
   createdDate?: string
+  startedDate?: string
+  completedDate?: string
   dueDate?: string
+}
+
+// Component to display duration that updates in real-time
+function InterventionDuration({ startedDate, completedDate, status }: { startedDate?: string, completedDate?: string, status: string }) {
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    // Only update if intervention is in progress (not pending, completed or cancelled)
+    if (status === 'In Progress') {
+      const interval = setInterval(() => {
+        setTick(t => t + 1); // Force re-render every second
+      }, 1000); // Update every second
+
+      return () => clearInterval(interval);
+    }
+  }, [status]);
+
+  const duration = useMemo(() => {
+    // If not started yet, show "-"
+    if (!startedDate) {
+      return '-';
+    }
+    
+    const started = new Date(startedDate);
+    const end = (status === 'Completed' || status === 'Cancelled') && completedDate
+      ? new Date(completedDate)
+      : new Date();
+    const diffMs = end.getTime() - started.getTime();
+    
+    // If negative duration (completed before started was recorded), show "-"
+    if (diffMs < 0) {
+      return '-';
+    }
+    
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (diffDays > 0) {
+      return `${diffDays}d ${diffHours}h`;
+    } else if (diffHours > 0) {
+      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      return `${diffHours}h ${diffMinutes}m`;
+    } else {
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      return `${diffMinutes}m`;
+    }
+  }, [startedDate, completedDate, status, tick]);
+
+  return <span>{duration}</span>;
 }
 
 export function InterventionDetail() {
@@ -91,7 +150,7 @@ export function InterventionDetail() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-slate-500">Type</p>
               <p className="text-slate-900 flex items-center"><Wrench className="mr-1 h-3 w-3"/>{data.type}</p>
@@ -101,22 +160,44 @@ export function InterventionDetail() {
               <p className="text-slate-900 flex items-center"><User className="mr-1 h-3 w-3"/>{data.assignedTo || '-'}</p>
             </div>
             <div>
-              <p className="text-sm text-slate-500">Equipment</p>
-              <p className="text-slate-900">{data.equipment}</p>
-            </div>
-            <div>
               <p className="text-sm text-slate-500">Created</p>
               <p className="text-slate-900 flex items-center"><Calendar className="mr-1 h-3 w-3"/>{data.createdDate ? new Date(data.createdDate).toLocaleDateString() : '-'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-slate-500">Duration</p>
+              <p className="text-slate-900">
+                <InterventionDuration 
+                  startedDate={data.startedDate}
+                  completedDate={data.completedDate}
+                  status={data.status}
+                />
+              </p>
             </div>
             <div>
               <p className="text-sm text-slate-500">Due Date</p>
               <p className="text-slate-900 flex items-center"><Calendar className="mr-1 h-3 w-3"/>{data.dueDate ? new Date(data.dueDate).toLocaleDateString() : '-'}</p>
             </div>
           </div>
-          {data.description && (
-            <div>
-              <p className="text-sm text-slate-500">Description</p>
-              <p className="text-slate-900 whitespace-pre-wrap">{data.description}</p>
+
+          {/* Equipment Details */}
+          {data.equipmentId && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-slate-50 rounded-lg">
+              <div>
+                <p className="text-xs text-slate-500">Model</p>
+                <p className="text-sm font-medium text-slate-900">{data.equipmentId.model || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Serial Number</p>
+                <p className="text-sm font-medium text-slate-900">{data.equipmentId.serialNumber || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Chip Number</p>
+                <p className="text-sm font-medium text-slate-900">{data.equipmentId.chipNumber || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Brand</p>
+                <p className="text-sm font-medium text-slate-900">{data.equipmentId.brand?.name || 'N/A'}</p>
+              </div>
             </div>
           )}
         </CardContent>

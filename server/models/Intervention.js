@@ -13,7 +13,10 @@ const schema = new mongoose.Schema({
   equipmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Equipment', required: false, index: true }, // Strong reference
   assignedTo: { type: String, trim: true },
   description: { type: String, trim: true },
+  breakdownType: { type: String, enum: ['mechanical', 'electrical', 'hydraulic', 'pneumatic', 'electronic', 'software', 'structural', 'other'], trim: true },
   createdDate: { type: Date, default: Date.now },
+  startedDate: { type: Date },
+  completedDate: { type: Date },
   dueDate: { type: Date },
 }, { versionKey: false });
 

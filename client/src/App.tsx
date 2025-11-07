@@ -59,7 +59,6 @@ function App() {
               <Route path="interventions/:id" element={<InterventionDetailWrapper />} />
               <Route path="inventory" element={<Inventory />} />
               <Route path="inventory/:id" element={<PartDetailWrapper />} />
-              <Route path="part-details" element={<PartDetails />} />
               <Route path="reorder-alerts" element={<ReorderAlerts />} />
               <Route path="procurement" element={<Procurement />} />
               <Route path="projects" element={<Projects />} />

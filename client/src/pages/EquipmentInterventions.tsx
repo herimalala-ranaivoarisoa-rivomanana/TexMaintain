@@ -24,10 +24,11 @@ interface Equipment {
   _id: string
   category: { name: string }
   type: { name: string }
-  model: string
+  model?: string
+  manufacturer?: string
+  serialNumber?: string
   location: string
-  productionLine?: { name: string }
-  productionSection?: { name: string }
+  brand?: { name: string }
 }
 
 interface Intervention {
@@ -149,7 +150,7 @@ export function EquipmentInterventions() {
           </h1>
           {equipment && (
             <p className="text-muted-foreground">
-              {equipment.category.name} - {equipment.type.name} ({equipment.model})
+              {equipment.location} - {equipment.category.name} - {equipment.type.name}
             </p>
           )}
         </div>
@@ -161,21 +162,41 @@ export function EquipmentInterventions() {
           <CardContent className="p-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
-                <p className="text-blue-600 font-medium">Modèle</p>
-                <p className="text-blue-900">{equipment.model}</p>
-              </div>
-              <div>
                 <p className="text-blue-600 font-medium">Location</p>
-                <p className="text-blue-900">{equipment.location}</p>
+                <p className="text-blue-900 font-semibold">{equipment.location}</p>
               </div>
               <div>
-                <p className="text-blue-600 font-medium">Ligne</p>
-                <p className="text-blue-900">{equipment.productionLine?.name || 'Non assigné'}</p>
+                <p className="text-blue-600 font-medium">Catégorie</p>
+                <p className="text-blue-900">{equipment.category.name}</p>
               </div>
               <div>
-                <p className="text-blue-600 font-medium">Section</p>
-                <p className="text-blue-900">{equipment.productionSection?.name || 'Non assigné'}</p>
+                <p className="text-blue-600 font-medium">Type</p>
+                <p className="text-blue-900">{equipment.type.name}</p>
               </div>
+              {equipment.brand && (
+                <div>
+                  <p className="text-blue-600 font-medium">Marque</p>
+                  <p className="text-blue-900">{equipment.brand.name}</p>
+                </div>
+              )}
+              {equipment.manufacturer && (
+                <div>
+                  <p className="text-blue-600 font-medium">Fabricant</p>
+                  <p className="text-blue-900">{equipment.manufacturer}</p>
+                </div>
+              )}
+              {equipment.model && (
+                <div>
+                  <p className="text-blue-600 font-medium">Modèle</p>
+                  <p className="text-blue-900">{equipment.model}</p>
+                </div>
+              )}
+              {equipment.serialNumber && (
+                <div>
+                  <p className="text-blue-600 font-medium">N° Série</p>
+                  <p className="text-blue-900">{equipment.serialNumber}</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
