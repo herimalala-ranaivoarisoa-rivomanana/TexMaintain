@@ -235,21 +235,26 @@ class EquipmentStatusService {
         interventionDescription = `Intervention automatique créée lors du changement de statut vers ${statusLabel}`;
       }
       
+      // Determine initial status: "In Progress" for under_repair, "Pending" for others
+      const initialStatus = newStatus === 'under_repair' ? 'In Progress' : 'Pending';
+      const startedDate = newStatus === 'under_repair' ? new Date() : undefined;
+      
       createdIntervention = await Intervention.create({
         title: interventionTitle,
         type: interventionType,
         priority: priority,
-        status: 'Pending',
+        status: initialStatus,
         equipment: equipment.location,
         equipmentId: equipmentId,
         assignedTo: assignedTo,
         description: interventionDescription,
         breakdownType: breakdownType || undefined,
         createdDate: new Date(),
+        startedDate: startedDate,
         dueDate: dueDate
       });
 
-      console.log(`✅ Auto-created intervention ${createdIntervention._id} for equipment ${equipment.location} (${statusLabel})`);
+      console.log(`✅ Auto-created intervention ${createdIntervention._id} for equipment ${equipment.location} (${statusLabel}) - Status: ${initialStatus}`);
     }
 
     // Populate the history entry
