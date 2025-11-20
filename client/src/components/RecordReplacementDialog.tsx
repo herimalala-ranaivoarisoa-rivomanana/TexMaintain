@@ -85,7 +85,7 @@ export function RecordReplacementDialog({
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Enregistrer un remplacement</DialogTitle>
+          <DialogTitle>Record a replacement</DialogTitle>
           <DialogDescription>
             {equipmentPart.part.name} ({equipmentPart.part.partNumber})
           </DialogDescription>
@@ -99,12 +99,12 @@ export function RecordReplacementDialog({
               <span className="font-medium">{equipmentPart.equipment.model}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-600">Stock actuel:</span>
-              <span className="font-medium">{currentStock} pièce(s)</span>
+              <span className="text-slate-600">Current stock:</span>
+              <span className="font-medium">{currentStock} piece(s)</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-600">Quantité habituelle:</span>
-              <span className="font-medium">{equipmentPart.quantityPerMachine} pièce(s)</span>
+              <span className="text-slate-600">Usual quantity:</span>
+              <span className="font-medium">{equipmentPart.quantityPerMachine} piece(s)</span>
             </div>
           </div>
 
@@ -133,7 +133,7 @@ export function RecordReplacementDialog({
                 Nouveau stock:
               </span>
               <span className={`text-lg font-bold ${isStockInsufficient ? 'text-red-600' : 'text-green-600'}`}>
-                {newStock} pièce(s)
+                {newStock} piece(s)
               </span>
             </div>
             {isStockInsufficient && (

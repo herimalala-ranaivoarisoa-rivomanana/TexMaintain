@@ -1,12 +1,48 @@
 const { Equipment } = require('../models/Equipment');
 const { EquipmentPart} = require('../models/EquipmentPart');
+const { Part } = require('../models/Part');
 
 /**
- * Equipment Status Service
- * Handles all status changes with complete traceability
+ * Equipment Parts Service
+ * Handles equipment parts associations and calculations
  */
 
 class EquipmentPartsService {
+  /**
+   * Recalcule automatiquement le min/max d'une pièce basé sur ses associations
+   * @param {string} partId - ID de la pièce
+   * @returns {Promise<object>} Nouvelles valeurs min/max
+   */
+  static async recalculateMinMaxForPart(partId) {
+    try {
+      // Utiliser la même méthode que le bouton "Calculer Min/Max"
+      // pour garantir la cohérence
+      const globalStock = await EquipmentPart.calculateGlobalStock(partId);
+      
+      if (globalStock.equipmentCount === 0) {
+        await Part.findByIdAndUpdate(partId, {
+          minStock: 0,
+          maxStock: 0
+        });
+        return { minStock: 0, maxStock: 0 };
+      }
+      
+      // Utiliser la même formule que Part.updateMinMaxFromAssociations()
+      const minStock = Math.ceil(globalStock.globalSafetyStock);
+      const maxStock = Math.ceil(globalStock.globalReorderPoint);
+      
+      // Mettre à jour la pièce
+      await Part.findByIdAndUpdate(partId, {
+        minStock: minStock,
+        maxStock: maxStock
+      });
+      
+      return { minStock, maxStock };
+    } catch (error) {
+      console.error('Error recalculating min/max:', error);
+      throw error;
+    }
+  }
   /**
    * Change equipment status with validation and history tracking
    * @param {string} equipmentId - Equipment ID

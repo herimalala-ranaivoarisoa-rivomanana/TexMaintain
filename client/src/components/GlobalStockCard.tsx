@@ -57,23 +57,23 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
         bgColor: 'bg-green-50',
         borderColor: 'border-green-200',
         label: '✅ Stock OK',
-        description: 'Le stock est au niveau requis'
+        description: 'Stock is at required level'
       },
       warning: {
         icon: <AlertTriangle className="h-6 w-6" />,
         color: 'text-orange-600',
         bgColor: 'bg-orange-50',
         borderColor: 'border-orange-200',
-        label: '⚠️ Attention',
-        description: 'Le stock approche du point de réapprovisionnement'
+        label: '⚠️ Warning',
+        description: 'Stock is below maximum level'
       },
       critical: {
         icon: <AlertTriangle className="h-6 w-6" />,
         color: 'text-red-600',
         bgColor: 'bg-red-50',
         borderColor: 'border-red-200',
-        label: '🔴 Critique',
-        description: 'Le stock est en dessous du niveau de sécurité'
+        label: '🔴 Critical',
+        description: 'Stock is below minimum level'
       }
     }
     return configs[status]
@@ -140,20 +140,20 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
 
           <div className="grid grid-cols-3 gap-4 mt-4">
             <div>
-              <p className="text-xs text-slate-500 mb-1">Stock actuel</p>
+              <p className="text-xs text-slate-500 mb-1">Current stock</p>
               <p className={`text-2xl font-bold ${statusConfig.color}`}>
                 {data.part.currentStock}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Point de réappro</p>
+              <p className="text-xs text-slate-500 mb-1">Maximum stock</p>
               <p className="text-2xl font-bold text-slate-900">
                 {data.globalStock.globalReorderPoint}
               </p>
             </div>
             <div>
               <p className="text-xs text-slate-500 mb-1">
-                {deficit > 0 ? 'Déficit' : 'Excédent'}
+                {deficit > 0 ? 'Deficit' : 'Surplus'}
               </p>
               <p className={`text-2xl font-bold ${deficit > 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {deficit > 0 ? `-${deficit}` : `+${Math.abs(deficit)}`}
@@ -170,25 +170,25 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-slate-500">Annuelle</p>
+              <p className="text-xs text-slate-500">Annual</p>
               <p className="text-sm font-medium">
                 {formatConsumption(data.globalStock.totalAnnualConsumption)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Mensuelle</p>
+              <p className="text-xs text-slate-500">Monthly</p>
               <p className="text-sm font-medium">
                 {formatConsumption(data.globalStock.totalAnnualConsumption / 12)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Hebdomadaire</p>
+              <p className="text-xs text-slate-500">Weekly</p>
               <p className="text-sm font-medium">
                 {formatConsumption(data.globalStock.totalAnnualConsumption / 52)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Journalière</p>
+              <p className="text-xs text-slate-500">Daily</p>
               <p className="text-sm font-medium">
                 {formatConsumption(data.globalStock.totalDailyConsumption)}
               </p>
@@ -198,26 +198,26 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
 
         {/* Stocks calculés */}
         <div className="border rounded-lg p-4">
-          <h3 className="font-semibold text-sm mb-3">📊 Stocks calculés</h3>
+          <h3 className="font-semibold text-sm mb-3">📊 Calculated stocks</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Stock de sécurité</span>
+              <span className="text-sm text-slate-600">Minimum stock (Safety)</span>
               <span className="text-sm font-medium">
-                {data.globalStock.globalSafetyStock} pièce(s)
+                {data.globalStock.globalSafetyStock} piece(s)
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600">Point de réapprovisionnement</span>
+              <span className="text-sm text-slate-600">Maximum stock (Target)</span>
               <span className="text-sm font-medium">
-                {data.globalStock.globalReorderPoint} pièce(s)
+                {data.globalStock.globalReorderPoint} piece(s)
               </span>
             </div>
             <div className="flex items-center justify-between pt-3 border-t">
               <span className="text-sm font-semibold text-slate-900">
-                Stock initial recommandé
+                Recommended initial stock
               </span>
               <span className="text-lg font-bold text-blue-600">
-                {data.globalStock.recommendedInitialStock} pièce(s)
+                {data.globalStock.recommendedInitialStock} piece(s)
               </span>
             </div>
           </div>
@@ -225,7 +225,7 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
 
         {/* Criticité moyenne */}
         <div className="border rounded-lg p-4">
-          <h3 className="font-semibold text-sm mb-3">⚖️ Criticité moyenne pondérée</h3>
+          <h3 className="font-semibold text-sm mb-3">⚖️ Weighted average criticality</h3>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-2xl">{criticalityIcon}</span>
@@ -239,7 +239,7 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-500">Équipements</p>
+              <p className="text-xs text-slate-500">Equipment</p>
               <p className="text-lg font-bold">
                 {data.globalStock.equipmentCount}
               </p>
@@ -259,7 +259,7 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
         {data.globalStock.details.length > 0 && (
           <div className="border rounded-lg p-4">
             <h3 className="font-semibold text-sm mb-3">
-              🏭 Répartition par équipement ({data.globalStock.details.length})
+              🏭 Distribution by equipment ({data.globalStock.details.length})
             </h3>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {data.globalStock.details.map((detail, index) => (
@@ -275,7 +275,7 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
                   </div>
                   <div className="text-right">
                     <p className="font-medium text-blue-600">
-                      {formatConsumption(detail.annualConsumption)}/an
+                      {formatConsumption(detail.annualConsumption)}/year
                     </p>
                     <p className="text-xs text-slate-500">
                       Importance: {detail.machineImportance}
@@ -291,7 +291,7 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
         {data.status !== 'ok' && (
           <div className="pt-4 border-t">
             <Button className="w-full" size="lg">
-              🛒 Commander {deficit > 0 ? deficit : data.globalStock.recommendedInitialStock} pièce(s)
+              🛒 Order {deficit > 0 ? deficit : data.globalStock.recommendedInitialStock} piece(s)
             </Button>
           </div>
         )}

@@ -355,13 +355,88 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
       timestamp: new Date()
     });
     
+    // Dupliquer automatiquement les associations de pièces/consommables
+    // depuis d'autres équipements du même type
+    let duplicatedPartsCount = 0;
+    if (created.type) {
+      try {
+        // Trouver un équipement de référence du même type
+        const referenceEquipment = await Equipment.findOne({
+          type: created.type,
+          _id: { $ne: created._id }
+        }).lean();
+        
+        if (referenceEquipment) {
+          // Récupérer toutes les associations de l'équipement de référence
+          const referenceAssociations = await EquipmentPart.find({
+            equipment: referenceEquipment._id
+          }).lean();
+          
+          if (referenceAssociations.length > 0) {
+            // Créer les mêmes associations pour le nouvel équipement
+            const newAssociations = referenceAssociations.map(assoc => {
+              // Calculer les valeurs (car insertMany ne déclenche pas le hook pre-save)
+              const annualConsumption = assoc.quantityPerMachine * assoc.replacementFrequencyPerYear;
+              const dailyConsumption = annualConsumption / 365;
+              const safetyStock = Math.ceil(dailyConsumption * assoc.leadTimeDays * assoc.safetyCoefficient);
+              const reorderPoint = Math.ceil(safetyStock + (dailyConsumption * assoc.leadTimeDays));
+              
+              return {
+                equipment: created._id,
+                part: assoc.part,
+                quantityPerMachine: assoc.quantityPerMachine,
+                replacementFrequencyPerYear: assoc.replacementFrequencyPerYear,
+                criticality: assoc.criticality,
+                criticalityScore: assoc.criticalityScore,
+                machineImportance: assoc.machineImportance,
+                leadTimeDays: assoc.leadTimeDays,
+                safetyCoefficient: assoc.safetyCoefficient,
+                isStandardPart: assoc.isStandardPart,
+                notes: assoc.notes ? `Auto-duplicated from reference equipment. ${assoc.notes}` : 'Auto-duplicated from reference equipment',
+                changedBy: req.user._id,
+                // Valeurs calculées
+                annualConsumption: annualConsumption,
+                dailyConsumption: dailyConsumption,
+                safetyStock: safetyStock,
+                reorderPoint: reorderPoint
+              };
+            });
+            
+            await EquipmentPart.insertMany(newAssociations);
+            duplicatedPartsCount = newAssociations.length;
+            
+            // Recalculer le min/max pour chaque pièce dupliquée
+            const uniqueParts = [...new Set(newAssociations.map(a => a.part.toString()))];
+            for (const partId of uniqueParts) {
+              try {
+                await EquipmentPartsService.recalculateMinMaxForPart(partId);
+                console.log(`Min/Max recalculated for part ${partId}`);
+              } catch (recalcError) {
+                console.error(`Error recalculating min/max for part ${partId}:`, recalcError);
+              }
+            }
+          }
+        }
+      } catch (dupError) {
+        console.error('Error duplicating parts to new equipment:', dupError);
+        // Don't fail equipment creation
+      }
+    }
+    
     const populated = await Equipment.findById(created._id)
       .populate('category')
       .populate('type')
       .populate('lastStatusChangedBy', 'email role')
       .lean();
     
-    return res.status(201).json({ success: true, equipment: populated });
+    return res.status(201).json({ 
+      success: true, 
+      equipment: populated,
+      duplicatedPartsCount,
+      message: duplicatedPartsCount > 0 
+        ? `Equipment created with ${duplicatedPartsCount} part(s)/consumable(s) auto-duplicated. Min/Max recalculated.`
+        : 'Equipment created'
+    });
   } catch (error) {
     console.error('Create equipment error:', error);
     return res.status(500).json({ message: error.message || 'Failed to create equipment' });

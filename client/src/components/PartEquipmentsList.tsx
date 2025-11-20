@@ -73,12 +73,12 @@ export function PartEquipmentsList({ partId }: PartEquipmentsListProps) {
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      in_production: 'En production',
-      breakdown: 'Panne',
-      under_repair: 'En réparation',
+      in_production: 'In production',
+      breakdown: 'Breakdown',
+      under_repair: 'Under repair',
       scheduled_maintenance: 'Maintenance',
-      offline: 'Hors ligne',
-      stored: 'Stocké'
+      offline: 'Offline',
+      stored: 'Stored'
     }
     return labels[status] || status
   }
@@ -89,11 +89,11 @@ export function PartEquipmentsList({ partId }: PartEquipmentsListProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            Équipements utilisant cette pièce
+            Equipment using this part
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-500">Chargement...</p>
+          <p className="text-sm text-slate-500">Loading...</p>
         </CardContent>
       </Card>
     )
@@ -105,7 +105,7 @@ export function PartEquipmentsList({ partId }: PartEquipmentsListProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            Équipements utilisant cette pièce
+            Equipment using this part
             {associations.length > 0 && (
               <Badge variant="secondary">{associations.length}</Badge>
             )}
@@ -123,14 +123,14 @@ export function PartEquipmentsList({ partId }: PartEquipmentsListProps) {
               size="sm"
               onClick={() => setSortBy('criticality')}
             >
-              Criticité
+              Criticality
             </Button>
             <Button
               variant={sortBy === 'consumption' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setSortBy('consumption')}
             >
-              Consommation
+              Consumption
             </Button>
           </div>
         </div>
@@ -140,7 +140,7 @@ export function PartEquipmentsList({ partId }: PartEquipmentsListProps) {
           <div className="text-center py-8">
             <Settings className="h-12 w-12 mx-auto text-slate-400 mb-3" />
             <p className="text-sm text-slate-600">
-              Cette pièce n'est associée à aucun équipement
+              This part is not associated with any equipment
             </p>
           </div>
         ) : (
@@ -196,28 +196,28 @@ export function PartEquipmentsList({ partId }: PartEquipmentsListProps) {
                     </div>
 
                     <div>
-                      <p className="text-xs text-slate-500">Criticité</p>
+                      <p className="text-xs text-slate-500">Criticality</p>
                       <Badge className={criticalityColor}>
                         {criticalityIcon} {getCriticalityLabel(assoc.criticality)}
                       </Badge>
                     </div>
 
                     <div>
-                      <p className="text-xs text-slate-500">Quantité</p>
+                      <p className="text-xs text-slate-500">Quantity</p>
                       <p className="text-sm font-medium">
-                        {assoc.quantityPerMachine} pièce(s)
+                        {assoc.quantityPerMachine} piece(s)
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-xs text-slate-500">Fréquence</p>
+                      <p className="text-xs text-slate-500">Frequency</p>
                       <p className="text-sm font-medium">
                         {formatReplacementFrequency(assoc.replacementFrequencyPerYear)}
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-xs text-slate-500">Conso. annuelle</p>
+                      <p className="text-xs text-slate-500">Annual consumption</p>
                       <div className="flex items-center gap-1">
                         <TrendingUp className="h-3 w-3 text-blue-600" />
                         <p className="text-sm font-medium text-blue-600">

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -18,6 +19,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/hooks/useToast'
 import {
   createEquipmentPart,
@@ -64,7 +66,8 @@ export function EquipmentPartFormDialog({
     leadTimeDays: editingPart?.leadTimeDays || 15,
     safetyCoefficient: editingPart?.safetyCoefficient || 1.4,
     isStandardPart: editingPart?.isStandardPart ?? true,
-    notes: editingPart?.notes || ''
+    notes: editingPart?.notes || '',
+    duplicateToSameType: true // Par défaut activé pour création
   })
 
   // Calculs en temps réel
@@ -89,7 +92,7 @@ export function EquipmentPartFormDialog({
       console.error('Error fetching parts:', error)
       toast({
         title: 'Erreur',
-        description: 'Impossible de charger les pièces',
+        description: 'Unable to load parts',
         variant: 'destructive'
       })
     } finally {
@@ -114,7 +117,7 @@ export function EquipmentPartFormDialog({
 
       if (editingPart) {
         // Mise à jour
-        await updateEquipmentPart(editingPart._id, {
+        const result = await updateEquipmentPart(editingPart._id, {
           quantityPerMachine: form.quantityPerMachine,
           replacementFrequencyPerYear: form.replacementFrequencyPerYear,
           criticality: form.criticality,
@@ -124,13 +127,27 @@ export function EquipmentPartFormDialog({
           isStandardPart: form.isStandardPart,
           notes: form.notes
         })
+        
+        const recalculatedMinMax = result.recalculatedMinMax
+        const propagatedCount = result.propagatedCount || 0
+        
+        let description = 'Association updated successfully.'
+        
+        if (propagatedCount > 0) {
+          description += ` Propagated to ${propagatedCount} equipment(s) of the same type.`
+        }
+        
+        if (recalculatedMinMax) {
+          description += ` Min/Max recalculated: ${recalculatedMinMax.minStock}/${recalculatedMinMax.maxStock}`
+        }
+        
         toast({
-          title: 'Modifié',
-          description: 'Association modifiée avec succès'
+          title: 'Updated',
+          description
         })
       } else {
         // Création
-        await createEquipmentPart({
+        const result = await createEquipmentPart({
           equipment: equipmentId,
           part: form.part,
           quantityPerMachine: form.quantityPerMachine,
@@ -140,11 +157,24 @@ export function EquipmentPartFormDialog({
           leadTimeDays: form.leadTimeDays,
           safetyCoefficient: form.safetyCoefficient,
           isStandardPart: form.isStandardPart,
-          notes: form.notes
+          notes: form.notes,
+          duplicateToSameType: form.duplicateToSameType
         })
+        
+        const duplicatedCount = result.duplicatedCount || 0
+        const recalculatedMinMax = result.recalculatedMinMax
+        
+        let description = duplicatedCount > 0
+          ? `Association created and duplicated to ${duplicatedCount} equipment(s) of the same type.`
+          : 'Association created successfully.'
+        
+        if (recalculatedMinMax) {
+          description += ` Min/Max recalculated: ${recalculatedMinMax.minStock}/${recalculatedMinMax.maxStock}`
+        }
+        
         toast({
-          title: 'Créé',
-          description: 'Association créée avec succès'
+          title: 'Created',
+          description
         })
       }
 
@@ -220,7 +250,7 @@ export function EquipmentPartFormDialog({
                   required
                 />
                 <p className="text-xs text-slate-500">
-                  Nombre de pièces utilisées lors d'un remplacement
+                  Number of pieces used during a replacement
                 </p>
               </div>
 
@@ -238,7 +268,7 @@ export function EquipmentPartFormDialog({
                   required
                 />
                 <p className="text-xs text-slate-500">
-                  Ex: 2 = 2 fois/an, 0.5 = tous les 2 ans
+                  Ex: 2 = 2 times/year, 0.5 = every 2 years
                 </p>
               </div>
             </div>
@@ -369,6 +399,35 @@ export function EquipmentPartFormDialog({
               rows={3}
             />
           </div>
+
+          {/* Option de duplication (uniquement en création) */}
+          {!editingPart && (
+            <Alert>
+              <AlertDescription>
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="duplicateToSameType"
+                    checked={form.duplicateToSameType}
+                    onCheckedChange={(checked) => 
+                      setForm({ ...form, duplicateToSameType: checked as boolean })
+                    }
+                  />
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="duplicateToSameType"
+                      className="text-sm font-medium leading-none cursor-pointer"
+                    >
+                      Duplicate to all equipment of the same type
+                    </Label>
+                    <p className="text-sm text-slate-500">
+                      This association will be automatically created for all existing 
+                      and future equipment of the same type with the same parameters.
+                    </p>
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           <DialogFooter>
             <Button
