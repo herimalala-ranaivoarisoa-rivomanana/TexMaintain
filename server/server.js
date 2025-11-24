@@ -28,6 +28,7 @@ const electricianRoutes = require("./routes/electricianRoutes");
 const maintenanceWorkerRoutes = require("./routes/maintenanceWorkerRoutes");
 const breakdownMediaRoutes = require("./routes/breakdownMedia");
 const equipmentPartsRoutes = require("./routes/equipmentPartsRoutes");
+const reportsRoutes = require("./routes/reportsRoutes");
 const { connectDB } = require("./config/database");
 const cors = require("cors");
 const helmet = require('helmet');
@@ -46,15 +47,15 @@ app.enable('json spaces');
 app.enable('strict routing');
 
 // Secure CORS configuration
-const allowedOrigins = process.env.FRONTEND_URL 
-  ? process.env.FRONTEND_URL.split(',') 
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',')
   : ['http://localhost:5173', 'http://localhost:3000'];
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -133,6 +134,7 @@ app.use('/api/electricians', electricianRoutes);
 app.use('/api/maintenance-workers', maintenanceWorkerRoutes);
 app.use('/api/breakdown-media', breakdownMediaRoutes);
 app.use('/api/equipment-parts', equipmentPartsRoutes);
+app.use('/api/reports', reportsRoutes);
 
 // If no routes handled the request, it's a 404
 app.use((req, res, next) => {

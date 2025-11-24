@@ -60,6 +60,15 @@ async function runSeeder() {
       console.error('❌ Error seeding equipment:', error.message + '\n');
     }
 
+    // Seed interventions (historical data)
+    console.log('🛠️  Seeding historical interventions...');
+    try {
+      results.interventions = await SeedService.seedInterventions();
+      console.log(`✅ Interventions seeded: ${results.interventions.created} created, ${results.interventions.skipped} skipped\n`);
+    } catch (error) {
+      console.error('❌ Error seeding interventions:', error.message + '\n');
+    }
+
     // Seed parts
     console.log('🔩 Seeding parts...');
     try {
@@ -84,6 +93,7 @@ async function runSeeder() {
     console.log(`   - Categories: ${results.categories?.created || 0} created`);
     console.log(`   - Types: ${results.types?.created || 0} created`);
     console.log(`   - Equipment: ${results.equipment?.created || 0} created`);
+    console.log(`   - Interventions: ${results.interventions?.created || 0} created`);
     console.log(`   - Parts: ${results.parts?.created || 0} created`);
     console.log(`   - Equipment-Parts: ${results.equipmentParts?.created || 0} created`);
 

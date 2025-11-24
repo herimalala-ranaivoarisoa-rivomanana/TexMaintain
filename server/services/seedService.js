@@ -1,5 +1,6 @@
 const { User } = require('../models/User.js');
 const { Equipment } = require('../models/Equipment.js');
+const { Intervention } = require('../models/Intervention.js');
 const { EquipmentCategory } = require('../models/EquipmentCategory.js');
 const { EquipmentType } = require('../models/EquipmentType.js');
 const { EquipmentPart } = require('../models/EquipmentPart.js');
@@ -11,10 +12,10 @@ class SeedService {
   static async seedAdminUser() {
     try {
       console.log('Starting admin user seeding...');
-      
+
       const adminEmail = 'admin@texmaintain.com';
       const adminPassword = 'admin123';
-      
+
       // Check if admin user already exists
       const existingAdmin = await User.findOne({ email: adminEmail });
       if (existingAdmin) {
@@ -38,7 +39,7 @@ class SeedService {
 
       await adminUser.save();
       console.log(`Admin user created successfully with email: ${adminEmail}`);
-      
+
       return {
         success: true,
         message: 'Admin user created successfully',
@@ -1743,6 +1744,96 @@ class SeedService {
     } catch (error) {
       console.error('Error seeding brands:', error);
       throw new Error(`Failed to seed brands: ${error.message}`);
+    }
+  }
+
+  static async seedInterventions() {
+    try {
+      console.log('Starting interventions seeding...');
+
+      const equipment = await Equipment.find();
+      const users = await User.find();
+
+      if (equipment.length === 0) {
+        throw new Error('No equipment found. Please seed equipment first.');
+      }
+
+      const interventionTypes = ['Corrective', 'Preventive', 'Emergency'];
+      const priorities = ['Low', 'Medium', 'High', 'Critical'];
+      const statuses = ['Pending', 'In Progress', 'Completed', 'Cancelled'];
+
+      const interventionsData = [];
+      const startDate = new Date();
+      startDate.setFullYear(startDate.getFullYear() - 1); // 1 year ago
+
+      // Generate 50 random interventions over the last year
+      for (let i = 0; i < 50; i++) {
+        const randomEquipment = equipment[Math.floor(Math.random() * equipment.length)];
+        const randomUser = users.length > 0 ? users[Math.floor(Math.random() * users.length)] : null;
+        const type = interventionTypes[Math.floor(Math.random() * interventionTypes.length)];
+        const priority = priorities[Math.floor(Math.random() * priorities.length)];
+
+        // Random date within the last year
+        const createdDate = new Date(startDate.getTime() + Math.random() * (Date.now() - startDate.getTime()));
+
+        // Determine status based on date (older ones likely completed)
+        let status;
+        const daysOld = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+
+        if (daysOld > 30) {
+          status = Math.random() > 0.1 ? 'Completed' : 'Cancelled';
+        } else if (daysOld > 7) {
+          status = Math.random() > 0.3 ? 'Completed' : 'In Progress';
+        } else {
+          status = Math.random() > 0.5 ? 'In Progress' : 'Pending';
+        }
+
+        interventionsData.push({
+          title: `${type} maintenance for ${randomEquipment.model}`,
+          type: type,
+          priority: priority,
+          status: status,
+          equipment: randomEquipment.model, // Legacy field
+          equipmentId: randomEquipment._id,
+          assignedTo: randomUser ? randomUser.email : 'Unassigned',
+          description: `Generated ${type.toLowerCase()} intervention for ${randomEquipment.model}. Issue reported on ${createdDate.toLocaleDateString()}.`,
+          createdDate: createdDate,
+          dueDate: new Date(createdDate.getTime() + 7 * 24 * 60 * 60 * 1000) // Due 1 week after creation
+        });
+      }
+
+      const createdInterventions = [];
+      let skippedCount = 0;
+
+      for (const data of interventionsData) {
+        // Simple check to avoid exact duplicates if re-running (though random dates make it unlikely)
+        const existing = await Intervention.findOne({
+          equipmentId: data.equipmentId,
+          createdDate: data.createdDate
+        });
+
+        if (existing) {
+          skippedCount++;
+          continue;
+        }
+
+        const intervention = new Intervention(data);
+        await intervention.save();
+        createdInterventions.push(intervention);
+      }
+
+      console.log(`Interventions seeding completed. Created: ${createdInterventions.length}, Skipped: ${skippedCount}`);
+
+      return {
+        success: true,
+        message: `Interventions seeding completed. Created: ${createdInterventions.length}, Skipped: ${skippedCount}`,
+        created: createdInterventions,
+        skipped: skippedCount
+      };
+
+    } catch (error) {
+      console.error('Error seeding interventions:', error);
+      throw new Error(`Failed to seed interventions: ${error.message}`);
     }
   }
 

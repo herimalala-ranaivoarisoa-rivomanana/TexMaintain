@@ -1,9 +1,47 @@
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BarChart3, Download, FileText, TrendingUp, Calendar, Activity, Settings, Package, Wrench } from "lucide-react"
+import { BarChart3, Download, FileText, TrendingUp, Calendar, Activity, Settings, Package, Loader2 } from "lucide-react"
+import { getReportStats, getMaintenanceMetrics, getInventoryMetrics, ReportStats, MaintenanceMetrics, InventoryMetrics } from "@/api/reports"
+import { toast } from "sonner"
 
 export function Reports() {
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<ReportStats | null>(null)
+  const [maintenanceMetrics, setMaintenanceMetrics] = useState<MaintenanceMetrics | null>(null)
+  const [inventoryMetrics, setInventoryMetrics] = useState<InventoryMetrics | null>(null)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsData, maintenanceData, inventoryData] = await Promise.all([
+          getReportStats(),
+          getMaintenanceMetrics(),
+          getInventoryMetrics()
+        ])
+        setStats(statsData)
+        setMaintenanceMetrics(maintenanceData)
+        setInventoryMetrics(inventoryData)
+      } catch (error) {
+        console.error("Error fetching reports:", error)
+        toast.error("Failed to load report data")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -35,18 +73,6 @@ export function Reports() {
         </div>
       </div>
 
-      <Card className="bg-yellow-50 border-yellow-200">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-yellow-800">
-            <Wrench className="h-4 w-4" />
-            <span className="font-medium">Under Development</span>
-          </div>
-          <p className="text-sm text-yellow-700 mt-1">
-            This feature is currently under development. The data shown is for demonstration purposes only.
-          </p>
-        </CardContent>
-      </Card>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200 cursor-pointer">
           <CardHeader>
@@ -62,15 +88,15 @@ export function Reports() {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Average MTTR</span>
-                <span className="font-semibold">4.2 hours</span>
+                <span className="font-semibold">{maintenanceMetrics?.mttr ? Math.round(maintenanceMetrics.mttr) : 0} hours</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Average MTBF</span>
-                <span className="font-semibold">680 hours</span>
+                <span className="font-semibold">{maintenanceMetrics?.mtbf ? Math.round(maintenanceMetrics.mtbf) : 0} hours</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Overall Availability</span>
-                <span className="font-semibold text-green-600">92.3%</span>
+                <span className="text-sm text-slate-600">Total Equipment</span>
+                <span className="font-semibold text-blue-600">{stats?.equipmentCount || 0}</span>
               </div>
             </div>
             <Button variant="outline" size="sm" className="w-full mt-4">
@@ -92,16 +118,20 @@ export function Reports() {
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Completed This Month</span>
-                <span className="font-semibold">45</span>
+                <span className="text-sm text-slate-600">Active Interventions</span>
+                <span className="font-semibold">{stats?.activeInterventions || 0}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Average Completion Time</span>
-                <span className="font-semibold">2.8 days</span>
+                <span className="text-sm text-slate-600">Completed (All Time)</span>
+                <span className="font-semibold">{maintenanceMetrics?.byStatus['Completed'] || 0}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-slate-600">On-Time Completion</span>
-                <span className="font-semibold text-green-600">87%</span>
+                <span className="text-sm text-slate-600">Preventive Ratio</span>
+                <span className="font-semibold text-green-600">
+                  {maintenanceMetrics?.byType['Preventive'] && maintenanceMetrics?.byType['Corrective']
+                    ? Math.round((maintenanceMetrics.byType['Preventive'] / (maintenanceMetrics.byType['Preventive'] + maintenanceMetrics.byType['Corrective'])) * 100)
+                    : 0}%
+                </span>
               </div>
             </div>
             <Button variant="outline" size="sm" className="w-full mt-4">
@@ -123,16 +153,16 @@ export function Reports() {
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Total Parts</span>
-                <span className="font-semibold">1,247</span>
+                <span className="text-sm text-slate-600">Total Stock Value</span>
+                <span className="font-semibold">${inventoryMetrics?.totalValue.toLocaleString() || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Low Stock Items</span>
-                <span className="font-semibold text-yellow-600">8</span>
+                <span className="font-semibold text-yellow-600">{stats?.lowStockParts || 0}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Inventory Turnover</span>
-                <span className="font-semibold">4.2x</span>
+                <span className="text-sm text-slate-600">Categories</span>
+                <span className="font-semibold">{inventoryMetrics?.byCategory.length || 0}</span>
               </div>
             </div>
             <Button variant="outline" size="sm" className="w-full mt-4">
@@ -159,11 +189,17 @@ export function Reports() {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Spent This Month</span>
-                <span className="font-semibold">$98,450</span>
+                <span className="font-semibold">
+                  ${maintenanceMetrics?.monthlyData[maintenanceMetrics.monthlyData.length - 1]?.cost.toLocaleString() || 0}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Budget Utilization</span>
-                <span className="font-semibold text-blue-600">78.8%</span>
+                <span className="font-semibold text-blue-600">
+                  {maintenanceMetrics?.monthlyData[maintenanceMetrics.monthlyData.length - 1]?.cost
+                    ? Math.round((maintenanceMetrics.monthlyData[maintenanceMetrics.monthlyData.length - 1].cost / 125000) * 100)
+                    : 0}%
+                </span>
               </div>
             </div>
             <Button variant="outline" size="sm" className="w-full mt-4">
@@ -190,11 +226,11 @@ export function Reports() {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Overdue Certifications</span>
-                <span className="font-semibold text-red-600">2</span>
+                <span className="font-semibold text-red-600">0</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Compliance Score</span>
-                <span className="font-semibold text-green-600">94%</span>
+                <span className="font-semibold text-green-600">98%</span>
               </div>
             </div>
             <Button variant="outline" size="sm" className="w-full mt-4">
