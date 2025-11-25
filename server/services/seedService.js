@@ -1,6 +1,7 @@
 const { User } = require('../models/User.js');
 const { Equipment } = require('../models/Equipment.js');
 const { Intervention } = require('../models/Intervention.js');
+const { Project } = require('../models/Project.js');
 const { EquipmentCategory } = require('../models/EquipmentCategory.js');
 const { EquipmentType } = require('../models/EquipmentType.js');
 const { EquipmentPart } = require('../models/EquipmentPart.js');
@@ -1830,10 +1831,100 @@ class SeedService {
         created: createdInterventions,
         skipped: skippedCount
       };
-
     } catch (error) {
       console.error('Error seeding interventions:', error);
       throw new Error(`Failed to seed interventions: ${error.message}`);
+    }
+  }
+
+  static async seedProjects() {
+    try {
+      console.log('Starting projects seeding...');
+      const users = await User.find();
+      const adminUser = users.find(u => u.role === 'admin') || users[0];
+
+      const projectsData = [
+        {
+          title: 'Equipment Modernization Phase 1',
+          description: 'Upgrading spinning machines with IoT sensors and predictive maintenance capabilities.',
+          status: 'In Progress',
+          budget: 450000,
+          startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 3 months ago
+          endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 3 months from now
+          progress: 65,
+          teamSize: 8,
+          createdBy: adminUser?._id
+        },
+        {
+          title: 'Warehouse Automation',
+          description: 'Implementing automated storage and retrieval system for spare parts inventory.',
+          status: 'Planned',
+          budget: 1200000,
+          startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 1 month from now
+          endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+          progress: 0,
+          teamSize: 12,
+          createdBy: adminUser?._id
+        },
+        {
+          title: 'Energy Efficiency Overhaul',
+          description: 'Replacing legacy motors with high-efficiency units across production lines.',
+          status: 'Completed',
+          budget: 280000,
+          startDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000), // 6 months ago
+          endDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
+          progress: 100,
+          teamSize: 6,
+          createdBy: adminUser?._id
+        },
+        {
+          title: 'Safety Compliance Audit',
+          description: 'Comprehensive safety audit and implementation of new safety protocols.',
+          status: 'In Progress',
+          budget: 50000,
+          startDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
+          endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
+          progress: 45,
+          teamSize: 4,
+          createdBy: adminUser?._id
+        },
+        {
+          title: 'ERP Integration',
+          description: 'Integrating maintenance software with central ERP system.',
+          status: 'On Hold',
+          budget: 150000,
+          startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000), // 2 months ago
+          endDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000), // 4 months from now
+          progress: 30,
+          teamSize: 5,
+          createdBy: adminUser?._id
+        }
+      ];
+
+      const createdProjects = [];
+      let skippedCount = 0;
+
+      for (const data of projectsData) {
+        const existing = await Project.findOne({ title: data.title });
+        if (existing) {
+          skippedCount++;
+          continue;
+        }
+
+        const project = new Project(data);
+        await project.save();
+        createdProjects.push(project);
+      }
+
+      console.log(`Projects seeding completed. Created: ${createdProjects.length}, Skipped: ${skippedCount}`);
+      return {
+        success: true,
+        created: createdProjects,
+        skipped: skippedCount
+      };
+    } catch (error) {
+      console.error('Error seeding projects:', error);
+      throw new Error(`Failed to seed projects: ${error.message}`);
     }
   }
 

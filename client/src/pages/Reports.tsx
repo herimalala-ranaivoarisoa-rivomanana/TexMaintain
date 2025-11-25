@@ -123,12 +123,12 @@ export function Reports() {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Completed (All Time)</span>
-                <span className="font-semibold">{maintenanceMetrics?.byStatus['Completed'] || 0}</span>
+                <span className="font-semibold">{maintenanceMetrics?.byStatus?.['Completed'] || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Preventive Ratio</span>
                 <span className="font-semibold text-green-600">
-                  {maintenanceMetrics?.byType['Preventive'] && maintenanceMetrics?.byType['Corrective']
+                  {maintenanceMetrics?.byType?.['Preventive'] && maintenanceMetrics?.byType?.['Corrective']
                     ? Math.round((maintenanceMetrics.byType['Preventive'] / (maintenanceMetrics.byType['Preventive'] + maintenanceMetrics.byType['Corrective'])) * 100)
                     : 0}%
                 </span>
@@ -154,7 +154,7 @@ export function Reports() {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Total Stock Value</span>
-                <span className="font-semibold">${inventoryMetrics?.totalValue.toLocaleString() || 0}</span>
+                <span className="font-semibold">${inventoryMetrics?.totalValue?.toLocaleString() || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Low Stock Items</span>
@@ -162,7 +162,7 @@ export function Reports() {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Categories</span>
-                <span className="font-semibold">{inventoryMetrics?.byCategory.length || 0}</span>
+                <span className="font-semibold">{inventoryMetrics?.byCategory?.length || 0}</span>
               </div>
             </div>
             <Button variant="outline" size="sm" className="w-full mt-4">
@@ -190,13 +190,15 @@ export function Reports() {
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Spent This Month</span>
                 <span className="font-semibold">
-                  ${maintenanceMetrics?.monthlyData[maintenanceMetrics.monthlyData.length - 1]?.cost.toLocaleString() || 0}
+                  ${maintenanceMetrics?.monthlyData?.length
+                    ? maintenanceMetrics.monthlyData[maintenanceMetrics.monthlyData.length - 1].cost.toLocaleString()
+                    : 0}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-slate-600">Budget Utilization</span>
                 <span className="font-semibold text-blue-600">
-                  {maintenanceMetrics?.monthlyData[maintenanceMetrics.monthlyData.length - 1]?.cost
+                  {maintenanceMetrics?.monthlyData?.length
                     ? Math.round((maintenanceMetrics.monthlyData[maintenanceMetrics.monthlyData.length - 1].cost / 125000) * 100)
                     : 0}%
                 </span>
