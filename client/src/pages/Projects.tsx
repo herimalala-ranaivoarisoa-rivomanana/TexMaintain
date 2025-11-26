@@ -271,6 +271,13 @@ export function Projects() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {projects?.length === 0 && (
+          <div className="col-span-full text-center py-12 text-slate-500">
+            <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p className="text-lg font-medium">No projects found</p>
+            <p className="text-sm">Create a new project to get started</p>
+          </div>
+        )}
         {projects?.map((project) => (
           <Card key={project._id} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
             <CardHeader>

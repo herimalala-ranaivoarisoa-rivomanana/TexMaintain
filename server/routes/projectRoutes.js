@@ -3,10 +3,18 @@ const router = express.Router();
 const { Project } = require('../models/Project');
 const { requireUser } = require('./middleware/auth');
 
+const fs = require('fs');
+const path = require('path');
+
 // GET /api/projects - List all projects
 router.get('/', requireUser, async (req, res) => {
     try {
+        const logPath = path.join(__dirname, '../debug_projects.log');
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] GET /api/projects called\n`);
+
         const projects = await Project.find().sort({ startDate: -1 });
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] Found ${projects.length} projects\n`);
+
         res.json({ projects });
     } catch (error) {
         console.error('Error fetching projects:', error);
@@ -17,6 +25,7 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/projects/stats - Get project statistics
 router.get('/stats', requireUser, async (req, res) => {
     try {
+        console.log('GET /api/projects/stats called');
         const [
             activeCount,
             completedCount,
@@ -33,12 +42,15 @@ router.get('/stats', requireUser, async (req, res) => {
             ])
         ]);
 
-        res.json({
+        const stats = {
             activeProjects: activeCount,
             completedProjects: completedCount,
             totalBudget: totalBudgetResult[0]?.total || 0,
             totalTeamMembers: totalTeamSizeResult[0]?.total || 0
-        });
+        };
+        console.log('Stats calculated:', stats);
+
+        res.json(stats);
     } catch (error) {
         console.error('Error fetching project stats:', error);
         res.status(500).json({ message: 'Error fetching project stats' });

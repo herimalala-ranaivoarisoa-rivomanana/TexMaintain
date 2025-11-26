@@ -1856,13 +1856,35 @@ class SeedService {
           createdBy: adminUser?._id
         },
         {
+          title: 'Equipment Modernization Phase 2',
+          description: 'Extending IoT integration to weaving looms and quality control systems.',
+          status: 'Planned',
+          budget: 550000,
+          startDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 2 months from now
+          endDate: new Date(Date.now() + 240 * 24 * 60 * 60 * 1000), // 8 months from now
+          progress: 0,
+          teamSize: 10,
+          createdBy: adminUser?._id
+        },
+        {
+          title: 'Equipment Modernization Phase 3',
+          description: 'Full automation of material handling between spinning and weaving sections.',
+          status: 'Planned',
+          budget: 750000,
+          startDate: new Date(Date.now() + 240 * 24 * 60 * 60 * 1000), // 8 months from now
+          endDate: new Date(Date.now() + 420 * 24 * 60 * 60 * 1000), // 14 months from now
+          progress: 0,
+          teamSize: 15,
+          createdBy: adminUser?._id
+        },
+        {
           title: 'Warehouse Automation',
           description: 'Implementing automated storage and retrieval system for spare parts inventory.',
-          status: 'Planned',
+          status: 'In Progress',
           budget: 1200000,
-          startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 1 month from now
-          endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-          progress: 0,
+          startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 1 month ago
+          endDate: new Date(Date.now() + 330 * 24 * 60 * 60 * 1000), // 11 months from now
+          progress: 15,
           teamSize: 12,
           createdBy: adminUser?._id
         },
@@ -1875,6 +1897,17 @@ class SeedService {
           endDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
           progress: 100,
           teamSize: 6,
+          createdBy: adminUser?._id
+        },
+        {
+          title: 'Solar Panel Installation',
+          description: 'Installation of 500kW solar array on factory roof to reduce energy costs.',
+          status: 'Completed',
+          budget: 600000,
+          startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 year ago
+          endDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000), // 2 months ago
+          progress: 100,
+          teamSize: 8,
           createdBy: adminUser?._id
         },
         {
@@ -1897,6 +1930,28 @@ class SeedService {
           endDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000), // 4 months from now
           progress: 30,
           teamSize: 5,
+          createdBy: adminUser?._id
+        },
+        {
+          title: 'Staff Training Program',
+          description: 'Advanced technical training for maintenance staff on new equipment.',
+          status: 'In Progress',
+          budget: 25000,
+          startDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+          endDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+          progress: 33,
+          teamSize: 20,
+          createdBy: adminUser?._id
+        },
+        {
+          title: 'Water Recycling Plant',
+          description: 'Construction of a new water recycling facility for the dyeing section.',
+          status: 'Planned',
+          budget: 850000,
+          startDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+          endDate: new Date(Date.now() + 450 * 24 * 60 * 60 * 1000),
+          progress: 0,
+          teamSize: 18,
           createdBy: adminUser?._id
         }
       ];

@@ -32,21 +32,21 @@ export interface CreateProjectData {
 }
 
 export const getProjects = async (): Promise<Project[]> => {
-    const response = await api.get('/projects');
+    const response = await api.get('/api/projects');
     return response.data.projects;
 };
 
 export const getProjectStats = async (): Promise<ProjectStats> => {
-    const response = await api.get('/projects/stats');
+    const response = await api.get('/api/projects/stats');
     return response.data;
 };
 
 export const createProject = async (data: CreateProjectData): Promise<Project> => {
-    const response = await api.post('/projects', data);
+    const response = await api.post('/api/projects', data);
     return response.data.project;
 };
 
 export const updateProject = async (id: string, data: Partial<Project>): Promise<Project> => {
-    const response = await api.patch(`/projects/${id}`, data);
+    const response = await api.patch(`/api/projects/${id}`, data);
     return response.data.project;
 };
