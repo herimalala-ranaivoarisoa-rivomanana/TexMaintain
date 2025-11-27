@@ -22,12 +22,12 @@ export interface ProcurementStats {
 }
 
 export const getProcurementOrders = async (): Promise<ProcurementOrder[]> => {
-    const response = await api.get('/procurement/orders');
+    const response = await api.get('/api/procurement/orders');
     return response.data.orders;
 };
 
 export const getProcurementStats = async (): Promise<ProcurementStats> => {
-    const response = await api.get('/procurement/stats');
+    const response = await api.get('/api/procurement/stats');
     return response.data;
 };
 
@@ -38,11 +38,11 @@ export const createProcurementOrder = async (data: {
     notes?: string;
     expectedDate?: string;
 }) => {
-    const response = await api.post('/procurement/orders', data);
+    const response = await api.post('/api/procurement/orders', data);
     return response.data;
 };
 
 export const updateOrderStatus = async (id: string, partId: string, status: string) => {
-    const response = await api.patch(`/procurement/orders/${id}/status`, { status, partId });
+    const response = await api.patch(`/api/procurement/orders/${id}/status`, { status, partId });
     return response.data;
 };

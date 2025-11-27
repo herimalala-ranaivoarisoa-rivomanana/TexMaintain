@@ -13,6 +13,7 @@ import { Inventory } from "./pages/Inventory"
 import EquipmentDetailWrapper from "./pages/EquipmentDetail"
 import { Procurement } from "./pages/Procurement"
 import { Projects } from "./pages/Projects"
+import { ProjectDetailsPage } from "./pages/ProjectDetails"
 import { Reports } from "./pages/Reports"
 import { Settings } from "./pages/Settings"
 import { BlankPage } from "./pages/BlankPage"
@@ -62,6 +63,7 @@ function App() {
               <Route path="reorder-alerts" element={<ReorderAlerts />} />
               <Route path="procurement" element={<Procurement />} />
               <Route path="projects" element={<Projects />} />
+              <Route path="projects/:id" element={<ProjectDetailsPage />} />
               <Route path="reports" element={<Reports />} />
               <Route path="settings" element={<Settings />} />
             </Route>

@@ -3,7 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ShoppingCart, Plus, FileText, Clock, CheckCircle, Loader2 } from "lucide-react"
-import { getProcurementOrders, getProcurementStats, ProcurementOrder, ProcurementStats } from "@/api/procurement"
+import { getProcurementOrders, getProcurementStats, createProcurementOrder, ProcurementOrder, ProcurementStats } from "@/api/procurement"
+import { getInventory } from "@/api/inventory"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
@@ -12,25 +17,74 @@ export function Procurement() {
   const [orders, setOrders] = useState<ProcurementOrder[]>([])
   const [stats, setStats] = useState<ProcurementStats | null>(null)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [ordersData, statsData] = await Promise.all([
-          getProcurementOrders(),
-          getProcurementStats()
-        ])
-        setOrders(ordersData)
-        setStats(statsData)
-      } catch (error) {
-        console.error("Error fetching procurement data:", error)
-        toast.error("Failed to load procurement data")
-      } finally {
-        setLoading(false)
-      }
-    }
+  // New Request State
+  const [isNewRequestOpen, setIsNewRequestOpen] = useState(false)
+  const [parts, setParts] = useState<any[]>([])
+  const [requestData, setRequestData] = useState({
+    partId: '',
+    quantity: 1,
+    supplier: '',
+    expectedDate: '',
+    notes: ''
+  })
 
+  const fetchData = async () => {
+    try {
+      const [ordersData, statsData, inventoryData] = await Promise.all([
+        getProcurementOrders(),
+        getProcurementStats(),
+        getInventory({ limit: 1000 })
+      ])
+      setOrders(ordersData || [])
+      setStats(statsData)
+      setParts(inventoryData?.parts || [])
+    } catch (error) {
+      console.error("Error fetching procurement data:", error)
+      toast.error("Failed to load procurement data")
+      setOrders([])
+      setParts([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     fetchData()
   }, [])
+
+  const handleCreateRequest = async () => {
+    try {
+      await createProcurementOrder({
+        partId: requestData.partId,
+        quantity: Number(requestData.quantity),
+        supplier: requestData.supplier,
+        expectedDate: requestData.expectedDate,
+        notes: requestData.notes
+      })
+
+      toast.success("Purchase request created successfully")
+      setIsNewRequestOpen(false)
+      setRequestData({
+        partId: '',
+        quantity: 1,
+        supplier: '',
+        expectedDate: '',
+        notes: ''
+      })
+      fetchData() // Refresh list
+    } catch (error) {
+      toast.error("Failed to create purchase request")
+    }
+  }
+
+  const handlePartSelect = (partId: string) => {
+    const part = parts.find(p => p._id === partId)
+    setRequestData({
+      ...requestData,
+      partId,
+      supplier: part?.supplier || ''
+    })
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -62,10 +116,86 @@ export function Procurement() {
             Manage purchase requests, suppliers, and orders
           </p>
         </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-          <Plus className="mr-2 h-4 w-4" />
-          New Purchase Request
-        </Button>
+
+        <Dialog open={isNewRequestOpen} onOpenChange={setIsNewRequestOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+              <Plus className="mr-2 h-4 w-4" />
+              New Purchase Request
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Purchase Request</DialogTitle>
+              <DialogDescription>Initiate a new order for parts or consumables.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="part">Select Part</Label>
+                <Select value={requestData.partId} onValueChange={handlePartSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a part..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {parts.map((part) => (
+                      <SelectItem key={part._id} value={part._id}>
+                        {part.name} ({part.partNumber})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="quantity">Quantity</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    min="1"
+                    value={requestData.quantity}
+                    onChange={(e) => setRequestData({ ...requestData, quantity: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="expectedDate">Expected Date</Label>
+                  <Input
+                    id="expectedDate"
+                    type="date"
+                    value={requestData.expectedDate}
+                    onChange={(e) => setRequestData({ ...requestData, expectedDate: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="supplier">Supplier</Label>
+                <Input
+                  id="supplier"
+                  value={requestData.supplier}
+                  onChange={(e) => setRequestData({ ...requestData, supplier: e.target.value })}
+                  placeholder="Supplier Name"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Input
+                  id="notes"
+                  value={requestData.notes}
+                  onChange={(e) => setRequestData({ ...requestData, notes: e.target.value })}
+                  placeholder="Optional notes..."
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsNewRequestOpen(false)}>Cancel</Button>
+              <Button onClick={handleCreateRequest} disabled={!requestData.partId || requestData.quantity < 1}>
+                Create Request
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -125,7 +255,7 @@ export function Procurement() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {orders.length === 0 ? (
+            {!orders || orders.length === 0 ? (
               <p className="text-center text-slate-500 py-4">No purchase orders found.</p>
             ) : (
               orders.map((order) => (
