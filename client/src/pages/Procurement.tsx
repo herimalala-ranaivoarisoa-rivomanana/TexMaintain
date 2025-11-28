@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ShoppingCart, Plus, FileText, Clock, CheckCircle, Loader2 } from "lucide-react"
+import { ShoppingCart, Plus, FileText, Clock, CheckCircle, Loader2, AlertTriangle } from "lucide-react"
 import { getProcurementOrders, getProcurementStats, createProcurementOrder, updateOrderStatus, ProcurementOrder, ProcurementStats } from "@/api/procurement"
 import { getInventory } from "@/api/inventory"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
-import { format } from "date-fns"
+import { format, isPast } from "date-fns"
 
 export function Procurement() {
   const [loading, setLoading] = useState(true)
@@ -117,6 +117,14 @@ export function Procurement() {
       case 'cancelled': return 'bg-red-500'
       default: return 'bg-gray-500'
     }
+  }
+
+  const isOverdue = (order: ProcurementOrder) => {
+    if (!order.expectedDate || order.status === 'received' || order.status === 'cancelled') return false
+    // Check if date is in past and NOT today (to avoid alarming for today's deliveries)
+    const expected = new Date(order.expectedDate)
+    const today = new Date()
+    return isPast(expected) && expected.toDateString() !== today.toDateString()
   }
 
   if (loading) {
@@ -256,6 +264,20 @@ export function Procurement() {
                   <p className="font-medium">{selectedOrder.supplier || 'N/A'}</p>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-slate-500">Ordered Date</Label>
+                    <p className="font-medium">{format(new Date(selectedOrder.orderDate), 'PPP')}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">Expected Date</Label>
+                    <p className={`font-medium ${isOverdue(selectedOrder) ? 'text-red-600 font-bold' : ''}`}>
+                      {selectedOrder.expectedDate ? format(new Date(selectedOrder.expectedDate), 'PPP') : 'N/A'}
+                      {isOverdue(selectedOrder) && ' (Overdue)'}
+                    </p>
+                  </div>
+                </div>
+
                 <div className="grid gap-2">
                   <Label htmlFor="status">Update Status</Label>
                   <Select
@@ -286,7 +308,7 @@ export function Procurement() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200/60">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -307,6 +329,18 @@ export function Procurement() {
                 <p className="text-3xl font-bold text-orange-900">{stats?.activeOrders || 0}</p>
               </div>
               <ShoppingCart className="h-8 w-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-red-50 to-rose-50 border-red-200/60">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-red-600">Overdue Orders</p>
+                <p className="text-3xl font-bold text-red-900">{stats?.overdueOrders || 0}</p>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-red-600" />
             </div>
           </CardContent>
         </Card>
@@ -353,9 +387,17 @@ export function Procurement() {
                     <p className="text-sm text-slate-600">
                       Supplier: {order.supplier || 'Unknown'} • Order #: {order.orderNumber || 'N/A'}
                     </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Ordered on: {format(new Date(order.orderDate), 'PPP')}
-                    </p>
+                    <div className="flex items-center gap-4 mt-1">
+                      <p className="text-xs text-slate-500">
+                        Ordered: {format(new Date(order.orderDate), 'PPP')}
+                      </p>
+                      {order.expectedDate && (
+                        <p className={`text-xs flex items-center gap-1 ${isOverdue(order) ? 'text-red-600 font-bold' : 'text-slate-500'}`}>
+                          {isOverdue(order) && <AlertTriangle className="h-3 w-3" />}
+                          Expected: {format(new Date(order.expectedDate), 'PPP')}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className={`${getStatusColor(order.status)} text-white capitalize`}>
