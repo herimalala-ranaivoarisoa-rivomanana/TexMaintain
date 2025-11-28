@@ -33,6 +33,19 @@ async function runSeeder() {
       console.log('⚠️  Admin user seeding skipped (may already exist):', error.message + '\n');
     }
 
+    // Seed maintenance personnel
+    console.log('👷 Seeding maintenance personnel...');
+    try {
+      results.personnel = await SeedService.seedMaintenancePersonnel();
+      console.log(`✅ Personnel seeding completed:`);
+      console.log(`   - Mechanics: ${results.personnel.results.mechanics.created} created`);
+      console.log(`   - Electricians: ${results.personnel.results.electricians.created} created`);
+      console.log(`   - Workers: ${results.personnel.results.workers.created} created`);
+      console.log(`   - Machinists: ${results.personnel.results.machinists.created} created\n`);
+    } catch (error) {
+      console.error('❌ Error seeding personnel:', error.message + '\n');
+    }
+
     // Seed equipment categories
     console.log('🏷️  Seeding equipment categories...');
     try {

@@ -8,6 +8,10 @@ const { EquipmentPart } = require('../models/EquipmentPart.js');
 const { Part } = require('../models/Part.js');
 const { Brand } = require('../models/Brand.js');
 const { generatePasswordHash } = require('../utils/password.js');
+const { Mechanic } = require('../models/Mechanic.js');
+const { Electrician } = require('../models/Electrician.js');
+const { MaintenanceWorker } = require('../models/MaintenanceWorker.js');
+const { Machinist } = require('../models/Machinist.js');
 
 class SeedService {
   static async seedAdminUser() {
@@ -2055,6 +2059,100 @@ class SeedService {
     } catch (error) {
       console.error('Error seeding equipment parts:', error);
       throw new Error(`Failed to seed equipment parts: ${error.message}`);
+    }
+  }
+  static async seedMaintenancePersonnel() {
+    try {
+      console.log('Starting maintenance personnel seeding...');
+      const results = {
+        mechanics: { created: 0, skipped: 0 },
+        electricians: { created: 0, skipped: 0 },
+        workers: { created: 0, skipped: 0 },
+        machinists: { created: 0, skipped: 0 }
+      };
+
+      // 1. Seed Mechanics
+      const mechanicsData = [
+        { matricule: 'MEC001', firstName: 'John', lastName: 'Doe', specialization: 'General Mechanics', certifications: ['Certified Master Mechanic'] },
+        { matricule: 'MEC002', firstName: 'Mike', lastName: 'Smith', specialization: 'Hydraulics', certifications: ['Hydraulic Systems Specialist'] },
+        { matricule: 'MEC003', firstName: 'David', lastName: 'Johnson', specialization: 'Pneumatics', certifications: [] },
+        { matricule: 'MEC004', firstName: 'Robert', lastName: 'Brown', specialization: 'Welding', certifications: ['AWS Certified Welder'] }
+      ];
+
+      for (const data of mechanicsData) {
+        const existing = await Mechanic.findOne({ matricule: data.matricule });
+        if (existing) {
+          results.mechanics.skipped++;
+          continue;
+        }
+        await Mechanic.create(data);
+        results.mechanics.created++;
+      }
+
+      // 2. Seed Electricians
+      const electriciansData = [
+        { matricule: 'ELEC001', firstName: 'James', lastName: 'Wilson', specialization: 'Industrial Electrical', certifications: ['Master Electrician'] },
+        { matricule: 'ELEC002', firstName: 'Thomas', lastName: 'Anderson', specialization: 'Control Systems', certifications: ['PLC Programming'] },
+        { matricule: 'ELEC003', firstName: 'William', lastName: 'Taylor', specialization: 'Motor Repair', certifications: [] },
+        { matricule: 'ELEC004', firstName: 'Richard', lastName: 'Moore', specialization: 'Instrumentation', certifications: ['Instrumentation Tech'] }
+      ];
+
+      for (const data of electriciansData) {
+        const existing = await Electrician.findOne({ matricule: data.matricule });
+        if (existing) {
+          results.electricians.skipped++;
+          continue;
+        }
+        await Electrician.create(data);
+        results.electricians.created++;
+      }
+
+      // 3. Seed Maintenance Workers
+      const workersData = [
+        { matricule: 'WRK001', firstName: 'Joseph', lastName: 'Martin', specialization: 'General Repairs' },
+        { matricule: 'WRK002', firstName: 'Charles', lastName: 'Thompson', specialization: 'Facility Maintenance' },
+        { matricule: 'WRK003', firstName: 'Daniel', lastName: 'Garcia', specialization: 'Cleaning' },
+        { matricule: 'WRK004', firstName: 'Matthew', lastName: 'Martinez', specialization: 'Painting' }
+      ];
+
+      for (const data of workersData) {
+        const existing = await MaintenanceWorker.findOne({ matricule: data.matricule });
+        if (existing) {
+          results.workers.skipped++;
+          continue;
+        }
+        await MaintenanceWorker.create(data);
+        results.workers.created++;
+      }
+
+      // 4. Seed Machinists
+      const machinistsData = [
+        { matricule: 'MAC001', firstName: 'Paul', lastName: 'Robinson' },
+        { matricule: 'MAC002', firstName: 'Mark', lastName: 'Clark' },
+        { matricule: 'MAC003', firstName: 'Donald', lastName: 'Rodriguez' },
+        { matricule: 'MAC004', firstName: 'George', lastName: 'Lewis' }
+      ];
+
+      for (const data of machinistsData) {
+        const existing = await Machinist.findOne({ matricule: data.matricule });
+        if (existing) {
+          results.machinists.skipped++;
+          continue;
+        }
+        await Machinist.create(data);
+        results.machinists.created++;
+      }
+
+      console.log('Maintenance personnel seeding completed.');
+      return {
+        success: true,
+        message: 'Maintenance personnel seeded successfully',
+        results
+      };
+
+    } catch (error) {
+      console.error('Error seeding maintenance personnel:', error);
+      throw new Error(`Failed to seed maintenance personnel: ${error.message}`);
     }
   }
 }
