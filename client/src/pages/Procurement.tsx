@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ShoppingCart, Plus, FileText, Clock, CheckCircle, Loader2 } from "lucide-react"
-import { getProcurementOrders, getProcurementStats, createProcurementOrder, ProcurementOrder, ProcurementStats } from "@/api/procurement"
+import { getProcurementOrders, getProcurementStats, createProcurementOrder, updateOrderStatus, ProcurementOrder, ProcurementStats } from "@/api/procurement"
 import { getInventory } from "@/api/inventory"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -27,6 +27,10 @@ export function Procurement() {
     expectedDate: '',
     notes: ''
   })
+
+  // View Order State
+  const [selectedOrder, setSelectedOrder] = useState<ProcurementOrder | null>(null)
+  const [isViewOrderOpen, setIsViewOrderOpen] = useState(false)
 
   const fetchData = async () => {
     try {
@@ -77,6 +81,19 @@ export function Procurement() {
     }
   }
 
+  const handleUpdateStatus = async (newStatus: string) => {
+    if (!selectedOrder) return
+    try {
+      await updateOrderStatus(selectedOrder._id, selectedOrder.partId, newStatus)
+      toast.success(`Order status updated to ${newStatus}`)
+      setIsViewOrderOpen(false)
+      setSelectedOrder(null)
+      fetchData()
+    } catch (error) {
+      toast.error("Failed to update order status")
+    }
+  }
+
   const handlePartSelect = (partId: string) => {
     const part = parts.find(p => p._id === partId)
     setRequestData({
@@ -84,6 +101,11 @@ export function Procurement() {
       partId,
       supplier: part?.supplier || ''
     })
+  }
+
+  const handleViewOrder = (order: ProcurementOrder) => {
+    setSelectedOrder(order)
+    setIsViewOrderOpen(true)
   }
 
   const getStatusColor = (status: string) => {
@@ -196,6 +218,72 @@ export function Procurement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* View/Edit Order Dialog */}
+        <Dialog open={isViewOrderOpen} onOpenChange={setIsViewOrderOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Order Details</DialogTitle>
+              <DialogDescription>View and update order status.</DialogDescription>
+            </DialogHeader>
+            {selectedOrder && (
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-slate-500">Part</Label>
+                    <p className="font-medium">{selectedOrder.partName}</p>
+                    <p className="text-xs text-slate-500">{selectedOrder.partNumber}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">Order #</Label>
+                    <p className="font-medium">{selectedOrder.orderNumber || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-slate-500">Quantity</Label>
+                    <p className="font-medium">{selectedOrder.quantity}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">Total Price</Label>
+                    <p className="font-medium">${selectedOrder.totalPrice?.toLocaleString() || '0'}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-slate-500">Supplier</Label>
+                  <p className="font-medium">{selectedOrder.supplier || 'N/A'}</p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="status">Update Status</Label>
+                  <Select
+                    defaultValue={selectedOrder.status}
+                    onValueChange={handleUpdateStatus}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="ordered">Ordered</SelectItem>
+                      <SelectItem value="in_transit">In Transit</SelectItem>
+                      <SelectItem value="received">Received</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Marking as "Received" will automatically add items to stock.
+                  </p>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsViewOrderOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -273,7 +361,7 @@ export function Procurement() {
                     <Badge className={`${getStatusColor(order.status)} text-white capitalize`}>
                       {order.status.replace('_', ' ')}
                     </Badge>
-                    <Button size="sm" variant="outline">View</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleViewOrder(order)}>View</Button>
                   </div>
                 </div>
               ))
