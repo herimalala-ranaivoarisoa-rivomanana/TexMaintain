@@ -137,7 +137,7 @@ export function ProjectDetailsPage() {
                     <CardTitle className="text-lg flex items-center justify-between">
                         <span>Budget Overview</span>
                         <span className={isOverBudget ? "text-red-600" : "text-green-600"}>
-                            {budgetUsage.toFixed(1)}% Used
+                            {budgetUsage > 0 && budgetUsage < 0.1 ? "< 0.1" : budgetUsage.toFixed(1)}% Used
                         </span>
                     </CardTitle>
                     <CardDescription>
@@ -416,6 +416,6 @@ export function ProjectDetailsPage() {
                     </Card>
                 </TabsContent>
             </Tabs>
-        </div>
+        </div >
     )
 }
