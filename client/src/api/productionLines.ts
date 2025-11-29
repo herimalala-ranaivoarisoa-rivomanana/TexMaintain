@@ -3,7 +3,7 @@ import api from './api';
 // Description: Get all production lines with pagination & filters
 // Endpoint: GET /api/production-lines
 // Response: { productionLines: Array, page: number, total: number }
-export const getProductionLines = async (params?: { page?: number; limit?: number; status?: string; q?: string; sort?: string; order?: 'asc'|'desc' }) => {
+export const getProductionLines = async (params?: { page?: number; limit?: number; status?: string; q?: string; sort?: string; order?: 'asc' | 'desc' }) => {
   const response = await api.get('/api/production-lines', { params });
   return response.data;
 };
@@ -13,6 +13,13 @@ export const getProductionLines = async (params?: { page?: number; limit?: numbe
 // Response: { productionLine: object }
 export const getProductionLineById = async (id: string) => {
   const response = await api.get(`/api/production-lines/${id}`);
+  return response.data;
+};
+
+// Description: Get production line dashboard stats
+// Endpoint: GET /api/production-lines/:id/dashboard
+export const getProductionLineDashboardStats = async (id: string) => {
+  const response = await api.get(`/api/production-lines/${id}/dashboard`);
   return response.data;
 };
 

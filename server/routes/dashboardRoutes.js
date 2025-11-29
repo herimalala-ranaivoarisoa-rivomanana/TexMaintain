@@ -129,6 +129,3 @@ router.get('/activities', requireUser, async (req, res) => {
 });
 
 module.exports = router;
-
-
-

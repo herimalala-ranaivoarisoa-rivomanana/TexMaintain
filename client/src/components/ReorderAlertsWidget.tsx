@@ -10,15 +10,24 @@ import { Link } from 'react-router-dom'
 interface ReorderAlertsWidgetProps {
   maxItems?: number
   showViewAll?: boolean
+  alerts?: ReorderAlert[] // Optional prop to pass alerts directly
 }
 
-export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true }: ReorderAlertsWidgetProps) {
+export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: providedAlerts }: ReorderAlertsWidgetProps) {
   const [alerts, setAlerts] = useState<ReorderAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const { toast } = useToast()
 
   const fetchAlerts = async (isRefresh = false) => {
+    // If alerts are provided via props, don't fetch
+    if (providedAlerts) {
+      setAlerts(providedAlerts)
+      setLoading(false)
+      setRefreshing(false)
+      return
+    }
+
     try {
       if (isRefresh) {
         setRefreshing(true)
@@ -45,11 +54,13 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true }: Reorde
 
   useEffect(() => {
     fetchAlerts()
-    
-    // Rafraîchir toutes les 5 minutes
-    const interval = setInterval(() => fetchAlerts(true), 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
+
+    // Only set interval if we are fetching data ourselves
+    if (!providedAlerts) {
+      const interval = setInterval(() => fetchAlerts(true), 5 * 60 * 1000)
+      return () => clearInterval(interval)
+    }
+  }, [providedAlerts])
 
   const displayedAlerts = alerts.slice(0, maxItems)
   const criticalCount = alerts.filter(a => a.urgency === 'critical').length
@@ -122,11 +133,10 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true }: Reorde
             {displayedAlerts.map((alert) => (
               <div
                 key={alert.part._id}
-                className={`border rounded-lg p-3 ${
-                  alert.urgency === 'critical'
+                className={`border rounded-lg p-3 ${alert.urgency === 'critical'
                     ? 'bg-red-50 border-red-200'
                     : 'bg-orange-50 border-orange-200'
-                }`}
+                  }`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
