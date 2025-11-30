@@ -12,6 +12,8 @@ const { Mechanic } = require('../models/Mechanic.js');
 const { Electrician } = require('../models/Electrician.js');
 const { MaintenanceWorker } = require('../models/MaintenanceWorker.js');
 const { Machinist } = require('../models/Machinist.js');
+const { ProductionLine } = require('../models/ProductionLine.js');
+const { ProductionSection } = require('../models/ProductionSection.js');
 
 class SeedService {
   static async seedAdminUser() {
@@ -238,13 +240,15 @@ class SeedService {
 
       const equipmentData = [
         {
-          category: categoryMap['cuttingmachine'],
-          type: typeMap['cuttingpress'],
-          status: 'in_production',
-          location: 'Cutting Department - Unit 1',
+          name: 'Combing Machine CP-2000',
+          code: 'EQ-SPIN-001',
+          category: categoryMap['cuttingmachine'], // Assuming 'spinning' category doesn't exist, using 'cuttingmachine' as a placeholder or if it's meant to be a cutting machine for spinning
+          type: typeMap['cuttingpress'], // Assuming 'spinning' type doesn't exist, using 'cuttingpress' as a placeholder
+          status: 'stored',
+          location: 'Production Floor - Spinning Area',
           model: 'CP-2000',
-          brand: brandMap['gerber'] || brands[0]._id,
-          manufacturer: 'Gerber Technology',
+          brand: brandMap['rieter'] || brands[0]._id,
+          manufacturer: 'Rieter',
           serialNumber: 'CP-2000-001',
           acquisitionDate: new Date('2022-01-15'),
           lastMaintenance: new Date('2024-10-01'),
@@ -256,13 +260,15 @@ class SeedService {
           }
         },
         {
+          name: 'Industrial Sewing Machine DDL-8700',
+          code: 'EQ-SEW-001',
           category: categoryMap['sewingmachine'],
           type: typeMap['singleneedlemachine'],
-          status: 'in_production',
-          location: 'Sewing Department - Line 1',
+          status: 'stored',
+          location: 'Production Floor - Sewing Area',
           model: 'DDL-8700',
           brand: brandMap['juki'] || brands[0]._id,
-          manufacturer: 'Juki Corporation',
+          manufacturer: 'Juki',
           serialNumber: 'DDL-8700-001',
           acquisitionDate: new Date('2021-06-10'),
           lastMaintenance: new Date('2024-09-15'),
@@ -274,10 +280,12 @@ class SeedService {
           }
         },
         {
+          name: 'Steam Press Pro',
+          code: 'EQ-PRESS-001',
           category: categoryMap['pressingironing'],
           type: typeMap['pressingmachine'],
-          status: 'scheduled_maintenance',
-          location: 'Finishing Department - Press 1',
+          status: 'stored',
+          location: 'Warehouse - Storage Area B',
           model: 'SteamPress Pro',
           brand: brandMap['monforts'] || brands[0]._id,
           manufacturer: 'Monforts',
@@ -292,14 +300,16 @@ class SeedService {
           }
         },
         {
+          name: 'Fabric Inspector Pro',
+          code: 'EQ-QC-001',
           category: categoryMap['qualitycontrol'],
           type: typeMap['qualitycontrolequipment'],
-          status: 'in_production',
-          location: 'Quality Control Station 1',
-          model: 'InspectaPro',
+          status: 'stored',
+          location: 'Quality Control Lab',
+          model: 'FabricInspector Pro',
           brand: brandMap['other'] || brands[0]._id,
-          manufacturer: 'Quality Tech Inc.',
-          serialNumber: 'IP-001',
+          manufacturer: 'QC Systems Ltd.',
+          serialNumber: 'FIP-2023-001',
           acquisitionDate: new Date('2023-01-10'),
           lastMaintenance: new Date('2024-08-15'),
           nextMaintenance: new Date('2025-02-15'),
@@ -310,9 +320,11 @@ class SeedService {
           }
         },
         {
+          name: 'ToolMaster 500',
+          code: 'EQ-MAINT-001',
           category: categoryMap['maintenanceequipment'],
           type: typeMap['maintenanceequipment'],
-          status: 'in_production',
+          status: 'stored',
           location: 'Maintenance Workshop',
           model: 'ToolMaster 500',
           brand: brandMap['other'] || brands[0]._id,
@@ -329,6 +341,37 @@ class SeedService {
         }
       ];
 
+      // Generate 30 more random equipment
+      for (let i = 1; i <= 30; i++) {
+        const randomType = types[Math.floor(Math.random() * types.length)];
+        const randomBrand = brands[Math.floor(Math.random() * brands.length)];
+        // All equipment starts as stored, will be updated when assigned to a line
+        const status = 'stored';
+
+        const equipmentCode = `EQ-${randomType.name.substring(0, 4).toUpperCase()}-${String(i).padStart(3, '0')}`;
+        const equipmentName = `${randomType.name} ${randomBrand.name.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 1000) + 1000}`;
+
+        equipmentData.push({
+          name: equipmentName,
+          code: equipmentCode,
+          category: randomType.category._id,
+          type: randomType._id,
+          status: status,
+          location: `Warehouse - Storage Zone ${Math.floor(Math.random() * 5) + 1}`,
+          model: `${randomBrand.name.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 1000) + 1000}`,
+          brand: randomBrand._id,
+          manufacturer: randomBrand.name,
+          serialNumber: `SN-${Date.now()}-${i}`,
+          acquisitionDate: new Date(Date.now() - Math.floor(Math.random() * 1000 * 24 * 60 * 60 * 1000)), // up to 1000 days ago
+          lastMaintenance: new Date(Date.now() - Math.floor(Math.random() * 90 * 24 * 60 * 60 * 1000)), // up to 90 days ago
+          nextMaintenance: new Date(Date.now() + Math.floor(Math.random() * 90 * 24 * 60 * 60 * 1000)), // up to 90 days future
+          specifications: {
+            power: '220V/380V',
+            capacity: `${Math.floor(Math.random() * 100) + 10} units/hr`
+          }
+        });
+      }
+
       const createdEquipment = [];
       let skippedCount = 0;
 
@@ -339,7 +382,6 @@ class SeedService {
         });
 
         if (existingEquipment) {
-          console.log(`Equipment already exists: ${equipData.model} (${equipData.serialNumber})`);
           skippedCount++;
           continue;
         }
@@ -347,7 +389,6 @@ class SeedService {
         const equipment = new Equipment(equipData);
         await equipment.save();
         createdEquipment.push(equipment);
-        console.log(`Equipment created: ${equipment.model} at ${equipment.location}`);
       }
 
       console.log(`Equipment seeding completed. Created: ${createdEquipment.length}, Skipped: ${skippedCount}`);
@@ -361,6 +402,140 @@ class SeedService {
     } catch (error) {
       console.error('Error seeding equipment:', error);
       throw new Error(`Failed to seed equipment: ${error.message}`);
+    }
+  }
+
+  static async seedProductionLines() {
+    try {
+      console.log('Starting production lines seeding...');
+
+      const equipment = await Equipment.find();
+      if (equipment.length === 0) {
+        throw new Error('No equipment found. Please seed equipment first.');
+      }
+
+      const linesData = [
+        {
+          name: 'Line 1: Spinning',
+          description: 'Cotton spinning line from blowroom to winding',
+          status: 'active',
+          sections: ['Blowroom', 'Carding', 'Drawing', 'Roving', 'Ring Spinning', 'Winding']
+        },
+        {
+          name: 'Line 2: Weaving',
+          description: 'High-speed air jet weaving line',
+          status: 'active',
+          sections: ['Warping', 'Sizing', 'Drawing-in', 'Weaving', 'Inspection']
+        },
+        {
+          name: 'Line 3: Finishing',
+          description: 'Dyeing and finishing process',
+          status: 'maintenance',
+          sections: ['Pre-treatment', 'Dyeing', 'Printing', 'Finishing', 'Quality Control']
+        }
+      ];
+
+      const createdLines = [];
+      let skippedCount = 0;
+
+      // Shuffle equipment to distribute randomly
+      const shuffledEquipment = [...equipment].sort(() => 0.5 - Math.random());
+      let equipIndex = 0;
+
+      for (const lineData of linesData) {
+        const existingLine = await ProductionLine.findOne({ name: lineData.name });
+        if (existingLine) {
+          console.log(`Production Line already exists: ${lineData.name}`);
+          skippedCount++;
+          continue;
+        }
+
+        // Create the line first to get its ID
+        const line = new ProductionLine({
+          name: lineData.name,
+          description: lineData.description,
+          status: lineData.status,
+          sections: [], // Will populate after creating sections
+          stats: {
+            targetOutput: Math.floor(Math.random() * 500) + 1000,
+            actualOutput: Math.floor(Math.random() * 400) + 800,
+            defectCount: Math.floor(Math.random() * 50),
+            shiftDuration: 480,
+            plannedDowntime: 30,
+            lastUpdated: new Date()
+          }
+        });
+        await line.save();
+
+        // Create sections linked to the line
+        const sectionObjects = [];
+        for (const sectionName of lineData.sections) {
+          // Assign 2-4 random equipment to each section
+          const sectionEquipment = [];
+          const numEquip = Math.floor(Math.random() * 3) + 2;
+
+          for (let i = 0; i < numEquip; i++) {
+            if (equipIndex < shuffledEquipment.length) {
+              const eq = shuffledEquipment[equipIndex];
+              sectionEquipment.push({
+                equipmentId: eq._id,
+                assignedDate: new Date()
+              });
+
+              // Update equipment status to in_production and location
+              let newStatus = 'in_production';
+              const rand = Math.random();
+              if (rand > 0.9) newStatus = 'breakdown';
+              else if (rand > 0.8) newStatus = 'scheduled_maintenance';
+
+              await Equipment.findByIdAndUpdate(eq._id, {
+                status: newStatus,
+                location: `${lineData.name} - ${sectionName}`
+              });
+
+              equipIndex++;
+            }
+          }
+
+          const section = await ProductionSection.create({
+            name: sectionName,
+            description: `${sectionName} section for ${lineData.name}`,
+            status: 'active',
+            productionLine: line._id, // Link to the created line
+            equipment: sectionEquipment
+          });
+
+          sectionObjects.push({
+            sectionId: section._id,
+            order: sectionObjects.length + 1
+          });
+        }
+
+        // Update the line with the created sections
+        line.sections = sectionObjects;
+        await line.save();
+
+        // Update sections with production line ID
+        for (const sec of sectionObjects) {
+          await ProductionSection.findByIdAndUpdate(sec.sectionId, { productionLine: line._id });
+        }
+
+        createdLines.push(line);
+        console.log(`Production Line created: ${line.name}`);
+      }
+
+      console.log(`Production Lines seeding completed. Created: ${createdLines.length}, Skipped: ${skippedCount}`);
+
+      return {
+        success: true,
+        message: `Production Lines seeding completed. Created: ${createdLines.length}, Skipped: ${skippedCount}`,
+        created: createdLines,
+        skipped: skippedCount
+      };
+
+    } catch (error) {
+      console.error('Error seeding production lines:', error);
+      throw new Error(`Failed to seed production lines: ${error.message}`);
     }
   }
 

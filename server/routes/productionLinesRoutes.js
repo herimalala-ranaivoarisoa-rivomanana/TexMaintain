@@ -16,7 +16,10 @@ const computeReliability = async (equipmentIds) => {
     status: 'Completed'
   };
 
-  if (equipmentIds && equipmentIds.length > 0) {
+  if (equipmentIds) {
+    if (equipmentIds.length === 0) {
+      return { mttr: 0, mtbf: 0 };
+    }
     query.equipment = { $in: equipmentIds };
   }
 
@@ -90,12 +93,26 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
     // Availability (Equipment in Production / Total)
     let availability = 0;
     if (totalEquipment > 0) {
-      const inProductionCount = equipmentList.filter(e => e.status === 'In Production').length;
+      const inProductionCount = equipmentList.filter(e => e.status === 'in_production').length;
       availability = Math.round((inProductionCount / totalEquipment) * 100 * 100) / 100;
     }
 
-    // OEE (Estimate)
-    const oee = Math.round(availability * 0.95 * 100) / 100;
+    // Performance = Actual Output / Target Output
+    let performance = 0;
+    if (productionLine.stats && productionLine.stats.targetOutput > 0) {
+      performance = productionLine.stats.actualOutput / productionLine.stats.targetOutput;
+    }
+
+    // Quality = (Actual Output - Defects) / Actual Output
+    let quality = 0;
+    if (productionLine.stats && productionLine.stats.actualOutput > 0) {
+      quality = (productionLine.stats.actualOutput - productionLine.stats.defectCount) / productionLine.stats.actualOutput;
+    }
+
+    // OEE = Availability * Performance * Quality
+    // Ensure factors are <= 1 for calculation
+    const availabilityFactor = availability / 100;
+    const oee = Math.round(availabilityFactor * performance * quality * 100 * 100) / 100;
 
     // Reliability (MTTR/MTBF) specific to this line
     const { mttr, mtbf } = await computeReliability(equipmentIds);
@@ -161,7 +178,7 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
       ...recentEquipment.map(e => ({
         _id: String(e._id),
         type: 'equipment',
-        description: `Equipment updated: ${e.name} (${e.type})`,
+        description: `Equipment updated: ${e.name || e.code || 'Unknown'} (${e.code || e._id})`,
         timestamp: e.updatedAt,
         priority: 'low'
       }))

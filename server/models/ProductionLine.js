@@ -25,6 +25,14 @@ const productionLineSchema = new mongoose.Schema({
       default: 0
     }
   }],
+  stats: {
+    targetOutput: { type: Number, default: 0 },
+    actualOutput: { type: Number, default: 0 },
+    defectCount: { type: Number, default: 0 },
+    shiftDuration: { type: Number, default: 480 }, // minutes (8 hours)
+    plannedDowntime: { type: Number, default: 0 }, // minutes
+    lastUpdated: { type: Date, default: Date.now }
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -36,7 +44,7 @@ const productionLineSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt field before saving
-productionLineSchema.pre('save', function(next) {
+productionLineSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });

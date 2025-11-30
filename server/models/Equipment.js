@@ -11,6 +11,16 @@ const LEGACY_STATUS_MAP = {
 };
 
 const schema = new mongoose.Schema({
+  name: {
+    type: String,
+    trim: true
+  },
+  code: {
+    type: String,
+    trim: true,
+    unique: true,
+    sparse: true // Allow null/undefined values
+  },
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'EquipmentCategory',
@@ -115,7 +125,7 @@ const schema = new mongoose.Schema({
 });
 
 // Update the updatedAt field and lastStatusChange before saving
-schema.pre('save', function(next) {
+schema.pre('save', function (next) {
   this.updatedAt = Date.now();
   if (this.isModified('status')) {
     this.lastStatusChange = Date.now();
@@ -129,24 +139,24 @@ schema.pre('save', function(next) {
 });
 
 // Virtual for status metadata
-schema.virtual('statusMetadata').get(function() {
+schema.virtual('statusMetadata').get(function () {
   return STATUS_METADATA[this.status] || {};
 });
 
 // Method to check if status transition is allowed
-schema.methods.canTransitionTo = function(newStatus) {
+schema.methods.canTransitionTo = function (newStatus) {
   const currentMetadata = STATUS_METADATA[this.status];
   if (!currentMetadata) return false;
-  
+
   // Scrapped is terminal state
   if (this.status === EQUIPMENT_STATUSES.SCRAPPED) return false;
-  
+
   // Check if transition is in allowed list
   return currentMetadata.allowedTransitions.includes(newStatus);
 };
 
 // Method to get allowed transitions
-schema.methods.getAllowedTransitions = function() {
+schema.methods.getAllowedTransitions = function () {
   const currentMetadata = STATUS_METADATA[this.status];
   if (!currentMetadata) return [];
   return currentMetadata.allowedTransitions.map(status => ({
@@ -156,7 +166,7 @@ schema.methods.getAllowedTransitions = function() {
 };
 
 // Static method to migrate legacy statuses
-schema.statics.migrateLegacyStatus = function(legacyStatus) {
+schema.statics.migrateLegacyStatus = function (legacyStatus) {
   return LEGACY_STATUS_MAP[legacyStatus] || legacyStatus;
 };
 

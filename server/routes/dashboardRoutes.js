@@ -1,18 +1,29 @@
 const express = require('express');
 const { requireUser } = require('./middleware/auth');
 const { Equipment, EQUIPMENT_STATUSES } = require('../models/Equipment');
+const { ProductionLine } = require('../models/ProductionLine');
 const { Intervention } = require('../models/Intervention');
 const { Part } = require('../models/Part');
+const { ProductionSection } = require('../models/ProductionSection'); // Ensure this is registered
 const { EquipmentStatusHistory } = require('../models/EquipmentStatusHistory');
 
 const router = express.Router();
 
 // Helper to compute MTTR and MTBF from interventions
-const computeReliability = async () => {
-  const interventions = await Intervention.find({
+const computeReliability = async (equipmentIds) => {
+  const query = {
     type: { $in: ['Corrective', 'Emergency'] },
     status: 'Completed'
-  }).sort({ createdDate: 1 }).lean();
+  };
+
+  if (equipmentIds) {
+    if (equipmentIds.length === 0) {
+      return { mttr: 0, mtbf: 0 };
+    }
+    query.equipment = { $in: equipmentIds };
+  }
+
+  const interventions = await Intervention.find(query).sort({ createdDate: 1 }).lean();
 
   if (!interventions.length) {
     return { mttr: 0, mtbf: 0 };
@@ -47,23 +58,91 @@ const computeReliability = async () => {
 // GET /api/dashboard/kpis
 router.get('/kpis', requireUser, async (req, res) => {
   try {
-    const totalEquipment = await Equipment.countDocuments();
+    const totalPlantEquipment = await Equipment.countDocuments();
     const activeInterventions = await Intervention.countDocuments({ status: { $in: ['Pending', 'In Progress'] } });
     const criticalParts = await Part.countDocuments({ $expr: { $lte: ['$currentStock', '$minStock'] } });
-    const { mttr, mtbf } = await computeReliability();
 
-    // Calculate real availability from equipment in production
-    let availability = 0;
-    if (totalEquipment > 0) {
-      const inProductionCount = await Equipment.countDocuments({
-        status: EQUIPMENT_STATUSES.IN_PRODUCTION
-      });
-      availability = Math.round((inProductionCount / totalEquipment) * 100 * 100) / 100;
+    // Fetch Production Lines first
+    const productionLines = await ProductionLine.find().populate({
+      path: 'sections.sectionId',
+      populate: {
+        path: 'equipment.equipmentId',
+        model: 'Equipment'
+      }
+    }).lean();
+
+    // Collect all assigned equipment IDs for Global Reliability calculation
+    const allAssignedEquipmentIds = [];
+    for (const line of productionLines) {
+      if (line.sections) {
+        for (const section of line.sections) {
+          if (section.sectionId && section.sectionId.equipment) {
+            for (const item of section.sectionId.equipment) {
+              if (item.equipmentId) {
+                allAssignedEquipmentIds.push(item.equipmentId._id);
+              }
+            }
+          }
+        }
+      }
     }
 
-    // OEE calculation would require performance and quality data
-    // For now, estimate based on availability and assuming 95% performance/quality
-    const oee = Math.round(availability * 0.95 * 100) / 100;
+    const { mttr, mtbf } = await computeReliability(allAssignedEquipmentIds);
+
+    // Aggregate data from all Production Lines for Global OEE & Availability
+
+    let totalTargetOutput = 0;
+    let totalActualOutput = 0;
+    let totalDefectCount = 0;
+    let totalAssignedEquipment = 0;
+    let totalActiveAssignedEquipment = 0;
+
+    for (const line of productionLines) {
+      // Aggregate Production Stats
+      if (line.stats) {
+        totalTargetOutput += line.stats.targetOutput || 0;
+        totalActualOutput += line.stats.actualOutput || 0;
+        totalDefectCount += line.stats.defectCount || 0;
+      }
+
+      // Aggregate Equipment Stats (Availability)
+      if (line.sections) {
+        for (const section of line.sections) {
+          if (section.sectionId && section.sectionId.equipment) {
+            for (const item of section.sectionId.equipment) {
+              if (item.equipmentId) {
+                totalAssignedEquipment++;
+                if (item.equipmentId.status === 'in_production') {
+                  totalActiveAssignedEquipment++;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Calculate Global Availability (Active on Lines / Total on Lines)
+    let availability = 0;
+    if (totalAssignedEquipment > 0) {
+      availability = Math.round((totalActiveAssignedEquipment / totalAssignedEquipment) * 100 * 100) / 100;
+    }
+
+    // Calculate Global Performance
+    let performance = 0;
+    if (totalTargetOutput > 0) {
+      performance = totalActualOutput / totalTargetOutput;
+    }
+
+    // Calculate Global Quality
+    let quality = 0;
+    if (totalActualOutput > 0) {
+      quality = (totalActualOutput - totalDefectCount) / totalActualOutput;
+    }
+
+    // Calculate Global OEE
+    const availabilityFactor = availability / 100;
+    const oee = Math.round(availabilityFactor * performance * quality * 100 * 100) / 100;
 
     // Calculate pending orders count
     const partsWithOrders = await Part.find({ 'pendingOrders.status': { $in: ['pending', 'ordered', 'in_transit'] } });
@@ -77,7 +156,8 @@ router.get('/kpis', requireUser, async (req, res) => {
         mtbf,
         oee,
         availability,
-        totalEquipment,
+        totalEquipment: totalPlantEquipment, // Keep total plant count for inventory view
+        totalAssignedEquipment, // Add this for clarity if needed by frontend
         activeInterventions,
         criticalParts,
         pendingOrders
@@ -115,7 +195,7 @@ router.get('/activities', requireUser, async (req, res) => {
       ...recentEquipment.map(e => ({
         _id: String(e._id),
         type: 'equipment',
-        description: `Equipment updated: ${e.name} (${e.type})`,
+        description: `Equipment updated: ${e.name || e.code || 'Unknown'} (${e.code || e._id})`,
         timestamp: e.updatedAt,
         priority: 'low'
       }))

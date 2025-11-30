@@ -9,7 +9,7 @@ router.post('/admin', requireUser, requireRole('admin'), async (req, res) => {
   try {
     console.log('Received request to seed admin user');
     const result = await SeedService.seedAdminUser();
-    
+
     res.status(200).json({
       success: true,
       message: result.message,
@@ -197,6 +197,15 @@ router.post('/all', requireUser, requireRole('admin'), async (req, res) => {
     } catch (error) {
       console.error('Error seeding parts:', error);
       results.parts = { error: error.message };
+    }
+
+    // Seed production lines (and sections, assigning equipment)
+    try {
+      results.productionLines = await SeedService.seedProductionLines();
+      console.log('Production lines seeding completed');
+    } catch (error) {
+      console.error('Error seeding production lines:', error);
+      results.productionLines = { error: error.message };
     }
 
     // Seed brands
