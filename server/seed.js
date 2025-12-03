@@ -64,6 +64,15 @@ async function runSeeder() {
       console.error('❌ Error seeding types:', error.message + '\n');
     }
 
+    // Seed brands
+    console.log('🏷️  Seeding brands...');
+    try {
+      results.brands = await SeedService.seedBrands();
+      console.log(`✅ Brands seeded: ${results.brands.created} created, ${results.brands.skipped} skipped\n`);
+    } catch (error) {
+      console.error('❌ Error seeding brands:', error.message + '\n');
+    }
+
     // Seed sample equipment
     console.log('⚙️  Seeding sample equipment...');
     try {
@@ -91,6 +100,15 @@ async function runSeeder() {
       console.error('❌ Error seeding parts:', error.message + '\n');
     }
 
+    // Seed production lines and sections
+    console.log('🏭 Seeding production lines and sections...');
+    try {
+      results.productionLines = await SeedService.seedProductionLines();
+      console.log(`✅ Production lines seeded: ${results.productionLines.created} created, ${results.productionLines.skipped} skipped\n`);
+    } catch (error) {
+      console.error('❌ Error seeding production lines:', error.message + '\n');
+    }
+
     // Seed equipment parts associations
     console.log('🔗 Seeding equipment-parts associations...');
     try {
@@ -112,9 +130,12 @@ async function runSeeder() {
     console.log('🎉 Database seeding completed successfully!');
     console.log('\n📊 Summary:');
     console.log(`   - Admin User: ${results.admin?.success ? 'Created' : 'Skipped'}`);
+    console.log(`   - Personnel: ${results.personnel?.results ? 'Created' : 'Skipped'}`);
     console.log(`   - Categories: ${results.categories?.created || 0} created`);
     console.log(`   - Types: ${results.types?.created || 0} created`);
+    console.log(`   - Brands: ${results.brands?.created || 0} created`);
     console.log(`   - Equipment: ${results.equipment?.created || 0} created`);
+    console.log(`   - Production Lines: ${results.productionLines?.created || 0} created`);
     console.log(`   - Interventions: ${results.interventions?.created || 0} created`);
     console.log(`   - Parts: ${results.parts?.created || 0} created`);
     console.log(`   - Equipment-Parts: ${results.equipmentParts?.created || 0} created`);

@@ -100,6 +100,10 @@ const schema = new mongoose.Schema({
     type: Number, // Mean Time To Repair (hours)
     default: 0,
   },
+  lastMetricsUpdate: {
+    type: Date,
+    default: null
+  },
   lastBreakdownType: {
     type: String,
     enum: ['mechanical', 'electrical', 'hydraulic', 'pneumatic', 'electronic', 'software', 'structural', 'other'],

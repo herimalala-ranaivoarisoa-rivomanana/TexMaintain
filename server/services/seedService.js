@@ -216,10 +216,21 @@ class SeedService {
       // First ensure categories and types exist
       const categories = await EquipmentCategory.find();
       const types = await EquipmentType.find().populate('category');
-      const brands = await Brand.find();
+      let brands = await Brand.find();
 
       if (categories.length === 0 || types.length === 0) {
         throw new Error('No equipment categories or types found. Please seed categories and types first.');
+      }
+
+      // Ensure at least one brand exists
+      if (brands.length === 0) {
+        console.warn('⚠️  No brands found. Creating default brand...');
+        const defaultBrand = await Brand.create({
+          name: 'Generic',
+          description: 'Default brand for equipment without specific brand'
+        });
+        brands = [defaultBrand];
+        console.log('✅ Default brand created');
       }
 
       // Create maps for easy lookup

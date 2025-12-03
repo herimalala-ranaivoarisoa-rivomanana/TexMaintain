@@ -17,6 +17,7 @@ import {
 import { getProductionLineDashboardStats } from "@/api/productionLines"
 import { useToast } from "@/hooks/useToast"
 import { ReorderAlertsWidget } from "@/components/ReorderAlertsWidget"
+import { UpdateStatsDialog } from "@/components/production/UpdateStatsDialog"
 
 interface ProductionLineDashboardViewProps {
     productionLineId: string
@@ -33,33 +34,40 @@ interface DashboardData {
         criticalParts: number
         pendingOrders: number
     }
+    stats?: {
+        targetOutput: number
+        actualOutput: number
+        defectCount: number
+        shiftDuration: number
+    }
     reorderAlerts: any[]
-    activities: any[]
+    recentActivities: any[]
 }
 
 export function ProductionLineDashboardView({ productionLineId }: ProductionLineDashboardViewProps) {
     const [data, setData] = useState<DashboardData | null>(null)
     const [loading, setLoading] = useState(true)
+    const [showUpdateStats, setShowUpdateStats] = useState(false)
     const { toast } = useToast()
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true)
-                const response = await getProductionLineDashboardStats(productionLineId)
-                setData(response)
-            } catch (error) {
-                console.error('Error fetching production line dashboard:', error)
-                toast({
-                    title: "Error",
-                    description: "Failed to load dashboard data",
-                    variant: "destructive",
-                })
-            } finally {
-                setLoading(false)
-            }
+    const fetchData = async () => {
+        try {
+            setLoading(true)
+            const response = await getProductionLineDashboardStats(productionLineId)
+            setData(response)
+        } catch (error) {
+            console.error('Error fetching production line dashboard:', error)
+            toast({
+                title: "Error",
+                description: "Failed to load dashboard data",
+                variant: "destructive",
+            })
+        } finally {
+            setLoading(false)
         }
+    }
 
+    useEffect(() => {
         fetchData()
     }, [productionLineId, toast])
 
@@ -73,7 +81,7 @@ export function ProductionLineDashboardView({ productionLineId }: ProductionLine
 
     if (!data) return null
 
-    const { kpis, activities, reorderAlerts } = data
+    const { kpis, recentActivities, reorderAlerts, stats } = data
 
     const getPriorityColor = (priority: string) => {
         switch (priority) {
@@ -102,10 +110,19 @@ export function ProductionLineDashboardView({ productionLineId }: ProductionLine
                         Key performance indicators and recent activities.
                     </p>
                 </div>
-                <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-                    <AlertTriangle className="mr-2 h-4 w-4" />
-                    Report Issue
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        onClick={() => setShowUpdateStats(true)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                    >
+                        <Activity className="mr-2 h-4 w-4" />
+                        Update Production Stats
+                    </Button>
+                    <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
+                        <AlertTriangle className="mr-2 h-4 w-4" />
+                        Report Issue
+                    </Button>
+                </div>
             </div>
 
             {/* KPI Cards */}
@@ -228,7 +245,7 @@ export function ProductionLineDashboardView({ productionLineId }: ProductionLine
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
-                        {activities.map((activity) => (
+                        {(data.recentActivities || []).map((activity) => (
                             <div key={activity._id} className="flex items-start space-x-4 p-4 rounded-lg bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
                                 <div className="flex-shrink-0">
                                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600">
@@ -246,12 +263,22 @@ export function ProductionLineDashboardView({ productionLineId }: ProductionLine
                                 </Badge>
                             </div>
                         ))}
-                        {activities.length === 0 && (
+                        {(data.recentActivities || []).length === 0 && (
                             <p className="text-center text-slate-500 py-4">No recent activities found for this line.</p>
                         )}
                     </div>
                 </CardContent>
             </Card>
+
+            <UpdateStatsDialog
+                open={showUpdateStats}
+                onOpenChange={setShowUpdateStats}
+                lineId={productionLineId}
+                currentStats={stats}
+                onSuccess={() => {
+                    fetchData()
+                }}
+            />
         </div>
     )
 }

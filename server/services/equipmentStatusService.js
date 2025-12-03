@@ -1,6 +1,7 @@
 const { Equipment } = require('../models/Equipment');
 const { EquipmentStatusHistory, STATUS_METADATA } = require('../models/EquipmentStatusHistory');
 const { Intervention } = require('../models/Intervention');
+const EquipmentMetricsService = require('./equipmentMetricsService');
 
 /**
  * Equipment Status Service
@@ -95,13 +96,13 @@ class EquipmentStatusService {
     equipment.lastStatusChange = new Date();
     equipment.lastStatusChangedBy = userId;
     equipment.currentStatusDuration = 0;
-    
+
     // Save breakdown info if status is breakdown
     if (newStatus === 'breakdown') {
       if (breakdownType) equipment.lastBreakdownType = breakdownType;
       if (breakdownDescription) equipment.lastBreakdownDescription = breakdownDescription;
     }
-    
+
     await equipment.save();
 
     // Populate the history entry
@@ -126,6 +127,11 @@ class EquipmentStatusService {
       .populate('type')
       .populate('lastStatusChangedBy', 'email role');
 
+    // Trigger metric recalculation (availability/downtime changes)
+    EquipmentMetricsService.calculateMetrics(equipmentId).catch(err =>
+      console.error(`Error recalculating metrics for ${equipmentId}:`, err)
+    );
+
     return {
       equipment: updatedEquipment,
       historyEntry
@@ -142,7 +148,7 @@ class EquipmentStatusService {
     const { limit = 50, skip = 0, startDate, endDate } = options;
 
     const query = { equipment: equipmentId };
-    
+
     if (startDate || endDate) {
       query.timestamp = {};
       if (startDate) query.timestamp.$gte = new Date(startDate);
@@ -185,7 +191,7 @@ class EquipmentStatusService {
     const { startDate, endDate } = options;
 
     const query = { equipment: equipmentId };
-    
+
     if (startDate || endDate) {
       query.timestamp = {};
       if (startDate) query.timestamp.$gte = new Date(startDate);

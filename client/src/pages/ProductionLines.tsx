@@ -122,20 +122,20 @@ function SortableEquipment({ id, equipment, onDelete, onStatusClick }: SortableE
   const style = transform ? { transform: CSS.Transform.toString(transform), transition } : undefined
 
   const eq = equipment.equipmentId
-  
+
   // Build equipment name: Brand Model or Category Type
-  const equipmentName = eq.brand && eq.model 
-    ? `${eq.brand} ${eq.model}`
+  const equipmentName = eq.brand && eq.model
+    ? `${typeof eq.brand === 'object' ? (eq.brand as any).name : eq.brand} ${eq.model}`
     : `${eq.category?.name} ${eq.type?.name}`
-  
+
   return (
-    <div 
-      ref={setNodeRef} 
-      style={style} 
+    <div
+      ref={setNodeRef}
+      style={style}
       className="group relative flex items-center gap-2 px-3 py-2.5 bg-white rounded-md border border-slate-200 hover:border-blue-400 hover:bg-blue-50/30 transition-colors"
     >
       {/* Status Badge - Top Right Corner - Clickable */}
-      <Badge 
+      <Badge
         className={`absolute -top-2 -right-2 ${getEquipmentStatusColor(eq.status as EquipmentStatus)} text-white text-[9px] px-2 py-0.5 shadow-md border border-white cursor-pointer hover:scale-110 transition-transform`}
         onClick={(e) => {
           e.stopPropagation();
@@ -144,15 +144,15 @@ function SortableEquipment({ id, equipment, onDelete, onStatusClick }: SortableE
       >
         {getStatusLabel(eq.status as EquipmentStatus)}
       </Badge>
-      
-      <div 
-        {...attributes} 
-        {...listeners} 
+
+      <div
+        {...attributes}
+        {...listeners}
         className="cursor-grab active:cursor-grabbing flex-shrink-0"
       >
         <GripVertical className="h-3.5 w-3.5 text-slate-400" />
       </div>
-      
+
       <div className="flex-1 min-w-0 pr-2">
         <p className="text-sm font-semibold text-slate-900">
           {equipmentName}
@@ -161,11 +161,11 @@ function SortableEquipment({ id, equipment, onDelete, onStatusClick }: SortableE
           {eq.type?.name}
         </p>
       </div>
-      
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        onClick={onDelete} 
+
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onDelete}
         className="absolute top-1/2 -translate-y-1/2 right-1 h-6 w-6 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
       >
         <Trash className="h-3 w-3" />
@@ -202,11 +202,11 @@ export function ProductionLines() {
   })
   const [isSaving, setIsSaving] = useState(false)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
-  const [selectedEquipmentForStatus, setSelectedEquipmentForStatus] = useState<{id: string, currentStatus: string} | null>(null)
+  const [selectedEquipmentForStatus, setSelectedEquipmentForStatus] = useState<{ id: string, currentStatus: string } | null>(null)
   const [newStatus, setNewStatus] = useState<string>("")
   const [selectedMachinistId, setSelectedMachinistId] = useState<string>("")
   const [machinists, setMachinists] = useState<any[]>([])
-  
+
   // Maintenance personnel states
   const [selectedMechanicId, setSelectedMechanicId] = useState<string>("")
   const [selectedElectricianId, setSelectedElectricianId] = useState<string>("")
@@ -214,13 +214,13 @@ export function ProductionLines() {
   const [mechanics, setMechanics] = useState<any[]>([])
   const [electricians, setElectricians] = useState<any[]>([])
   const [maintenanceWorkers, setMaintenanceWorkers] = useState<any[]>([])
-  
+
   // Breakdown information
   const [breakdownType, setBreakdownType] = useState('')
   const [breakdownDescription, setBreakdownDescription] = useState('')
   const [breakdownMedia, setBreakdownMedia] = useState<File[]>([])
   const [breakdownMediaPreviews, setBreakdownMediaPreviews] = useState<string[]>([])
-  
+
   // Breakdown types (extensible list)
   const breakdownTypes = [
     { value: 'mechanical', label: 'Panne Mécanique', suggestedPersonnel: 'mechanic' },
@@ -232,7 +232,7 @@ export function ProductionLines() {
     { value: 'structural', label: 'Panne Structurelle', suggestedPersonnel: 'worker' },
     { value: 'other', label: 'Autre', suggestedPersonnel: null }
   ]
-  
+
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -240,14 +240,14 @@ export function ProductionLines() {
     useSensor(PointerSensor),
     useSensor(KeyboardSensor)
   )
-  
+
   // Get available statuses based on user role
   const getAvailableStatuses = (): EquipmentStatus[] => {
     const productionRoles = ['production_manager', 'line_manager', 'foreman']
     const maintenanceRoles = ['admin', 'maintenance_manager', 'mechanic', 'electrician', 'general_maintenance_agent', 'assistant_maintenance_manager']
-    
+
     if (!user) return []
-    
+
     // Production roles can only change production statuses
     if (productionRoles.includes(user.role)) {
       return [
@@ -259,12 +259,12 @@ export function ProductionLines() {
         EQUIPMENT_STATUSES.OFFLINE
       ]
     }
-    
+
     // Maintenance roles can change all statuses
     if (maintenanceRoles.includes(user.role)) {
       return Object.values(EQUIPMENT_STATUSES)
     }
-    
+
     // Other roles have no permission
     return []
   }
@@ -412,20 +412,20 @@ export function ProductionLines() {
     try {
       setIsSaving(true)
       console.log('Saving equipment to section:', selectedSectionForEquipment, 'with form:', equipmentForm)
-      
+
       if (!selectedSectionForEquipment || !selectedLine) {
         throw new Error('No section or line selected')
       }
 
       // Find the section in selectedLine (which has populated equipment)
       const sectionWrapper = selectedLine.sections.find(s => s.sectionId._id === selectedSectionForEquipment)
-      
+
       if (!sectionWrapper) {
         throw new Error('Section not found in selected line')
       }
 
       const currentSection = sectionWrapper.sectionId
-      
+
       // Create the full equipment array: existing + new
       const updatedEquipment = [
         ...currentSection.equipment.map(eq => ({
@@ -437,22 +437,22 @@ export function ProductionLines() {
           order: currentSection.equipment.length // Auto-increment order
         }
       ]
-      
+
       console.log('Updated equipment array:', updatedEquipment)
-      
+
       // Update section equipment
       await updateProductionSectionEquipment(selectedSectionForEquipment, updatedEquipment)
-      
+
       // Update equipment status to setup_adjustment (transition from offline)
       // Then it can be manually changed to in_production when ready
       await updateEquipment(equipmentForm.equipmentId, { status: EQUIPMENT_STATUSES.SETUP_ADJUSTMENT })
-      
+
       // Close dialog first
       setIsEquipmentDialogOpen(false)
-      
+
       // Reload data and wait for completion
       await fetchData()
-      
+
       toast({ title: "Added", description: "Equipment added to section successfully" })
     } catch (error: any) {
       console.error('Save equipment error:', error)
@@ -499,12 +499,12 @@ export function ProductionLines() {
   // Handle media file upload
   const handleMediaUpload = (files: FileList | null) => {
     if (!files) return
-    
+
     const newFiles = Array.from(files).filter(file => {
       const isImage = file.type.startsWith('image/')
       const isVideo = file.type.startsWith('video/')
       const isUnder10MB = file.size <= 10 * 1024 * 1024 // 10MB limit
-      
+
       if (!isImage && !isVideo) {
         toast({
           title: 'Type de fichier non supporté',
@@ -513,7 +513,7 @@ export function ProductionLines() {
         })
         return false
       }
-      
+
       if (!isUnder10MB) {
         toast({
           title: 'Fichier trop volumineux',
@@ -522,32 +522,32 @@ export function ProductionLines() {
         })
         return false
       }
-      
+
       return true
     })
-    
+
     if (newFiles.length === 0) return
-    
+
     // Create previews
     const newPreviews = newFiles.map(file => URL.createObjectURL(file))
-    
+
     setBreakdownMedia(prev => [...prev, ...newFiles])
     setBreakdownMediaPreviews(prev => [...prev, ...newPreviews])
   }
-  
+
   // Remove media file
   const removeMedia = (index: number) => {
     URL.revokeObjectURL(breakdownMediaPreviews[index])
     setBreakdownMedia(prev => prev.filter((_, i) => i !== index))
     setBreakdownMediaPreviews(prev => prev.filter((_, i) => i !== index))
   }
-  
+
   // Handle drag and drop
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
   }
-  
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -571,16 +571,16 @@ export function ProductionLines() {
 
   const handleStatusClick = async (equipmentId: string, currentStatus: string) => {
     const availableStatuses = getAvailableStatuses()
-    
+
     if (availableStatuses.length === 0) {
-      toast({ 
-        title: "Permission Denied", 
-        description: "You don't have permission to change equipment status", 
-        variant: "destructive" 
+      toast({
+        title: "Permission Denied",
+        description: "You don't have permission to change equipment status",
+        variant: "destructive"
       })
       return
     }
-    
+
     // Load machinists for production status changes
     try {
       const response = await getMachinists({ isActive: true, limit: 100 })
@@ -588,7 +588,7 @@ export function ProductionLines() {
     } catch (error) {
       console.error('Failed to load machinists:', error)
     }
-    
+
     setSelectedEquipmentForStatus({ id: equipmentId, currentStatus })
     setNewStatus(currentStatus)
     setSelectedMachinistId("")
@@ -599,7 +599,7 @@ export function ProductionLines() {
     setBreakdownDescription("")
     setBreakdownMedia([])
     setBreakdownMediaPreviews([])
-    
+
     // Load breakdown info if equipment is in breakdown status
     if (currentStatus === EQUIPMENT_STATUSES.BREAKDOWN) {
       console.log('🔍 Loading breakdown info for equipment:', equipmentId)
@@ -617,23 +617,23 @@ export function ProductionLines() {
         console.error('❌ Error loading breakdown info:', error)
       }
     }
-    
+
     setIsStatusDialogOpen(true)
   }
 
   const handleChangeStatus = async () => {
     if (!selectedEquipmentForStatus || !newStatus) return
-    
+
     // Validate machinist selection for "In Production" status
     if (newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId) {
-      toast({ 
-        title: "Machinist Required", 
-        description: "Please select a machinist for production", 
-        variant: "destructive" 
+      toast({
+        title: "Machinist Required",
+        description: "Please select a machinist for production",
+        variant: "destructive"
       })
       return
     }
-    
+
     // Validate breakdown type and description for "Breakdown" status
     if (newStatus === EQUIPMENT_STATUSES.BREAKDOWN) {
       if (!breakdownType) {
@@ -655,7 +655,7 @@ export function ProductionLines() {
       // Note: Media files are collected but not sent to API yet
       // TODO: Create separate API endpoint for file uploads
     }
-    
+
     // Validate maintenance personnel for maintenance statuses (same logic as EquipmentStatusDialog)
     const maintenanceStatuses: EquipmentStatus[] = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE, EQUIPMENT_STATUSES.IN_WORKSHOP]
     if (maintenanceStatuses.includes(newStatus as EquipmentStatus)) {
@@ -668,10 +668,10 @@ export function ProductionLines() {
         return
       }
     }
-    
+
     try {
       setIsSaving(true)
-      
+
       // Use changeEquipmentStatus API (same as EquipmentStatusDialog)
       await changeEquipmentStatus(selectedEquipmentForStatus.id, {
         status: newStatus as EquipmentStatus,
@@ -682,7 +682,7 @@ export function ProductionLines() {
         breakdownType: breakdownType || undefined,
         breakdownDescription: breakdownDescription || undefined
       })
-      
+
       // Upload breakdown media if status is Breakdown and there are files
       if (newStatus === EQUIPMENT_STATUSES.BREAKDOWN && breakdownMedia.length > 0) {
         try {
@@ -692,9 +692,9 @@ export function ProductionLines() {
             breakdownDescription,
             breakdownMedia
           )
-          toast({ 
-            title: "Status Updated", 
-            description: `Equipment status changed with ${breakdownMedia.length} media file(s)` 
+          toast({
+            title: "Status Updated",
+            description: `Equipment status changed with ${breakdownMedia.length} media file(s)`
           })
         } catch (mediaErr: any) {
           console.error('❌ Error uploading media:', mediaErr)
@@ -703,31 +703,31 @@ export function ProductionLines() {
             response: mediaErr?.response?.data,
             status: mediaErr?.response?.status
           })
-          
+
           const errorMessage = mediaErr?.response?.data?.error || 'Media upload failed'
-          
-          toast({ 
-            title: "Partially Updated", 
+
+          toast({
+            title: "Partially Updated",
             description: `Status changed but ${errorMessage}`,
             variant: "destructive"
           })
         }
       } else {
-        toast({ 
-          title: "Status Updated", 
-          description: `Equipment status changed to ${getStatusLabel(newStatus as EquipmentStatus)}` 
+        toast({
+          title: "Status Updated",
+          description: `Equipment status changed to ${getStatusLabel(newStatus as EquipmentStatus)}`
         })
       }
-      
+
       setIsStatusDialogOpen(false)
       await fetchData()
     } catch (error: any) {
       console.error('Change status error:', error)
       const errorMessage = error.response?.data?.message || error.message || 'Unknown error'
-      toast({ 
-        title: "Error", 
-        description: `Failed to change status: ${errorMessage}`, 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: `Failed to change status: ${errorMessage}`,
+        variant: "destructive"
       })
     } finally {
       setIsSaving(false)
@@ -809,14 +809,16 @@ export function ProductionLines() {
               ])
               setSections(sections.map(s =>
                 s._id === sectionId ? { ...s, equipment: updatedCurrent } :
-                s._id === overSectionId ? { ...s, equipment: updatedOver } :
-                s
+                  s._id === overSectionId ? { ...s, equipment: updatedOver } :
+                    s
               ))
-              setSelectedLine(prev => prev ? { ...prev, sections: prev.sections.map(s =>
-                s.sectionId._id === sectionId ? { ...s, sectionId: { ...s.sectionId, equipment: updatedCurrent } } :
-                s.sectionId._id === overSectionId ? { ...s, sectionId: { ...s.sectionId, equipment: updatedOver } } :
-                s
-              ) } : null)
+              setSelectedLine(prev => prev ? {
+                ...prev, sections: prev.sections.map(s =>
+                  s.sectionId._id === sectionId ? { ...s, sectionId: { ...s.sectionId, equipment: updatedCurrent } } :
+                    s.sectionId._id === overSectionId ? { ...s, sectionId: { ...s.sectionId, equipment: updatedOver } } :
+                      s
+                )
+              } : null)
               toast({ title: "Moved", description: "Equipment moved to another section successfully" })
             } catch (error) {
               toast({ title: "Error", description: "Failed to move equipment", variant: "destructive" })
@@ -966,10 +968,10 @@ export function ProductionLines() {
                   </SelectTrigger>
                   <SelectContent className="max-h-[400px]">
                     {equipment.filter((eq) => !sections.some((s) => s.equipment.some((e) => e.equipmentId._id === eq._id))).map((eq) => {
-                      const equipmentName = eq.brand && eq.model 
+                      const equipmentName = eq.brand && eq.model
                         ? `${eq.brand} ${eq.model}`
                         : `${eq.category?.name} ${eq.type?.name}`
-                      
+
                       return (
                         <SelectItem key={eq._id} value={eq._id} className="py-2.5">
                           <div className="flex flex-col gap-0.5">
@@ -1021,7 +1023,7 @@ export function ProductionLines() {
                 <Label htmlFor="newStatus">New Status</Label>
                 <Select value={newStatus} onValueChange={(value) => {
                   setNewStatus(value)
-                  
+
                   // Debug logs
                   console.log('=== AUTO-SUGGESTION DEBUG (ProductionLines) ===')
                   console.log('New Status:', value)
@@ -1033,7 +1035,7 @@ export function ProductionLines() {
                   console.log('Mechanics available:', mechanics.length)
                   console.log('Electricians available:', electricians.length)
                   console.log('Workers available:', maintenanceWorkers.length)
-                  
+
                   // Auto-suggest personnel when changing to Under Repair or In Workshop from Breakdown
                   if ((value === EQUIPMENT_STATUSES.UNDER_REPAIR || value === EQUIPMENT_STATUSES.IN_WORKSHOP) && selectedEquipmentForStatus?.currentStatus === EQUIPMENT_STATUSES.BREAKDOWN && breakdownType) {
                     console.log('✅ Conditions met! Looking for personnel...')
@@ -1076,7 +1078,7 @@ export function ProductionLines() {
                         ))}
                       </>
                     )}
-                    
+
                     {user?.role && ['admin', 'maintenance_manager', 'mechanic', 'electrician', 'general_maintenance_agent', 'assistant_maintenance_manager'].includes(user.role) && (
                       <>
                         <div className="px-2 py-1.5 text-xs font-semibold text-green-700 bg-green-50 border-b border-green-200">
@@ -1100,7 +1102,7 @@ export function ProductionLines() {
                         <SelectItem value={EQUIPMENT_STATUSES.OFFLINE} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
                           {getStatusLabel(EQUIPMENT_STATUSES.OFFLINE)}
                         </SelectItem>
-                        
+
                         <div className="px-2 py-1.5 text-xs font-semibold text-orange-700 bg-orange-50 border-b border-orange-200 mt-1">
                           🟠 MAINTENANCE
                         </div>
@@ -1125,7 +1127,7 @@ export function ProductionLines() {
                         <SelectItem value={EQUIPMENT_STATUSES.PENDING_VALIDATION} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
                           {getStatusLabel(EQUIPMENT_STATUSES.PENDING_VALIDATION)}
                         </SelectItem>
-                        
+
                         <div className="px-2 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border-b border-gray-200 mt-1">
                           ⚫ OUT OF SERVICE
                         </div>
@@ -1140,7 +1142,7 @@ export function ProductionLines() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Machinist Selection - Only show when status is "In Production" */}
               {newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && (
                 <div className="grid gap-2">
@@ -1181,7 +1183,7 @@ export function ProductionLines() {
                   <p className={`text-sm ${!breakdownType || !breakdownDescription ? 'text-red-700 font-medium' : 'text-yellow-700'}`}>
                     {!breakdownType || !breakdownDescription ? '⚠️ Veuillez renseigner le type et la description de la panne' : 'Ces informations aideront à suggérer le bon personnel de maintenance'}
                   </p>
-                  
+
                   {/* Breakdown Type */}
                   <div className="grid gap-2">
                     <Label htmlFor="breakdownType">Type de Panne <span className="text-red-500">*</span></Label>
@@ -1251,7 +1253,7 @@ export function ProductionLines() {
                         onChange={(e) => handleMediaUpload(e.target.files)}
                       />
                     </div>
-                    
+
                     {/* Media Previews */}
                     {breakdownMediaPreviews.length > 0 && (
                       <div className="grid grid-cols-3 gap-2 mt-2">
@@ -1306,7 +1308,7 @@ export function ProductionLines() {
                   <p className={`text-sm ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-700 font-medium' : 'text-orange-700'}`}>
                     {!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? '⚠️ Please select at least one maintenance personnel to continue' : 'Select at least one maintenance personnel who will perform the maintenance work'}
                   </p>
-                  
+
                   {/* Mechanic */}
                   <div className={`grid gap-2 ${breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'mechanic' ? 'p-3 border-2 border-green-400 rounded-lg bg-green-50' : ''}`}>
                     <div className="flex items-center gap-2">
@@ -1389,14 +1391,14 @@ export function ProductionLines() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)} disabled={isSaving}>Cancel</Button>
-              <Button 
-                onClick={handleChangeStatus} 
-                className="bg-gradient-to-r from-blue-600 to-indigo-600" 
+              <Button
+                onClick={handleChangeStatus}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600"
                 disabled={(() => {
                   const maintenanceStatuses: EquipmentStatus[] = [EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE, EQUIPMENT_STATUSES.IN_WORKSHOP];
                   const isMaintenanceStatus = maintenanceStatuses.includes(newStatus as EquipmentStatus);
                   const hasPersonnel = !!(selectedMechanicId || selectedElectricianId || selectedMaintenanceWorkerId);
-                  
+
                   console.log('=== BUTTON DISABLED CHECK ===');
                   console.log('New Status:', newStatus);
                   console.log('Is Maintenance Status:', isMaintenanceStatus);
@@ -1409,16 +1411,16 @@ export function ProductionLines() {
                   console.log('Same Status:', newStatus === selectedEquipmentForStatus?.currentStatus);
                   console.log('In Production without Machinist:', newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId);
                   console.log('Maintenance without Personnel:', isMaintenanceStatus && !hasPersonnel);
-                  
-                  const result = isSaving || 
-                    !newStatus || 
-                    newStatus === selectedEquipmentForStatus?.currentStatus || 
+
+                  const result = isSaving ||
+                    !newStatus ||
+                    newStatus === selectedEquipmentForStatus?.currentStatus ||
                     (newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId) ||
                     (isMaintenanceStatus && !hasPersonnel);
-                  
+
                   console.log('BUTTON DISABLED:', result);
                   console.log('=============================');
-                  
+
                   return result;
                 })()}
               >

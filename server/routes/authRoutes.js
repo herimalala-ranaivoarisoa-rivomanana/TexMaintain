@@ -30,41 +30,44 @@ router.post('/login', async (req, res) => {
     const user = await UserService.authenticateWithPassword(email, password);
 
     if (user) {
+      if (!process.env.REFRESH_TOKEN_SECRET) {
+        throw new Error('REFRESH_TOKEN_SECRET is not defined in environment variables');
+      }
       const accessToken = generateAccessToken(user);
       const refreshToken = generateRefreshToken(user);
 
       user.refreshToken = refreshToken;
       await user.save();
-      
+
       console.log(`Login successful for user: ${email}, role: ${user.role}`);
-      return res.json({...user.toObject(), accessToken, refreshToken});
+      return res.json({ ...user.toObject(), accessToken, refreshToken });
     } else {
       console.log(`Login failed for user: ${email} - Invalid credentials`);
       return sendError('Email or password is incorrect');
     }
   } catch (error) {
     console.error(`Login error for user ${email}: ${error.message}`);
-    return res.status(500).json({ message: 'Internal server error during login' });
+    return res.status(500).json({ message: `Internal server error: ${error.message}` });
   }
 });
 
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(['admin','maintenance_manager','mechanic','electrician','general_maintenance_agent','dockworker','assistant_maintenance_manager','factory_manager','production_manager','line_manager','foreman','procurement_manager','project_manager']).optional(),
+  role: z.enum(['admin', 'maintenance_manager', 'mechanic', 'electrician', 'general_maintenance_agent', 'dockworker', 'assistant_maintenance_manager', 'factory_manager', 'production_manager', 'line_manager', 'foreman', 'procurement_manager', 'project_manager']).optional(),
 });
 
 router.post('/register', async (req, res, next) => {
   const parse = registerSchema.safeParse(req.body);
   if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
   const { email, password, role } = parse.data;
-  
+
   console.log(`Registration attempt for email: ${email}, role: ${role}`);
 
   if (req.user) {
     return res.json({ user: req.user });
   }
-  
+
   try {
     const user = await UserService.create({ email, password, role });
     console.log(`Registration successful for user: ${email}, role: ${user.role}`);

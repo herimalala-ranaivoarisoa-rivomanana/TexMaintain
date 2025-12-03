@@ -2,6 +2,7 @@ const express = require('express');
 const { requireUser } = require('./middleware/auth');
 const { Intervention } = require('../models/Intervention');
 const { Equipment } = require('../models/Equipment');
+const EquipmentMetricsService = require('../services/equipmentMetricsService');
 
 const router = express.Router();
 
@@ -99,6 +100,14 @@ router.post('/', requireUser, async (req, res) => {
       })
       .lean();
 
+    // Trigger metric recalculation if intervention affects metrics
+    if (created.equipmentId && created.status === 'Completed' && ['Corrective', 'Emergency'].includes(created.type)) {
+      // Don't await to avoid blocking response
+      EquipmentMetricsService.calculateMetrics(created.equipmentId).catch(err =>
+        console.error(`Error recalculating metrics for ${created.equipmentId}:`, err)
+      );
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Intervention created successfully',
@@ -114,7 +123,7 @@ router.post('/', requireUser, async (req, res) => {
 router.patch('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
   const updates = req.body || {};
-  
+
   try {
     // If equipmentId provided, validate and backfill equipment string
     if (updates.equipmentId) {
@@ -135,8 +144,20 @@ router.patch('/:id', requireUser, async (req, res) => {
         ]
       })
       .lean();
-    
+
     if (!updated) return res.status(404).json({ message: 'Intervention not found' });
+
+    // Trigger metric recalculation if intervention affects metrics
+    if (updated.equipmentId) {
+      // Recalculate if status is Completed or was Completed, or if dates changed
+      // Simplest approach: always recalculate for Corrective/Emergency
+      if (['Corrective', 'Emergency'].includes(updated.type)) {
+        EquipmentMetricsService.calculateMetrics(updated.equipmentId).catch(err =>
+          console.error(`Error recalculating metrics for ${updated.equipmentId}:`, err)
+        );
+      }
+    }
+
     return res.status(200).json({ success: true, intervention: updated });
   } catch (error) {
     console.error('Update intervention error:', error);
@@ -145,10 +166,18 @@ router.patch('/:id', requireUser, async (req, res) => {
 });
 
 // DELETE /api/interventions/:id
-router.delete('/:id', requireUser, require('../routes/middleware/auth').requireRole(['admin','maintenance_manager','assistant_maintenance_manager','foreman']), async (req, res) => {
+router.delete('/:id', requireUser, require('../routes/middleware/auth').requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager', 'foreman']), async (req, res) => {
   const { id } = req.params;
   const deleted = await Intervention.findByIdAndDelete(id).lean();
   if (!deleted) return res.status(404).json({ message: 'Intervention not found' });
+
+  // Trigger metric recalculation
+  if (deleted.equipmentId && ['Corrective', 'Emergency'].includes(deleted.type)) {
+    EquipmentMetricsService.calculateMetrics(deleted.equipmentId).catch(err =>
+      console.error(`Error recalculating metrics for ${deleted.equipmentId}:`, err)
+    );
+  }
+
   return res.status(200).json({ success: true });
 });
 

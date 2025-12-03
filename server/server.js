@@ -6,7 +6,7 @@ const { validateEnv } = require("./config/validateEnv");
 validateEnv();
 
 const mongoose = require("mongoose");
-const express = require("express");
+const express = require('express'); // Force restart 1
 const session = require("express-session");
 const MongoStore = require('connect-mongo');
 const basicRoutes = require("./routes/index");
@@ -32,6 +32,7 @@ const reportsRoutes = require("./routes/reportsRoutes");
 const procurementRoutes = require("./routes/procurementRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const { connectDB } = require("./config/database");
+const backfillInterventions = require("./backfill_interventions_v2");
 const cors = require("cors");
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -105,7 +106,14 @@ app.use(mongoSanitize({
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Database connection
-connectDB();
+connectDB().then(() => {
+  // Run backfill/migration logic on startup
+  backfillInterventions().catch(err => console.error('Startup backfill failed:', err));
+
+  app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+  });
+});
 
 app.on("error", (error) => {
   console.error(`Server error: ${error.message}`);
@@ -152,7 +160,4 @@ app.use((err, req, res, next) => {
   res.status(500).send("There was an error serving your request.");
 });
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
 // Forced restart for KPI fix

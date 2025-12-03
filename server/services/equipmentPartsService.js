@@ -1,5 +1,5 @@
 const { Equipment } = require('../models/Equipment');
-const { EquipmentPart} = require('../models/EquipmentPart');
+const { EquipmentPart } = require('../models/EquipmentPart');
 const { Part } = require('../models/Part');
 
 /**
@@ -18,7 +18,7 @@ class EquipmentPartsService {
       // Utiliser la même méthode que le bouton "Calculer Min/Max"
       // pour garantir la cohérence
       const globalStock = await EquipmentPart.calculateGlobalStock(partId);
-      
+
       if (globalStock.equipmentCount === 0) {
         await Part.findByIdAndUpdate(partId, {
           minStock: 0,
@@ -26,17 +26,17 @@ class EquipmentPartsService {
         });
         return { minStock: 0, maxStock: 0 };
       }
-      
+
       // Utiliser la même formule que Part.updateMinMaxFromAssociations()
       const minStock = Math.ceil(globalStock.globalSafetyStock);
       const maxStock = Math.ceil(globalStock.globalReorderPoint);
-      
+
       // Mettre à jour la pièce
       await Part.findByIdAndUpdate(partId, {
         minStock: minStock,
         maxStock: maxStock
       });
-      
+
       return { minStock, maxStock };
     } catch (error) {
       console.error('Error recalculating min/max:', error);
@@ -51,7 +51,8 @@ class EquipmentPartsService {
    * @returns {Promise<object>} Updated equipment and history entry
    */
   static async updatedEquipmentPart(equipmentId, userId, options = {}) {
-    const { partId, quantity, isStandardPart, lastReplacementDate, nextReplacementtDate, notes} = options;
+    const { partId, quantity, isStandardPart, lastReplacementDate, nextReplacementtDate, notes } = options;
+
     // Validate equipment exists
     const equipment = await Equipment.findById(equipmentId);
     if (!equipment) {
@@ -59,47 +60,20 @@ class EquipmentPartsService {
     }
 
     // Update equipmentPart
-    await EquipmentPart.findOneAndUpdate(
-      { equipment: equipmentId, part:partId, quantity, isStandardPart, lastReplacementDate, nextReplacementtDate, notes, changedBy:userId},
-      { sort: { timestamp: -1 } }
+    const updatedPart = await EquipmentPart.findOneAndUpdate(
+      { equipment: equipmentId, part: partId },
+      {
+        quantity,
+        isStandardPart,
+        lastReplacementDate,
+        nextReplacementtDate,
+        notes,
+        changedBy: userId
+      },
+      { new: true, sort: { timestamp: -1 } }
     );
 
-    return {EquipmentPart}
-    
-
-    // Create Equipment part
-    const Part = await EquipmentPart.create({
-      equipment: equipmentId,
-      part:partId,
-      changedBy: userId,
-      isStandardPart,
-      lastReplacementDate,
-      nextReplacementtDate,
-      notes,
-      timestamp: new Date()
-    });
-
-    // Update equipment status
-    equipment.status = newStatus;
-    equipment.lastStatusChange = new Date();
-    equipment.lastStatusChangedBy = userId;
-    equipment.currentStatusDuration = 0;
-    await equipment.save();
-
-    // Populate the history entry
-    await historyEntry.populate('changedBy', 'email role');
-    await historyEntry.populate('part', 'name partNunber currentStock minStock, naxStock, unitPrice');
-
-    // Return updated equipment with populated fields
-    const updatedEquipment = await Equipment.findById(equipmentId)
-      .populate('category')
-      .populate('type')
-      .populate('part', 'name partNunber currentStock minStock, naxStock, unitPrice');
-
-    return {
-      equipment: updatedEquipment,
-      historyEntry
-    };
+    return { equipmentPart: updatedPart };
   }
 
   /**

@@ -9,51 +9,9 @@ const { EquipmentStatusHistory } = require('../models/EquipmentStatusHistory');
 
 const router = express.Router();
 
-// Helper to compute MTTR and MTBF from interventions
-const computeReliability = async (equipmentIds) => {
-  const query = {
-    type: { $in: ['Corrective', 'Emergency'] },
-    status: 'Completed'
-  };
-
-  if (equipmentIds) {
-    if (equipmentIds.length === 0) {
-      return { mttr: 0, mtbf: 0 };
-    }
-    query.equipment = { $in: equipmentIds };
-  }
-
-  const interventions = await Intervention.find(query).sort({ createdDate: 1 }).lean();
-
-  if (!interventions.length) {
-    return { mttr: 0, mtbf: 0 };
-  }
-
-  // Calculate MTBF (Mean Time Between Failures)
-  let mtbf = 0;
-  if (interventions.length > 1) {
-    const intervals = [];
-    for (let i = 1; i < interventions.length; i++) {
-      const interval = (interventions[i].createdDate - interventions[i - 1].createdDate) / (1000 * 60 * 60); // hours
-      intervals.push(interval);
-    }
-    mtbf = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-  }
-
-  // Calculate MTTR (Mean Time To Repair)
-  const durations = interventions
-    .filter(i => i.dueDate && i.createdDate)
-    .map(i => (i.dueDate - i.createdDate) / (1000 * 60 * 60)); // hours
-
-  const mttr = durations.length > 0
-    ? durations.reduce((a, b) => a + b, 0) / durations.length
-    : 0;
-
-  return {
-    mttr: Math.round(mttr * 100) / 100,
-    mtbf: Math.round(mtbf * 100) / 100
-  };
-};
+// Helper to compute MTTR and MTBF from interventions - DEPRECATED
+// Now using stored values in Equipment model
+// const computeReliability = async (equipmentIds) => { ... }
 
 // GET /api/dashboard/kpis
 router.get('/kpis', requireUser, async (req, res) => {
@@ -87,15 +45,73 @@ router.get('/kpis', requireUser, async (req, res) => {
       }
     }
 
-    const { mttr, mtbf } = await computeReliability(allAssignedEquipmentIds);
+    // Aggregate MTBF and MTTR from Equipment collection
+    // Only consider equipment that is assigned to production lines (or all? usually all active equipment)
+    // For consistency with previous logic which used "allAssignedEquipmentIds", we filter by that.
+    // If allAssignedEquipmentIds is empty, we might want to fallback to all equipment or return 0.
+
+    let mttr = 0;
+    let mtbf = 0;
+
+    if (allAssignedEquipmentIds.length > 0) {
+      const aggregation = await Equipment.aggregate([
+        { $match: { _id: { $in: allAssignedEquipmentIds } } },
+        {
+          $group: {
+            _id: null,
+            avgMtbf: { $avg: '$mtbf' },
+            avgMttr: { $avg: '$mttr' }
+          }
+        }
+      ]);
+
+      if (aggregation.length > 0) {
+        mtbf = Math.round((aggregation[0].avgMtbf || 0) * 100) / 100;
+        mttr = Math.round((aggregation[0].avgMttr || 0) * 100) / 100;
+      }
+    } else {
+      // Fallback to all equipment if no lines defined yet?
+      // Or just return 0.
+    }
 
     // Aggregate data from all Production Lines for Global OEE & Availability
 
     let totalTargetOutput = 0;
     let totalActualOutput = 0;
     let totalDefectCount = 0;
-    let totalAssignedEquipment = 0;
-    let totalActiveAssignedEquipment = 0;
+
+    // Time-based Availability Calculation
+    let globalScheduledTime = 0;
+    let globalUnplannedDowntime = 0;
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const now = new Date();
+
+    // Get all corrective/emergency interventions for today for downtime calculation
+    const allDowntimeInterventions = await Intervention.find({
+      type: { $in: ['Corrective', 'Emergency'] },
+      createdDate: { $gte: startOfDay }
+    }).lean();
+
+    // Map interventions by equipment ID for fast lookup
+    const downtimeByEquipment = {};
+    allDowntimeInterventions.forEach(i => {
+      let downtime = 0;
+      if (i.status === 'Completed' && i.completedDate) {
+        if (i.actualDuration) {
+          downtime = i.actualDuration * 60; // hours to minutes
+        } else {
+          downtime = (i.completedDate - i.createdDate) / (1000 * 60); // minutes
+        }
+      } else {
+        downtime = (now - i.createdDate) / (1000 * 60); // minutes
+      }
+
+      const eqId = i.equipment?.toString() || i.equipmentId?.toString();
+      if (eqId) {
+        downtimeByEquipment[eqId] = (downtimeByEquipment[eqId] || 0) + downtime;
+      }
+    });
 
     for (const line of productionLines) {
       // Aggregate Production Stats
@@ -106,38 +122,53 @@ router.get('/kpis', requireUser, async (req, res) => {
       }
 
       // Aggregate Equipment Stats (Availability)
+      let lineEquipmentCount = 0;
+      const lineEquipmentIds = [];
+
       if (line.sections) {
         for (const section of line.sections) {
           if (section.sectionId && section.sectionId.equipment) {
             for (const item of section.sectionId.equipment) {
               if (item.equipmentId) {
-                totalAssignedEquipment++;
-                if (item.equipmentId.status === 'in_production') {
-                  totalActiveAssignedEquipment++;
-                }
+                lineEquipmentCount++;
+                lineEquipmentIds.push(item.equipmentId._id.toString());
               }
             }
           }
         }
       }
+
+      // Calculate Scheduled Time for this line
+      const shiftDuration = line.stats?.shiftDuration || 480;
+      const plannedDowntime = line.stats?.plannedDowntime || 0;
+      const scheduledTimePerEquipment = Math.max(0, shiftDuration - plannedDowntime);
+
+      globalScheduledTime += lineEquipmentCount * scheduledTimePerEquipment;
+
+      // Sum downtime for equipment in this line
+      lineEquipmentIds.forEach(eqId => {
+        globalUnplannedDowntime += (downtimeByEquipment[eqId] || 0);
+      });
     }
 
-    // Calculate Global Availability (Active on Lines / Total on Lines)
+    // Calculate Global Availability (Time-based)
     let availability = 0;
-    if (totalAssignedEquipment > 0) {
-      availability = Math.round((totalActiveAssignedEquipment / totalAssignedEquipment) * 100 * 100) / 100;
+    if (globalScheduledTime > 0) {
+      const globalUptime = Math.max(0, globalScheduledTime - globalUnplannedDowntime);
+      availability = Math.round((globalUptime / globalScheduledTime) * 100 * 100) / 100;
     }
 
     // Calculate Global Performance
     let performance = 0;
     if (totalTargetOutput > 0) {
-      performance = totalActualOutput / totalTargetOutput;
+      performance = Math.min(totalActualOutput / totalTargetOutput, 1);
     }
 
     // Calculate Global Quality
     let quality = 0;
     if (totalActualOutput > 0) {
-      quality = (totalActualOutput - totalDefectCount) / totalActualOutput;
+      const goodUnits = totalActualOutput - totalDefectCount;
+      quality = Math.max(0, Math.min(1, goodUnits / totalActualOutput));
     }
 
     // Calculate Global OEE
@@ -156,8 +187,7 @@ router.get('/kpis', requireUser, async (req, res) => {
         mtbf,
         oee,
         availability,
-        totalEquipment: totalPlantEquipment, // Keep total plant count for inventory view
-        totalAssignedEquipment, // Add this for clarity if needed by frontend
+        totalEquipment: totalPlantEquipment,
         activeInterventions,
         criticalParts,
         pendingOrders

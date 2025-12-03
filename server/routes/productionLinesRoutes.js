@@ -1,5 +1,6 @@
 const express = require('express');
 const { requireUser, requireRole } = require('./middleware/auth');
+const { z } = require('zod');
 const { ProductionLine } = require('../models/ProductionLine');
 const { ProductionSection } = require('../models/ProductionSection');
 
@@ -8,8 +9,9 @@ const router = express.Router();
 const { Equipment, EQUIPMENT_STATUSES } = require('../models/Equipment');
 const { Intervention } = require('../models/Intervention');
 const { Part } = require('../models/Part');
+const { EquipmentPart } = require('../models/EquipmentPart');
 
-// Helper to compute MTTR and MTBF from interventions (reused logic)
+// Helper to compute MTTR and MTBF from interventions
 const computeReliability = async (equipmentIds) => {
   const query = {
     type: { $in: ['Corrective', 'Emergency'] },
@@ -55,7 +57,63 @@ const computeReliability = async (equipmentIds) => {
   };
 };
 
-const { EquipmentPart } = require('../models/EquipmentPart');
+const productionLineSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  status: z.enum(['active', 'inactive', 'maintenance']).optional(),
+  stats: z.object({
+    targetOutput: z.number().optional(),
+    actualOutput: z.number().optional(),
+    defectCount: z.number().optional(),
+    shiftDuration: z.number().optional(),
+    plannedDowntime: z.number().optional()
+  }).optional()
+});
+
+// GET /api/production-lines
+router.get('/', requireUser, async (req, res) => {
+  const productionLines = await ProductionLine.find().populate({
+    path: 'sections.sectionId',
+    populate: {
+      path: 'equipment.equipmentId',
+      model: 'Equipment',
+      populate: [
+        { path: 'category', select: 'name' },
+        { path: 'type', select: 'name' },
+        { path: 'brand', select: 'name' }
+      ]
+    }
+  }).sort({ name: 1 }).lean();
+  return res.status(200).json({ productionLines });
+});
+
+// GET /api/production-lines/:id
+router.get('/:id', requireUser, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const productionLine = await ProductionLine.findById(id).populate({
+      path: 'sections.sectionId',
+      populate: {
+        path: 'equipment.equipmentId',
+        model: 'Equipment',
+        populate: [
+          { path: 'category', select: 'name' },
+          { path: 'type', select: 'name' },
+          { path: 'brand', select: 'name' }
+        ]
+      }
+    }).lean();
+
+    if (!productionLine) {
+      return res.status(404).json({ message: 'Production line not found' });
+    }
+
+    return res.status(200).json({ productionLine });
+  } catch (error) {
+    console.error('Error fetching production line:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
 
 // GET /api/production-lines/:id/dashboard
 router.get('/:id/dashboard', requireUser, async (req, res) => {
@@ -75,38 +133,83 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
 
     // Extract all equipment IDs
     const equipmentList = [];
-    productionLine.sections.forEach(section => {
-      if (section.sectionId && section.sectionId.equipment) {
-        section.sectionId.equipment.forEach(item => {
-          if (item.equipmentId) {
-            equipmentList.push(item.equipmentId);
-          }
-        });
-      }
-    });
+    if (productionLine.sections) {
+      productionLine.sections.forEach(section => {
+        if (section.sectionId && section.sectionId.equipment) {
+          section.sectionId.equipment.forEach(item => {
+            if (item.equipmentId) {
+              equipmentList.push(item.equipmentId);
+            }
+          });
+        }
+      });
+    }
 
     const equipmentIds = equipmentList.map(e => e._id);
     const totalEquipment = equipmentIds.length;
 
     // 2. Calculate KPIs
 
-    // Availability (Equipment in Production / Total)
+    // Availability (Time-based: (Scheduled Time - Downtime) / Scheduled Time)
     let availability = 0;
-    if (totalEquipment > 0) {
-      const inProductionCount = equipmentList.filter(e => e.status === 'in_production').length;
-      availability = Math.round((inProductionCount / totalEquipment) * 100 * 100) / 100;
+
+    // 1. Calculate Scheduled Time (in minutes)
+    // Default shift is 8 hours (480 mins) if not specified
+    const shiftDuration = productionLine.stats?.shiftDuration || 480;
+    const plannedDowntime = productionLine.stats?.plannedDowntime || 0;
+    const scheduledTimePerEquipment = Math.max(0, shiftDuration - plannedDowntime);
+    const totalScheduledTime = totalEquipment * scheduledTimePerEquipment;
+
+    // 2. Calculate Unplanned Downtime (Today)
+    let totalUnplannedDowntime = 0;
+
+    if (totalScheduledTime > 0) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const now = new Date();
+
+      // Find interventions created today that caused downtime (Corrective/Emergency)
+      const downtimeInterventions = await Intervention.find({
+        equipment: { $in: equipmentIds },
+        type: { $in: ['Corrective', 'Emergency'] },
+        createdDate: { $gte: startOfDay }
+      }).lean();
+
+      downtimeInterventions.forEach(intervention => {
+        let downtime = 0;
+
+        if (intervention.status === 'Completed' && intervention.completedDate) {
+          // Completed: use actual duration or difference between completed and created
+          if (intervention.actualDuration) {
+            downtime = intervention.actualDuration * 60; // Convert hours to minutes
+          } else {
+            downtime = (intervention.completedDate - intervention.createdDate) / (1000 * 60); // minutes
+          }
+        } else {
+          // Active: downtime is from creation until now
+          downtime = (now - intervention.createdDate) / (1000 * 60); // minutes
+        }
+
+        totalUnplannedDowntime += downtime;
+      });
+
+      // 3. Calculate Availability Ratio
+      // Ensure downtime doesn't exceed scheduled time (can happen if overtime or bad data)
+      const actualUptime = Math.max(0, totalScheduledTime - totalUnplannedDowntime);
+      availability = Math.round((actualUptime / totalScheduledTime) * 100 * 100) / 100;
     }
 
     // Performance = Actual Output / Target Output
     let performance = 0;
     if (productionLine.stats && productionLine.stats.targetOutput > 0) {
-      performance = productionLine.stats.actualOutput / productionLine.stats.targetOutput;
+      performance = Math.min(productionLine.stats.actualOutput / productionLine.stats.targetOutput, 1);
     }
 
     // Quality = (Actual Output - Defects) / Actual Output
     let quality = 0;
     if (productionLine.stats && productionLine.stats.actualOutput > 0) {
-      quality = (productionLine.stats.actualOutput - productionLine.stats.defectCount) / productionLine.stats.actualOutput;
+      const goodUnits = productionLine.stats.actualOutput - productionLine.stats.defectCount;
+      quality = Math.max(0, Math.min(1, goodUnits / productionLine.stats.actualOutput));
     }
 
     // OEE = Availability * Performance * Quality
@@ -178,100 +281,35 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
       ...recentEquipment.map(e => ({
         _id: String(e._id),
         type: 'equipment',
-        description: `Equipment updated: ${e.name || e.code || 'Unknown'} (${e.code || e._id})`,
+        description: `Equipment updated: ${e.name || e.code}`,
         timestamp: e.updatedAt,
         priority: 'low'
       }))
-    ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 10);
+    ];
 
-    return res.status(200).json({
+    // Sort combined activities by timestamp desc
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    res.json({
+      productionLine,
       kpis: {
-        totalEquipment,
-        activeInterventions,
-        criticalParts,
-        pendingOrders,
-        mttr,
-        mtbf,
         availability,
-        oee
+        performance,
+        quality,
+        oee,
+        mttr,
+        mtbf
       },
-      details: {
-        activeInterventions: activeInterventionsList,
-        criticalParts: lineReorderAlerts.map(a => a.part), // For backward compatibility if needed
-        equipment: equipmentList
-      },
-      reorderAlerts: lineReorderAlerts,
-      activities
+      activeInterventions,
+      criticalParts,
+      pendingOrders,
+      recentActivities: activities.slice(0, 10)
     });
 
   } catch (error) {
-    console.error('Error in GET /api/production-lines/:id/dashboard:', error);
-    return res.status(500).json({ message: 'Internal server error', error: error.message });
+    console.error('Error fetching production line dashboard:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-});
-
-// GET /api/production-lines (with pagination & filters)
-router.get('/', async (req, res) => {
-  console.log('GET /api/production-lines called');
-  try {
-    const { page = 1, limit = 50, status, q, sort = 'createdAt', order = 'desc' } = req.query || {};
-    console.log('Query params:', { page, limit, status, q, sort, order });
-
-    const query = {};
-    if (status) query.status = status;
-    if (q) query.$or = [
-      { name: { $regex: q, $options: 'i' } },
-      { description: { $regex: q, $options: 'i' } }
-    ];
-
-    console.log('MongoDB query:', query);
-
-    const skip = (Number(page) - 1) * Number(limit);
-    const sortSpec = { [String(sort)]: String(order).toLowerCase() === 'asc' ? 1 : -1 };
-
-    const [items, total] = await Promise.all([
-      ProductionLine.find(query).sort(sortSpec).skip(skip).limit(Number(limit)).populate({
-        path: 'sections.sectionId',
-        model: 'ProductionSection',
-        populate: {
-          path: 'equipment.equipmentId',
-          model: 'Equipment',
-          populate: ['category', 'type']
-        }
-      }).lean(),
-      ProductionLine.countDocuments(query)
-    ]);
-
-    console.log(`Found ${items.length} production lines, total: ${total}`);
-    return res.status(200).json({ productionLines: items, page: Number(page), total });
-  } catch (error) {
-    console.error('Error in GET /api/production-lines:', error);
-    return res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-});
-
-// GET /api/production-lines/:id
-router.get('/:id', requireUser, async (req, res) => {
-  const { id } = req.params;
-  const productionLine = await ProductionLine.findById(id).populate({
-    path: 'sections.sectionId',
-    model: 'ProductionSection',
-    populate: {
-      path: 'equipment.equipmentId',
-      model: 'Equipment',
-      populate: ['category', 'type']
-    }
-  }).lean();
-  if (!productionLine) return res.status(404).json({ message: 'Production line not found' });
-  return res.status(200).json({ productionLine });
-});
-
-// POST /api/production-lines
-const { z } = require('zod');
-const productionLineSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  status: z.enum(['active', 'inactive', 'maintenance']).optional(),
 });
 
 router.post('/', requireUser, async (req, res) => {

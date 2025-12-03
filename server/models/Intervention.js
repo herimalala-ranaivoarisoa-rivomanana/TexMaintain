@@ -9,13 +9,24 @@ const schema = new mongoose.Schema({
   type: { type: String, enum: INTERVENTION_TYPES, required: true },
   priority: { type: String, enum: PRIORITY_LEVELS, required: true },
   status: { type: String, enum: STATUS_VALUES, default: 'Pending', required: true },
-  equipment: { type: String, required: true, trim: true }, // Legacy field for backward compatibility
+  equipment: { type: String, required: false, trim: true }, // Legacy field (deprecated) - use equipmentId
   equipmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Equipment', required: false, index: true }, // Strong reference
   assignedTo: { type: String, trim: true },
   description: { type: String, trim: true },
   createdDate: { type: Date, default: Date.now },
   dueDate: { type: Date },
+  completedDate: { type: Date }, // Actual completion date for MTTR calculation
+  estimatedDuration: { type: Number }, // Estimated duration in hours
+  actualDuration: { type: Number }, // Actual duration in hours
+  cost: { type: Number, default: 0 }, // Cost of intervention
+  updatedAt: { type: Date, default: Date.now }
 }, { versionKey: false });
+
+// Update the updatedAt field before saving
+schema.pre('save', function (next) {
+  this.updatedAt = Date.now();
+  next();
+});
 
 const Intervention = mongoose.model('Intervention', schema);
 
