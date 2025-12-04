@@ -277,7 +277,7 @@ export function ProductionLines() {
 
   const fetchData = async () => {
     try {
-      console.log('Fetching production lines...')
+      console.log('Fetching process areas...')
       const [linesResponse, sectionsResponse, equipmentResponse] = await Promise.all([
         getProductionLines({ limit: 100 }),
         getProductionSections(),
@@ -310,7 +310,7 @@ export function ProductionLines() {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       toast({
         title: "Error",
-        description: `Failed to load production lines: ${errorMessage}`,
+        description: `Failed to load process areas: ${errorMessage}`,
         variant: "destructive",
       })
     } finally {
@@ -370,10 +370,10 @@ export function ProductionLines() {
       setIsSaving(true)
       if (editingLine) {
         await updateProductionLine(editingLine._id, lineForm)
-        toast({ title: "Updated", description: "Production line updated successfully" })
+        toast({ title: "Updated", description: "Process area updated successfully" })
       } else {
         await createProductionLine(lineForm)
-        toast({ title: "Created", description: "Production line created successfully" })
+        toast({ title: "Created", description: "Process area created successfully" })
       }
       setIsLineDialogOpen(false)
       fetchData()
@@ -737,7 +737,7 @@ export function ProductionLines() {
   const handleDeleteLine = async (id: string) => {
     try {
       await deleteProductionLine(id)
-      toast({ title: "Deleted", description: "Production line deleted successfully" })
+      toast({ title: "Deleted", description: "Process area deleted successfully" })
       fetchData()
     } catch (error) {
       console.error('Delete line error:', error)
@@ -858,10 +858,10 @@ export function ProductionLines() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              {selectedLine.name}
+              {selectedLine.name.replace(/^Line \d+:\s*/, '')}
             </h1>
             <p className="text-slate-600 dark:text-slate-400 mt-1">
-              Production line layout and equipment management
+              Process area layout and equipment management
             </p>
           </div>
         </div>
@@ -1438,16 +1438,16 @@ export function ProductionLines() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Production Lines
+            Process areas
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Manage production lines and their layouts
+            Manage process areas and their layouts
           </p>
         </div>
         {/* Temporarily allow all users to create lines for testing */}
         <Button onClick={() => openLineDialog()} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
           <Plus className="mr-2 h-4 w-4" />
-          Add Production Line
+          Add Process Area
         </Button>
       </div>
 
@@ -1456,7 +1456,7 @@ export function ProductionLines() {
           <Card key={line._id} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200 cursor-pointer" onClick={() => { console.log('Line clicked:', line._id); setSelectedLine(line); }}>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{line.name}</CardTitle>
+                <CardTitle className="text-lg">{line.name.replace(/^Line \d+:\s*/, '')}</CardTitle>
                 <Badge className={`${getLineStatusColor(line.status)} text-white`}>
                   {line.status}
                 </Badge>
@@ -1487,17 +1487,17 @@ export function ProductionLines() {
         <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
           <CardContent className="p-12 text-center">
             <Factory className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No production lines found</h3>
+            <h3 className="text-lg font-medium text-slate-900 mb-2">No process areas found</h3>
             <p className="text-slate-600">Start by adding your first production line.</p>
           </CardContent>
         </Card>
       )}
 
-      {/* Add/Edit Production Line Dialog */}
+      {/* Add/Edit Process Area Dialog */}
       <Dialog open={isLineDialogOpen} onOpenChange={setIsLineDialogOpen}>
         <DialogContent className="sm:max-w-[500px] bg-white">
           <DialogHeader>
-            <DialogTitle>{editingLine ? 'Edit Production Line' : 'Add Production Line'}</DialogTitle>
+            <DialogTitle>{editingLine ? 'Edit Process Area' : 'Add Process Area'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">

@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getEquipmentById } from "@/api/equipment"
-import { Settings, MapPin, Calendar, ArrowLeft } from "lucide-react"
+import { MapPin, Calendar, ArrowLeft, QrCode } from "lucide-react"
+import { QRCodeGenerator } from "@/components/QRCodeGenerator"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 interface EquipmentDetailData {
   _id: string
@@ -62,7 +64,7 @@ export function EquipmentDetail() {
   if (!data) {
     return (
       <div className="space-y-4">
-        <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4"/>Back</Button>
+        <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
         <Card>
           <CardContent className="p-6">Equipment not found.</CardContent>
         </Card>
@@ -110,7 +112,7 @@ export function EquipmentDetail() {
 
   return (
     <div className="space-y-6">
-      <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4"/>Back</Button>
+      <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Information Card */}
         <div className="lg:col-span-2">
@@ -118,7 +120,25 @@ export function EquipmentDetail() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-2xl">{data.category?.name} - {data.type?.name}</CardTitle>
-                <Badge className={`${statusColor(data.status)} text-white`}>{data.status}</Badge>
+                <div className="flex gap-2">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <QrCode className="mr-2 h-4 w-4" />
+                        QR Code
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md bg-white">
+                      <DialogHeader>
+                        <DialogTitle>Equipment QR Code</DialogTitle>
+                      </DialogHeader>
+                      <div className="flex items-center justify-center p-6">
+                        <QRCodeGenerator value={data._id} />
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Badge className={`${statusColor(data.status)} text-white`}>{data.status}</Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -134,7 +154,7 @@ export function EquipmentDetail() {
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">Location</p>
-                  <p className="text-slate-900 flex items-center"><MapPin className="mr-2 h-4 w-4"/>{data.location}</p>
+                  <p className="text-slate-900 flex items-center"><MapPin className="mr-2 h-4 w-4" />{data.location}</p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">Brand</p>
@@ -156,16 +176,16 @@ export function EquipmentDetail() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-slate-500">Acquisition Date</p>
-                    <p className="text-slate-900 flex items-center"><Calendar className="mr-2 h-4 w-4"/>{formatDate(data.acquisitionDate)}</p>
+                    <p className="text-slate-900 flex items-center"><Calendar className="mr-2 h-4 w-4" />{formatDate(data.acquisitionDate)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-500">Last Maintenance</p>
-                    <p className="text-slate-900 flex items-center"><Calendar className="mr-2 h-4 w-4"/>{formatDate(data.lastMaintenance)}</p>
+                    <p className="text-slate-900 flex items-center"><Calendar className="mr-2 h-4 w-4" />{formatDate(data.lastMaintenance)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-500">Next Maintenance</p>
                     <p className={`flex items-center ${getMaintenanceStatus(data.nextMaintenance).color}`}>
-                      <Calendar className="mr-2 h-4 w-4"/>
+                      <Calendar className="mr-2 h-4 w-4" />
                       {formatDate(data.nextMaintenance)}
                       {data.nextMaintenance && (
                         <span className="ml-2 text-xs">({getMaintenanceStatus(data.nextMaintenance).text})</span>

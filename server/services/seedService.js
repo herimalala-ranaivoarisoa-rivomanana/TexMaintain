@@ -418,7 +418,7 @@ class SeedService {
 
   static async seedProductionLines() {
     try {
-      console.log('Starting production lines seeding...');
+      console.log('Starting process areas seeding...');
 
       const equipment = await Equipment.find();
       if (equipment.length === 0) {
@@ -456,7 +456,7 @@ class SeedService {
       for (const lineData of linesData) {
         const existingLine = await ProductionLine.findOne({ name: lineData.name });
         if (existingLine) {
-          console.log(`Production Line already exists: ${lineData.name}`);
+          console.log(`Process Area already exists: ${lineData.name}`);
           skippedCount++;
           continue;
         }
@@ -532,21 +532,21 @@ class SeedService {
         }
 
         createdLines.push(line);
-        console.log(`Production Line created: ${line.name}`);
+        console.log(`Process Area created: ${line.name}`);
       }
 
-      console.log(`Production Lines seeding completed. Created: ${createdLines.length}, Skipped: ${skippedCount}`);
+      console.log(`Process areas seeding completed. Created: ${createdLines.length}, Skipped: ${skippedCount}`);
 
       return {
         success: true,
-        message: `Production Lines seeding completed. Created: ${createdLines.length}, Skipped: ${skippedCount}`,
+        message: `Process areas seeding completed. Created: ${createdLines.length}, Skipped: ${skippedCount}`,
         created: createdLines,
         skipped: skippedCount
       };
 
     } catch (error) {
-      console.error('Error seeding production lines:', error);
-      throw new Error(`Failed to seed production lines: ${error.message}`);
+      console.error('Error seeding process areas:', error);
+      throw new Error(`Failed to seed process areas: ${error.message}`);
     }
   }
 
@@ -2080,7 +2080,7 @@ class SeedService {
         },
         {
           title: 'Energy Efficiency Overhaul',
-          description: 'Replacing legacy motors with high-efficiency units across production lines.',
+          description: 'Replacing legacy motors with high-efficiency units across process areas.',
           status: 'Completed',
           budget: 280000,
           startDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000), // 6 months ago

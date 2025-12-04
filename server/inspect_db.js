@@ -15,7 +15,7 @@ async function inspectDB() {
         const totalSections = await ProductionSection.countDocuments();
 
         console.log(`Total Equipment: ${totalEquipment}`);
-        console.log(`Total Production Lines: ${totalLines}`);
+        console.log(`Total Process areas: ${totalLines}`);
         console.log(`Total Sections: ${totalSections}`);
 
         const lines = await ProductionLine.find().populate({

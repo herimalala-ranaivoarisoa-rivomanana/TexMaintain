@@ -442,12 +442,12 @@ GET    /api/electricians         - Liste des électriciens
 GET    /api/maintenance-workers  - Liste des agents
 ```
 
-### **Production** (`/api/production-lines`, `/api/production-sections`)
+### **Production** (`/api/process-area`, `/api/production-sections`)
 ```
-GET    /production-lines         - Liste des lignes
-POST   /production-lines         - Créer une ligne
-PATCH  /production-lines/:id     - Modifier
-DELETE /production-lines/:id     - Supprimer
+GET    /process-area         - Liste des lignes
+POST   /process-area         - Créer une ligne
+PATCH  /process-area/:id     - Modifier
+DELETE /process-area/:id     - Supprimer
 
 GET    /production-sections      - Liste des sections
 POST   /production-sections      - Créer une section
@@ -545,7 +545,7 @@ GET    /health/db         - État de la base de données
 - Upload de médias de panne
 - Sélection de personnel selon le statut
 
-#### 3. **Production Lines** (`/production-lines`)
+#### 3. **Process areas** (`/process-area`)
 - Vue des lignes de production
 - Sections et équipements assignés
 - Changement de statut rapide
@@ -664,7 +664,7 @@ Ordre de seeding:
 2. Equipment Categories (10 catégories)
 3. Equipment Types (30+ types)
 4. Brands (15 marques)
-5. Production Lines (5 lignes)
+5. Process areas (5 lignes)
 6. Production Sections (15 sections)
 7. Equipment (50+ équipements)
 8. Parts (100+ pièces)

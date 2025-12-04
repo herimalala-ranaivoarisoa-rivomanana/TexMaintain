@@ -108,7 +108,7 @@ client/src/
 2. **Status Management**: Historique + personnel requis + **suggestion auto**
 3. **Breakdown Management**: Types + description + médias
 4. **Personnel**: 4 types avec CRUD complet
-5. **Production Lines**: Hiérarchie + drag & drop
+5. **Process areas**: Hiérarchie + drag & drop
 6. **Interventions**: Types + priorités + statuts
 7. **Inventory**: Parts + associations équipement
 8. **Dashboard**: Métriques temps réel

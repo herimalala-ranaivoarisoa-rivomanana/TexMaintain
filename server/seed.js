@@ -100,13 +100,13 @@ async function runSeeder() {
       console.error('❌ Error seeding parts:', error.message + '\n');
     }
 
-    // Seed production lines and sections
-    console.log('🏭 Seeding production lines and sections...');
+    // Seed process areas and sections
+    console.log('🏭 Seeding process areas and sections...');
     try {
       results.productionLines = await SeedService.seedProductionLines();
-      console.log(`✅ Production lines seeded: ${results.productionLines.created} created, ${results.productionLines.skipped} skipped\n`);
+      console.log(`✅ Process areas seeded: ${results.productionLines.created} created, ${results.productionLines.skipped} skipped\n`);
     } catch (error) {
-      console.error('❌ Error seeding production lines:', error.message + '\n');
+      console.error('❌ Error seeding process areas:', error.message + '\n');
     }
 
     // Seed equipment parts associations
@@ -135,7 +135,7 @@ async function runSeeder() {
     console.log(`   - Types: ${results.types?.created || 0} created`);
     console.log(`   - Brands: ${results.brands?.created || 0} created`);
     console.log(`   - Equipment: ${results.equipment?.created || 0} created`);
-    console.log(`   - Production Lines: ${results.productionLines?.created || 0} created`);
+    console.log(`   - Process areas: ${results.productionLines?.created || 0} created`);
     console.log(`   - Interventions: ${results.interventions?.created || 0} created`);
     console.log(`   - Parts: ${results.parts?.created || 0} created`);
     console.log(`   - Equipment-Parts: ${results.equipmentParts?.created || 0} created`);

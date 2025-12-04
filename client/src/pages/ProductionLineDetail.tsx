@@ -178,7 +178,7 @@ export function ProductionLineDetail() {
                     getProductionLineDashboardStats(id)
                 ])
                 setLine(lineData.productionLine)
-                console.log('Production Line Data:', lineData.productionLine)
+                console.log('Process Area Data:', lineData.productionLine)
                 if (lineData.productionLine?.sections) {
                     lineData.productionLine.sections.forEach((s: any) => {
                         console.log(`Section ${s.sectionId?.name} equipment:`, s.sectionId?.equipment)
@@ -288,9 +288,9 @@ export function ProductionLineDetail() {
         return (
             <div className="flex flex-col items-center justify-center h-96 text-slate-500">
                 <Activity className="h-12 w-12 mb-4 opacity-50" />
-                <p className="text-lg">{error || 'Production line not found'}</p>
+                <p className="text-lg">{error || 'Process area not found'}</p>
                 <Button asChild variant="link" className="mt-4">
-                    <Link to="/production-lines">Return to list</Link>
+                    <Link to="/process-area">Return to list</Link>
                 </Button>
             </div>
         )
@@ -301,7 +301,7 @@ export function ProductionLineDetail() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Button asChild variant="ghost" size="icon">
-                        <Link to="/production-lines">
+                        <Link to="/process-area">
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                     </Button>

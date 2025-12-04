@@ -135,7 +135,7 @@
 
 ---
 
-### 6. Production Lines
+### 6. Process areas
 
 #### Backend
 **Modèle**: `server/models/ProductionLine.js`
@@ -149,13 +149,13 @@
 
 | Backend Endpoint | Frontend Function | Page |
 |-----------------|-------------------|------|
-| `GET /api/production-lines` | `getProductionLines()` | ProductionLines.tsx |
-| `POST /api/production-lines` | `createProductionLine()` | ProductionLines.tsx |
-| `GET /api/production-lines/:id` | `getProductionLineById()` | ProductionLines.tsx |
-| `PUT /api/production-lines/:id` | `updateProductionLine()` | ProductionLines.tsx |
-| `DELETE /api/production-lines/:id` | `deleteProductionLine()` | ProductionLines.tsx |
-| `POST /api/production-lines/:id/sections` | `addSectionToLine()` | ProductionLines.tsx |
-| `DELETE /api/production-lines/:id/sections/:sectionId` | `removeSectionFromLine()` | ProductionLines.tsx |
+| `GET /api/process-area` | `getProductionLines()` | ProductionLines.tsx |
+| `POST /api/process-area` | `createProductionLine()` | ProductionLines.tsx |
+| `GET /api/process-area/:id` | `getProductionLineById()` | ProductionLines.tsx |
+| `PUT /api/process-area/:id` | `updateProductionLine()` | ProductionLines.tsx |
+| `DELETE /api/process-area/:id` | `deleteProductionLine()` | ProductionLines.tsx |
+| `POST /api/process-area/:id/sections` | `addSectionToLine()` | ProductionLines.tsx |
+| `DELETE /api/process-area/:id/sections/:sectionId` | `removeSectionFromLine()` | ProductionLines.tsx |
 
 ---
 

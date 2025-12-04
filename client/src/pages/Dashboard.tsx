@@ -22,10 +22,10 @@ export function Dashboard() {
         const response = await getProductionLines()
         setProductionLines(response.productionLines)
       } catch (error) {
-        console.error('Error fetching production lines:', error)
+        console.error('Error fetching process areas:', error)
         toast({
           title: "Error",
-          description: "Failed to load production lines",
+          description: "Failed to load process areas",
           variant: "destructive",
         })
       }
@@ -62,7 +62,7 @@ export function Dashboard() {
               className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-slate-200"
             >
               <Factory className="h-4 w-4" />
-              {line.name}
+              {line.name.replace(/^Line \d+:\s*/, '')}
             </TabsTrigger>
           ))}
 

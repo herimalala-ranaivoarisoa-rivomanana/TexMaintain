@@ -99,8 +99,10 @@ class EquipmentMetricsService {
             const updates = {
                 mtbf: Math.round(mtbf * 100) / 100,
                 mttr: Math.round(mttr * 100) / 100,
-                // We can also store these if we want to avoid recalculating them
-                // availability: Math.round(availability * 100) / 100 
+                availability: Math.round(availability * 100) / 100,
+                downtime: Math.round(downtime * 100) / 100,
+                operatingTime: Math.round(operatingTime * 100) / 100,
+                timeSinceAcquisition: Math.round(timeSinceAcquisition * 100) / 100,
                 lastMetricsUpdate: new Date()
             };
 

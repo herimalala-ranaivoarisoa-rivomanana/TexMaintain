@@ -199,12 +199,12 @@ router.post('/all', requireUser, requireRole('admin'), async (req, res) => {
       results.parts = { error: error.message };
     }
 
-    // Seed production lines (and sections, assigning equipment)
+    // Seed process areas (and sections, assigning equipment)
     try {
       results.productionLines = await SeedService.seedProductionLines();
-      console.log('Production lines seeding completed');
+      console.log('Process areas seeding completed');
     } catch (error) {
-      console.error('Error seeding production lines:', error);
+      console.error('Error seeding process areas:', error);
       results.productionLines = { error: error.message };
     }
 

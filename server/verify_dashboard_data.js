@@ -18,7 +18,7 @@ async function checkData() {
         console.log(`Total Equipment: ${globalEquipmentCount}`);
         console.log(`Active Interventions: ${globalInterventionCount}`);
 
-        // 2. Production Line Counts
+        // 2. Process Area Counts
         const lines = await ProductionLine.find().populate({
             path: 'sections.sectionId',
             populate: {
@@ -27,7 +27,7 @@ async function checkData() {
             }
         });
 
-        console.log(`\nFound ${lines.length} Production Lines`);
+        console.log(`\nFound ${lines.length} Process areas`);
 
         for (const line of lines) {
             console.log(`\n--- LINE: ${line.name} ---`);

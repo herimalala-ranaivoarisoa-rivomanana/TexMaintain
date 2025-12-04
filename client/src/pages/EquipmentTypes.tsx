@@ -22,6 +22,8 @@ import { getEquipment } from "@/api/equipment"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Progress } from "@/components/ui/progress"
 
+import { EQUIPMENT_STATUSES } from "@/types/equipment"
+
 interface Category {
   _id: string
   name: string
@@ -110,11 +112,27 @@ export function EquipmentTypes() {
       const totalEquipment = typeEquipment.length
 
       const byStatus = {
-        online: typeEquipment.filter(eq => eq.status === 'online').length,
-        maintenance: typeEquipment.filter(eq => eq.status === 'maintenance').length,
-        breakdown: typeEquipment.filter(eq => eq.status === 'breakdown').length,
-        offline: typeEquipment.filter(eq => eq.status === 'offline').length,
-        scrapped: typeEquipment.filter(eq => eq.status === 'scrapped').length,
+        online: typeEquipment.filter(eq => [
+          EQUIPMENT_STATUSES.IN_PRODUCTION,
+          EQUIPMENT_STATUSES.SETUP_ADJUSTMENT,
+          EQUIPMENT_STATUSES.CHANGEOVER,
+          EQUIPMENT_STATUSES.PAUSED_BY_OPERATOR
+        ].includes(eq.status as any)).length,
+        maintenance: typeEquipment.filter(eq => [
+          EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE,
+          EQUIPMENT_STATUSES.UNDER_REPAIR,
+          EQUIPMENT_STATUSES.IN_WORKSHOP,
+          EQUIPMENT_STATUSES.WAITING_SPARE_PARTS,
+          EQUIPMENT_STATUSES.TESTING_AFTER_REPAIR,
+          EQUIPMENT_STATUSES.UNDER_INSPECTION,
+          EQUIPMENT_STATUSES.PENDING_VALIDATION
+        ].includes(eq.status as any)).length,
+        breakdown: typeEquipment.filter(eq => eq.status === EQUIPMENT_STATUSES.BREAKDOWN).length,
+        offline: typeEquipment.filter(eq => [
+          EQUIPMENT_STATUSES.OFFLINE,
+          EQUIPMENT_STATUSES.STORED
+        ].includes(eq.status as any)).length,
+        scrapped: typeEquipment.filter(eq => eq.status === EQUIPMENT_STATUSES.SCRAPPED).length,
       }
 
       const avgMtbf = totalEquipment > 0 ? typeEquipment.reduce((sum, eq) => sum + (eq.mtbf || 0), 0) / totalEquipment : 0

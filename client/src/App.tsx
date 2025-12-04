@@ -52,8 +52,8 @@ function App() {
               <Route path="equipment-categories" element={<EquipmentCategoriesPageWrapper />} />
               <Route path="equipment-types" element={<EquipmentTypesPageWrapper />} />
               <Route path="brands" element={<BrandsPageWrapper />} />
-              <Route path="production-lines" element={<ProductionLinesPageWrapper />} />
-              <Route path="production-lines/:id" element={<ProductionLineDetail />} />
+              <Route path="process-area" element={<ProductionLinesPageWrapper />} />
+              <Route path="process-area/:id" element={<ProductionLineDetail />} />
               <Route path="machinists" element={<Machinists />} />
               <Route path="mechanics" element={<Mechanics />} />
               <Route path="electricians" element={<Electricians />} />

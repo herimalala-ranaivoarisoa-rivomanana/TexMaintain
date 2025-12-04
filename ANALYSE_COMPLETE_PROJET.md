@@ -140,7 +140,7 @@ POST   /api/equipment/:id/consumable
 - `/api/inventory` - Parts/consommables
 - `/api/interventions` - Interventions
 - `/api/dashboard` - KPIs (MTBF, MTTR, Availability, OEE)
-- `/api/production-lines` - Lignes de production
+- `/api/process-area` - Lignes de production
 - `/api/mechanics`, `/api/electricians`, etc. - Personnel
 - `/api/equipment-categories`, `/api/equipment-types`, `/api/brands` - Référentiels
 
@@ -153,7 +153,7 @@ POST   /api/equipment/:id/consumable
 2. **Equipment** - Liste, filtres, changement statut
 3. **Inventory** - Parts/consommables, stock
 4. **Interventions** - Gestion interventions
-5. **Production Lines** - Lignes et sections
+5. **Process areas** - Lignes et sections
 
 ### Composant Clé: EquipmentStatusDialog
 

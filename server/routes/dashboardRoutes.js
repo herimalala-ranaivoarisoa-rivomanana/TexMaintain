@@ -20,7 +20,7 @@ router.get('/kpis', requireUser, async (req, res) => {
     const activeInterventions = await Intervention.countDocuments({ status: { $in: ['Pending', 'In Progress'] } });
     const criticalParts = await Part.countDocuments({ $expr: { $lte: ['$currentStock', '$minStock'] } });
 
-    // Fetch Production Lines first
+    // Fetch Process areas first
     const productionLines = await ProductionLine.find().populate({
       path: 'sections.sectionId',
       populate: {
@@ -46,7 +46,7 @@ router.get('/kpis', requireUser, async (req, res) => {
     }
 
     // Aggregate MTBF and MTTR from Equipment collection
-    // Only consider equipment that is assigned to production lines (or all? usually all active equipment)
+    // Only consider equipment that is assigned to process areas (or all? usually all active equipment)
     // For consistency with previous logic which used "allAssignedEquipmentIds", we filter by that.
     // If allAssignedEquipmentIds is empty, we might want to fallback to all equipment or return 0.
 
@@ -74,7 +74,7 @@ router.get('/kpis', requireUser, async (req, res) => {
       // Or just return 0.
     }
 
-    // Aggregate data from all Production Lines for Global OEE & Availability
+    // Aggregate data from all Process areas for Global OEE & Availability
 
     let totalTargetOutput = 0;
     let totalActualOutput = 0;

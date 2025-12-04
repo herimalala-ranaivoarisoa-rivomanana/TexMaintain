@@ -245,7 +245,7 @@ SR = ceil(SS + CJ × Délai)
 - CRUD complet pour chaque type
 
 ### Autres
-- Equipment Categories, Equipment Types, Brands, Production Lines
+- Equipment Categories, Equipment Types, Brands, Process areas
 - Breakdown Media (upload)
 - Seed (initialisation données)
 - Health check

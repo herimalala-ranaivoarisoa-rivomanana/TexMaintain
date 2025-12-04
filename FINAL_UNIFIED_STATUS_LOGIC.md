@@ -2,11 +2,11 @@
 
 ## 🎯 Résultat Final
 
-Les règles de changement de statut sont maintenant **IDENTIQUES** dans `/equipment` et `/production-lines`.
+Les règles de changement de statut sont maintenant **IDENTIQUES** dans `/equipment` et `/process-area`.
 
 ## 📊 Comparaison Finale
 
-| Fonctionnalité | `/equipment` | `/production-lines` | Status |
+| Fonctionnalité | `/equipment` | `/process-area` | Status |
 |----------------|--------------|---------------------|--------|
 | **API utilisée** | `changeEquipmentStatus` | `changeEquipmentStatus` | ✅ Identique |
 | **Machinist pour In Production** | ✅ Requis | ✅ Requis | ✅ Identique |
@@ -318,7 +318,7 @@ if (maintenanceStatuses.includes(status)) {
 
 ## 📊 Tableau de Cohérence
 
-| Statut | Personnel | Validation Client | Validation Serveur | UI Equipment | UI Production Lines |
+| Statut | Personnel | Validation Client | Validation Serveur | UI Equipment | UI Process areas |
 |--------|-----------|-------------------|-------------------|--------------|---------------------|
 | **In Production** | Machinist (1) | ✅ | ✅ | ✅ Section | ✅ Section |
 | **Under Repair** | Maintenance (≥1) | ✅ | ✅ | ✅ Section | ✅ Section |
@@ -346,8 +346,8 @@ if (maintenanceStatuses.includes(status)) {
 - [ ] Valider
 - [ ] ✅ Statut changé avec succès
 
-### Tests `/production-lines`
-- [ ] Ouvrir `/production-lines`
+### Tests `/process-area`
+- [ ] Ouvrir `/process-area`
 - [ ] Cliquer sur un équipement
 - [ ] Cliquer "Change Status"
 - [ ] Sélectionner "In Production"
@@ -368,7 +368,7 @@ if (maintenanceStatuses.includes(status)) {
 - [ ] ✅ Bouton actif
 - [ ] Valider
 - [ ] ✅ Statut changé avec succès
-- [ ] Répéter dans `/production-lines`
+- [ ] Répéter dans `/process-area`
 - [ ] ✅ Comportement identique
 
 ## 🎉 Résultat Final

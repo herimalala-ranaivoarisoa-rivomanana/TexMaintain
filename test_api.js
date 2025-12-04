@@ -13,14 +13,14 @@ async function test() {
         console.log('Got token');
 
         // 2. Get list
-        const listRes = await fetch('http://localhost:3000/api/production-lines', {
+        const listRes = await fetch('http://localhost:3000/api/process-area', {
             headers: { Authorization: `Bearer ${token}` }
         });
         const listData = await listRes.json();
         console.log('List Data:', JSON.stringify(listData, null, 2));
 
         if (!listData.productionLines || listData.productionLines.length === 0) {
-            console.log('No production lines found');
+            console.log('No process areas found');
             return;
         }
 
@@ -28,7 +28,7 @@ async function test() {
         console.log(`Testing with Line ID: ${lineId}`);
 
         // 3. Get details
-        const detailRes = await fetch(`http://localhost:3000/api/production-lines/${lineId}`, {
+        const detailRes = await fetch(`http://localhost:3000/api/process-area/${lineId}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         const detailData = await detailRes.json();

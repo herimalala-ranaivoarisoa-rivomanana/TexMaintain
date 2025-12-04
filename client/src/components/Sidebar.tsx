@@ -30,7 +30,7 @@ const navigation = [
   { name: "Equipment", href: "/equipment", icon: Settings },
   { name: "Equipment Categories", href: "/equipment-categories", icon: Tags },
   { name: "Equipment Types", href: "/equipment-types", icon: Layers },
-  { name: "Production Lines", href: "/production-lines", icon: Workflow },
+  { name: "Process areas", href: "/process-area", icon: Workflow },
   { name: "Machinists", href: "/machinists", icon: UserCog },
   { name: "Mechanics", href: "/mechanics", icon: Wrench },
   { name: "Electricians", href: "/electricians", icon: Zap },
@@ -84,8 +84,8 @@ export function Sidebar() {
                   className={cn(
                     "w-full justify-start transition-all duration-200",
                     collapsed ? "px-2" : "px-3",
-                    isActive 
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg" 
+                    isActive
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
                       : "hover:bg-slate-100 dark:hover:bg-slate-800"
                   )}
                 >

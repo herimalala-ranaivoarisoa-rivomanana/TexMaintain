@@ -28,7 +28,7 @@ router.get('/', requireUser, async (req, res) => {
   const skip = (Number(page) - 1) * Number(limit);
   const sortSpec = { [String(sort)]: String(order).toLowerCase() === 'asc' ? 1 : -1 };
   const [items, total] = await Promise.all([
-    Equipment.find(query).sort(sortSpec).skip(skip).limit(Number(limit)).populate('category').populate('type').lean(),
+    Equipment.find(query).sort(sortSpec).skip(skip).limit(Number(limit)).populate('category').populate('type').populate('brand').lean(),
     Equipment.countDocuments(query)
   ]);
 
@@ -64,7 +64,7 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/equipment/:id
 router.get('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
-  const equipment = await Equipment.findById(id).populate('category').populate('type').lean();
+  const equipment = await Equipment.findById(id).populate('category').populate('type').populate('brand').lean();
   if (!equipment) return res.status(404).json({ message: 'Equipment not found' });
 
   // Metrics are already in the equipment object
@@ -437,6 +437,7 @@ router.patch('/:id', requireUser, requireRole(['admin', 'maintenance_manager', '
     const updated = await Equipment.findByIdAndUpdate(id, updates, { new: true })
       .populate('category')
       .populate('type')
+      .populate('brand')
       .populate('lastStatusChangedBy', 'email role')
       .lean();
 

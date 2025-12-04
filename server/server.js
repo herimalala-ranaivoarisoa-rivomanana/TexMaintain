@@ -136,7 +136,7 @@ app.use('/api/brands', brandsRoutes);
 app.use('/api/interventions', interventionsRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/production-lines', productionLinesRoutes);
+app.use('/api/process-area', productionLinesRoutes);
 app.use('/api/production-sections', productionSectionsRoutes);
 app.use('/api/machinists', machinistRoutes);
 app.use('/api/mechanics', mechanicRoutes);

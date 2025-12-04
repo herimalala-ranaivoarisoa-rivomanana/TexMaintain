@@ -32,10 +32,10 @@ export function ProductionLinesDashboard() {
                 const response = await getProductionLines()
                 setProductionLines(response.productionLines)
             } catch (error) {
-                console.error('Error fetching production lines:', error)
+                console.error('Error fetching process areas:', error)
                 toast({
                     title: "Error",
-                    description: "Failed to load production lines",
+                    description: "Failed to load process areas",
                     variant: "destructive",
                 })
             } finally {
@@ -76,13 +76,13 @@ export function ProductionLinesDashboard() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Production Lines</h2>
+                    <h2 className="text-2xl font-bold tracking-tight">Process areas</h2>
                     <p className="text-muted-foreground">
-                        Monitor status and performance of your production lines.
+                        Monitor status and performance of your process areas.
                     </p>
                 </div>
                 <Button asChild className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-                    <Link to="/production-lines">
+                    <Link to="/process-area">
                         <Settings className="mr-2 h-4 w-4" />
                         Manage Lines
                     </Link>
@@ -120,7 +120,7 @@ export function ProductionLinesDashboard() {
 
                                 <div className="pt-4 border-t">
                                     <Button variant="outline" className="w-full" asChild>
-                                        <Link to={`/production-lines/${line._id}`}>
+                                        <Link to={`/process-area/${line._id}`}>
                                             View Details
                                         </Link>
                                     </Button>

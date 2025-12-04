@@ -2,13 +2,13 @@
 
 ## 🎯 Objectif
 
-Les règles de changement de statut sont maintenant **identiques** dans `/equipment` et `/production-lines`.
+Les règles de changement de statut sont maintenant **identiques** dans `/equipment` et `/process-area`.
 
 ## 🔄 API Unifiée
 
 ### Avant (Problème)
 
-**Dans `/production-lines`:**
+**Dans `/process-area`:**
 ```typescript
 // ❌ Utilisait updateEquipment (ne supporte pas le personnel)
 await updateEquipment(equipmentId, { 
@@ -117,7 +117,7 @@ if (maintenanceStatuses.includes(newStatus as EquipmentStatus)) {
 )}
 ```
 
-### Dans `/production-lines` (ProductionLines.tsx)
+### Dans `/process-area` (ProductionLines.tsx)
 
 ```typescript
 {/* Maintenance Personnel Selection - Same logic */}
@@ -281,7 +281,7 @@ if (maintenanceStatuses.includes(status) && !mechanicId && !electricianId && !ma
 
 **Deux pages, même logique:**
 - `/equipment` → `EquipmentStatusDialog.tsx`
-- `/production-lines` → `ProductionLines.tsx`
+- `/process-area` → `ProductionLines.tsx`
 
 **Même API:**
 ```typescript
@@ -317,8 +317,8 @@ if (maintenanceStatuses.includes(newStatus) && !mechanic && !electrician && !wor
 8. Valider
 9. ✅ Statut changé
 
-### Test 2: In Production depuis /production-lines
-1. Aller sur `/production-lines`
+### Test 2: In Production depuis /process-area
+1. Aller sur `/process-area`
 2. Cliquer sur un équipement
 3. Cliquer "Change Status"
 4. Sélectionner "In Production"
@@ -341,8 +341,8 @@ if (maintenanceStatuses.includes(newStatus) && !mechanic && !electrician && !wor
 9. Valider
 10. ✅ Statut changé
 
-### Test 4: Under Repair depuis /production-lines
-1. Aller sur `/production-lines`
+### Test 4: Under Repair depuis /process-area
+1. Aller sur `/process-area`
 2. Cliquer sur un équipement
 3. Cliquer "Change Status"
 4. Sélectionner "Under Repair"
@@ -356,7 +356,7 @@ if (maintenanceStatuses.includes(newStatus) && !mechanic && !electrician && !wor
 
 ## 🎯 Résultat
 
-Les règles de changement de statut sont maintenant **100% identiques** dans `/equipment` et `/production-lines` :
+Les règles de changement de statut sont maintenant **100% identiques** dans `/equipment` et `/process-area` :
 
 - ✅ Même API backend
 - ✅ Même validation client

@@ -8,13 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  Settings, 
-  AlertTriangle, 
-  CheckCircle, 
+import {
+  Search,
+  Filter,
+  Plus,
+  Settings,
+  AlertTriangle,
+  CheckCircle,
   Clock,
   MapPin,
   Calendar,
@@ -23,8 +23,11 @@ import {
   History,
   Package,
   Droplet,
-  Wrench
+  Wrench,
+  QrCode
 } from "lucide-react"
+import { QRCodeScanner } from "@/components/QRCodeScanner"
+import { QRCodeGenerator } from "@/components/QRCodeGenerator"
 import { getEquipment, createEquipment, updateEquipment, deleteEquipment, changeEquipmentStatus } from "@/api/equipment"
 import { getBrands } from "@/api/brands"
 import { getMachinists } from "@/api/machinists"
@@ -89,7 +92,7 @@ export function Equipment() {
   const [total, setTotal] = useState(0)
   const [limit, setLimit] = useState<number>(() => parseInt(localStorage.getItem('eq_limit') || '12', 10) || 12)
   const [sort, setSort] = useState<string>(searchParams.get('sort') || 'createdAt')
-  const [order, setOrder] = useState<'asc'|'desc'>((searchParams.get('order') as any) || 'desc')
+  const [order, setOrder] = useState<'asc' | 'desc'>((searchParams.get('order') as any) || 'desc')
   const { toast } = useToast()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Equipment | null>(null)
@@ -102,21 +105,37 @@ export function Equipment() {
     serialNumber: string;
     chipNumber: string;
     brand: string;
-    acquisitionDate: string;
+    model?: string;
+    serialNumber?: string;
+    chipNumber?: string;
+    brand?: string;
+    acquisitionDate?: string;
+    mtbf: number;
+    mttr: number;
   }>({
     category: "",
     type: "",
     status: EQUIPMENT_STATUSES.STORED,
     location: "",
-    model: "",
-    serialNumber: "",
-    chipNumber: "",
     brand: "",
-    acquisitionDate: ""
+    serialNumber: "",
+    acquisitionDate: "",
+    mtbf: 0,
+    mttr: 0
   })
+  const [createdEquipmentId, setCreatedEquipmentId] = useState<string | null>(null)
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
+
+  const handleScan = (decodedText: string) => {
+    setSearchTerm(decodedText)
+    toast({
+      title: "QR Code Scanned",
+      description: `Found: ${decodedText}`,
+    })
+  }
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  
+
   // Personnel states (same as ProductionLines)
   const [machinists, setMachinists] = useState<any[]>([])
   const [selectedMachinistId, setSelectedMachinistId] = useState('')
@@ -126,13 +145,13 @@ export function Equipment() {
   const [selectedElectricianId, setSelectedElectricianId] = useState('')
   const [maintenanceWorkers, setMaintenanceWorkers] = useState<any[]>([])
   const [selectedMaintenanceWorkerId, setSelectedMaintenanceWorkerId] = useState('')
-  
+
   // Breakdown information
   const [breakdownType, setBreakdownType] = useState('')
   const [breakdownDescription, setBreakdownDescription] = useState('')
   const [breakdownMedia, setBreakdownMedia] = useState<File[]>([])
   const [breakdownMediaPreviews, setBreakdownMediaPreviews] = useState<string[]>([])
-  
+
   // Breakdown types (extensible list)
   const breakdownTypes = [
     { value: 'mechanical', label: 'Panne Mécanique', suggestedPersonnel: 'mechanic' },
@@ -144,7 +163,7 @@ export function Equipment() {
     { value: 'structural', label: 'Panne Structurelle', suggestedPersonnel: 'worker' },
     { value: 'other', label: 'Autre', suggestedPersonnel: null }
   ]
-  
+
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -175,7 +194,7 @@ export function Equipment() {
           api.get('/api/equipment-types'),
           getBrands(),
           api.get('/api/production-sections'),
-          api.get('/api/production-lines')
+          api.get('/api/process-area')
         ])
         setCategories((categoriesResponse.data as any).categories || [])
         setTypes((typesResponse.data as any).types || [])
@@ -254,12 +273,12 @@ export function Equipment() {
   // Handle media file upload
   const handleMediaUpload = (files: FileList | null) => {
     if (!files) return
-    
+
     const newFiles = Array.from(files).filter(file => {
       const isImage = file.type.startsWith('image/')
       const isVideo = file.type.startsWith('video/')
       const isUnder10MB = file.size <= 10 * 1024 * 1024 // 10MB limit
-      
+
       if (!isImage && !isVideo) {
         toast({
           title: 'Type de fichier non supporté',
@@ -268,7 +287,7 @@ export function Equipment() {
         })
         return false
       }
-      
+
       if (!isUnder10MB) {
         toast({
           title: 'Fichier trop volumineux',
@@ -277,32 +296,32 @@ export function Equipment() {
         })
         return false
       }
-      
+
       return true
     })
-    
+
     if (newFiles.length === 0) return
-    
+
     // Create previews
     const newPreviews = newFiles.map(file => URL.createObjectURL(file))
-    
+
     setBreakdownMedia(prev => [...prev, ...newFiles])
     setBreakdownMediaPreviews(prev => [...prev, ...newPreviews])
   }
-  
+
   // Remove media file
   const removeMedia = (index: number) => {
     URL.revokeObjectURL(breakdownMediaPreviews[index])
     setBreakdownMedia(prev => prev.filter((_, i) => i !== index))
     setBreakdownMediaPreviews(prev => prev.filter((_, i) => i !== index))
   }
-  
+
   // Handle drag and drop
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
   }
-  
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -339,7 +358,7 @@ export function Equipment() {
     setBreakdownDescription('')
     setBreakdownMedia([])
     setBreakdownMediaPreviews([])
-    
+
     // Load breakdown info if equipment is in breakdown status
     if (item.status === EQUIPMENT_STATUSES.BREAKDOWN) {
       console.log('🔍 Loading breakdown info for equipment:', item._id)
@@ -351,7 +370,7 @@ export function Equipment() {
         console.log('⚠️ No breakdown info found in equipment')
       }
     }
-    
+
     setIsDialogOpen(true)
   }
 
@@ -421,7 +440,7 @@ export function Equipment() {
         try {
           // Check if status changed
           const statusChanged = editingItem.status !== form.status
-          
+
           if (statusChanged) {
             // Step 1: Change status (with or without personnel)
             await changeEquipmentStatus(editingItem._id, {
@@ -433,7 +452,7 @@ export function Equipment() {
               breakdownType: breakdownType || undefined,
               breakdownDescription: breakdownDescription || undefined
             })
-            
+
             // Step 2: Update other fields (excluding status to avoid conflicts)
             const { status, ...otherFields } = form
             if (Object.keys(otherFields).length > 0) {
@@ -443,7 +462,7 @@ export function Equipment() {
             // No status change, just update all fields
             await updateEquipment(editingItem._id, form)
           }
-          
+
           // Step 3: Upload breakdown media if status is Breakdown and there are files
           if (form.status === EQUIPMENT_STATUSES.BREAKDOWN && breakdownMedia.length > 0) {
             try {
@@ -453,9 +472,9 @@ export function Equipment() {
                 breakdownDescription,
                 breakdownMedia
               )
-              toast({ 
-                title: "Updated", 
-                description: `Equipment updated with ${breakdownMedia.length} media file(s)` 
+              toast({
+                title: "Updated",
+                description: `Equipment updated with ${breakdownMedia.length} media file(s)`
               })
             } catch (mediaErr: any) {
               console.error('❌ Error uploading media:', mediaErr)
@@ -464,11 +483,11 @@ export function Equipment() {
                 response: mediaErr?.response?.data,
                 status: mediaErr?.response?.status
               })
-              
+
               const errorMessage = mediaErr?.response?.data?.error || 'Media upload failed'
-              
-              toast({ 
-                title: "Partially Updated", 
+
+              toast({
+                title: "Partially Updated",
                 description: `Equipment updated but ${errorMessage}`,
                 variant: "destructive"
               })
@@ -476,7 +495,7 @@ export function Equipment() {
           } else {
             toast({ title: "Updated", description: "Equipment updated successfully" })
           }
-          
+
           // Reload data from server to ensure UI reflects actual database state
           try {
             await fetchEquipment()
@@ -518,7 +537,12 @@ export function Equipment() {
           const created = (res as any).equipment
           setEquipment((list) => list.map((e) => e._id === tempId ? { ...created } : e))
           toast({ title: "Created", description: "Equipment created successfully" })
-          
+
+          // Show QR Code dialog for new equipment
+          if (created && created._id) {
+            setCreatedEquipmentId(created._id)
+          }
+
           // Reload data from server to ensure UI reflects actual database state
           try {
             await fetchEquipment()
@@ -640,12 +664,12 @@ export function Equipment() {
           </p>
         </div>
         <div className="flex gap-2">
-        {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
-        <Button onClick={openAddDialog} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Equipment
-        </Button>
-        )}
+          {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
+            <Button onClick={openAddDialog} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Equipment
+            </Button>
+          )}
         </div>
       </div>
 
@@ -653,14 +677,22 @@ export function Equipment() {
       <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <div className="relative flex-1 md:min-w-[300px]">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
               <Input
                 placeholder="Search equipment..."
+                className="pl-9 pr-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
               />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-10 w-10 text-slate-500 hover:text-slate-900"
+                onClick={() => setIsScannerOpen(true)}
+              >
+                <QrCode className="h-4 w-4" />
+              </Button>
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-48">
@@ -920,7 +952,7 @@ export function Equipment() {
               <Select value={form.status} onValueChange={(value) => {
                 const previousStatus = editingItem?.status || form.status
                 setForm({ ...form, status: value })
-                
+
                 // Debug logs
                 console.log('=== AUTO-SUGGESTION DEBUG ===')
                 console.log('New Status:', value)
@@ -929,7 +961,7 @@ export function Equipment() {
                 console.log('Is Under Repair?', value === EQUIPMENT_STATUSES.UNDER_REPAIR)
                 console.log('Was Breakdown?', previousStatus === EQUIPMENT_STATUSES.BREAKDOWN)
                 console.log('Has Breakdown Type?', !!breakdownType)
-                
+
                 // Auto-suggest personnel when changing to Under Repair or In Workshop from Breakdown
                 if ((value === EQUIPMENT_STATUSES.UNDER_REPAIR || value === EQUIPMENT_STATUSES.IN_WORKSHOP) && previousStatus === EQUIPMENT_STATUSES.BREAKDOWN && breakdownType) {
                   console.log('✅ Conditions met! Looking for personnel...')
@@ -979,7 +1011,7 @@ export function Equipment() {
                   <SelectItem value={EQUIPMENT_STATUSES.OFFLINE} className="pl-6 bg-gray-50/30 hover:bg-gray-100">
                     Offline
                   </SelectItem>
-                  
+
                   {/* Maintenance Status - Orange background */}
                   <div className="px-2 py-1.5 text-xs font-semibold text-orange-700 bg-orange-50 border-b border-orange-200 mt-1">
                     🟠 MAINTENANCE
@@ -1008,7 +1040,7 @@ export function Equipment() {
                   <SelectItem value={EQUIPMENT_STATUSES.PENDING_VALIDATION} className="pl-6 bg-orange-50/30 hover:bg-orange-100">
                     Pending Validation
                   </SelectItem>
-                  
+
                   {/* Out of Service Status - Gray background */}
                   <div className="px-2 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border-b border-gray-200 mt-1">
                     ⚫ OUT OF SERVICE
@@ -1063,7 +1095,7 @@ export function Equipment() {
                 <p className={`text-sm ${!breakdownType || !breakdownDescription ? 'text-red-700 font-medium' : 'text-yellow-700'}`}>
                   {!breakdownType || !breakdownDescription ? '⚠️ Veuillez renseigner le type et la description de la panne' : 'Ces informations aideront à suggérer le bon personnel de maintenance'}
                 </p>
-                
+
                 {/* Breakdown Type */}
                 <div className="grid gap-2">
                   <Label htmlFor="breakdownType">Type de Panne <span className="text-red-500">*</span></Label>
@@ -1133,7 +1165,7 @@ export function Equipment() {
                       onChange={(e) => handleMediaUpload(e.target.files)}
                     />
                   </div>
-                  
+
                   {/* Media Previews */}
                   {breakdownMediaPreviews.length > 0 && (
                     <div className="grid grid-cols-3 gap-2 mt-2">
@@ -1188,7 +1220,7 @@ export function Equipment() {
                 <p className={`text-sm ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-700 font-medium' : 'text-orange-700'}`}>
                   {!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? '⚠️ Please select at least one maintenance personnel to continue' : 'Select at least one maintenance personnel who will perform the maintenance work'}
                 </p>
-                
+
                 {/* Mechanic */}
                 <div className={`grid gap-2 ${breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'mechanic' ? 'p-3 border-2 border-green-400 rounded-lg bg-green-50' : ''}`}>
                   <div className="flex items-center gap-2">
@@ -1304,6 +1336,19 @@ export function Equipment() {
               <Label htmlFor="acquisitionDate">Acquisition Date</Label>
               <Input id="acquisitionDate" type="date" value={form.acquisitionDate} onChange={(e) => setForm({ ...form, acquisitionDate: e.target.value })} placeholder="Select installation date" />
             </div>
+
+            {/* QR Code Section - Only show when editing existing equipment */}
+            {editingItem && (
+              <div className="col-span-1 md:col-span-2 border-t pt-4 mt-2">
+                <Label className="mb-2 block">Equipment QR Code</Label>
+                <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <QRCodeGenerator value={editingItem._id} size={150} />
+                  <p className="text-xs text-slate-500 mt-2 text-center">
+                    Scan this code to quickly access equipment details
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSaving}>Cancel</Button>
@@ -1321,6 +1366,53 @@ export function Equipment() {
           </CardContent>
         </Card>
       )}
+
+      <QRCodeScanner
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={handleScan}
+      />
+
+      {/* Success Dialog with QR Code */}
+      <Dialog open={!!createdEquipmentId} onOpenChange={(open) => !open && setCreatedEquipmentId(null)}>
+        <DialogContent className="sm:max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl text-green-600 flex flex-col items-center gap-2">
+              <CheckCircle className="h-8 w-8" />
+              Equipment Created Successfully
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-6 space-y-4">
+            <p className="text-center text-slate-600">
+              Here is the QR Code for the new equipment. You can download or print it now.
+            </p>
+            {createdEquipmentId && (
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <QRCodeGenerator value={createdEquipmentId} size={200} />
+              </div>
+            )}
+            <div className="flex gap-2 w-full">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setCreatedEquipmentId(null)}
+              >
+                Close
+              </Button>
+              <Button
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                onClick={() => {
+                  setCreatedEquipmentId(null)
+                  // Optionally navigate to detail page
+                  // navigate(`/equipment/${createdEquipmentId}`)
+                }}
+              >
+                Done
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

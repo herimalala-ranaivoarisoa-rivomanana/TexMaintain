@@ -245,7 +245,7 @@ export function ProductionLineDashboardView({ productionLineId }: ProductionLine
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
-                        {(data.recentActivities || []).map((activity) => (
+                        {(recentActivities || []).map((activity) => (
                             <div key={activity._id} className="flex items-start space-x-4 p-4 rounded-lg bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
                                 <div className="flex-shrink-0">
                                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600">
@@ -263,7 +263,7 @@ export function ProductionLineDashboardView({ productionLineId }: ProductionLine
                                 </Badge>
                             </div>
                         ))}
-                        {(data.recentActivities || []).length === 0 && (
+                        {(recentActivities || []).length === 0 && (
                             <p className="text-center text-slate-500 py-4">No recent activities found for this line.</p>
                         )}
                     </div>

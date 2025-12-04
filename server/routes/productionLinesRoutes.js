@@ -70,7 +70,7 @@ const productionLineSchema = z.object({
   }).optional()
 });
 
-// GET /api/production-lines
+// GET /api/process-area
 router.get('/', requireUser, async (req, res) => {
   const productionLines = await ProductionLine.find().populate({
     path: 'sections.sectionId',
@@ -87,7 +87,7 @@ router.get('/', requireUser, async (req, res) => {
   return res.status(200).json({ productionLines });
 });
 
-// GET /api/production-lines/:id
+// GET /api/process-area/:id
 router.get('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
   try {
@@ -105,7 +105,7 @@ router.get('/:id', requireUser, async (req, res) => {
     }).lean();
 
     if (!productionLine) {
-      return res.status(404).json({ message: 'Production line not found' });
+      return res.status(404).json({ message: 'Process area not found' });
     }
 
     return res.status(200).json({ productionLine });
@@ -115,12 +115,12 @@ router.get('/:id', requireUser, async (req, res) => {
   }
 });
 
-// GET /api/production-lines/:id/dashboard
+// GET /api/process-area/:id/dashboard
 router.get('/:id/dashboard', requireUser, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1. Get Production Line and all its equipment
+    // 1. Get Process Area and all its equipment
     const productionLine = await ProductionLine.findById(id).populate({
       path: 'sections.sectionId',
       populate: {
@@ -129,7 +129,7 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
       }
     }).lean();
 
-    if (!productionLine) return res.status(404).json({ message: 'Production line not found' });
+    if (!productionLine) return res.status(404).json({ message: 'Process area not found' });
 
     // Extract all equipment IDs
     const equipmentList = [];
@@ -319,7 +319,7 @@ router.post('/', requireUser, async (req, res) => {
   return res.status(201).json({ success: true, productionLine: created });
 });
 
-// PATCH /api/production-lines/:id
+// PATCH /api/process-area/:id
 router.patch('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
   const updates = req.body || {};
@@ -327,11 +327,11 @@ router.patch('/:id', requireUser, async (req, res) => {
     path: 'sections.sectionId',
     model: 'ProductionSection'
   }).lean();
-  if (!updated) return res.status(404).json({ message: 'Production line not found' });
+  if (!updated) return res.status(404).json({ message: 'Process area not found' });
   return res.status(200).json({ success: true, productionLine: updated });
 });
 
-// PATCH /api/production-lines/:id/sections (update section order)
+// PATCH /api/process-area/:id/sections (update section order)
 router.patch('/:id/sections', requireUser, async (req, res) => {
   const { id } = req.params;
   const { sections } = req.body || {};
@@ -345,11 +345,11 @@ router.patch('/:id/sections', requireUser, async (req, res) => {
     model: 'ProductionSection'
   }).lean();
 
-  if (!updated) return res.status(404).json({ message: 'Production line not found' });
+  if (!updated) return res.status(404).json({ message: 'Process area not found' });
   return res.status(200).json({ success: true, productionLine: updated });
 });
 
-// DELETE /api/production-lines/:id
+// DELETE /api/process-area/:id
 router.delete('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
 
@@ -357,7 +357,7 @@ router.delete('/:id', requireUser, async (req, res) => {
   await ProductionSection.deleteMany({ productionLine: id });
 
   const deleted = await ProductionLine.findByIdAndDelete(id).lean();
-  if (!deleted) return res.status(404).json({ message: 'Production line not found' });
+  if (!deleted) return res.status(404).json({ message: 'Process area not found' });
   return res.status(200).json({ success: true });
 });
 

@@ -9,7 +9,7 @@ async function debugData() {
         await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/texmaintain');
         console.log('Connected to MongoDB');
 
-        // 1. Get all Production Lines
+        // 1. Get all Process areas
         const lines = await ProductionLine.find().populate({
             path: 'sections.sectionId',
             populate: {
@@ -18,10 +18,10 @@ async function debugData() {
             }
         });
 
-        console.log(`\nFound ${lines.length} Production Lines.`);
+        console.log(`\nFound ${lines.length} Process areas.`);
 
         if (lines.length === 0) {
-            console.log('No production lines found.');
+            console.log('No process areas found.');
         } else {
             lines.forEach(line => {
                 console.log(`\nLine: ${line.name} (ID: ${line._id})`);
