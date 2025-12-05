@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TexMaintain</string>
+    <string name="title_activity_main">TexMaintain</string>
+    <string name="package_name">com.texmaintain.app</string>
+    <string name="custom_url_scheme">com.texmaintain.app</string>
+</resources>

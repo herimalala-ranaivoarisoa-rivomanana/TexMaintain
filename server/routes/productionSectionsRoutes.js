@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
   const sections = await ProductionSection.find(query).sort(sortSpec).populate('productionLine').populate({
     path: 'equipment.equipmentId',
     model: 'Equipment',
-    populate: ['category', 'type']
+    populate: ['category', 'type', 'brand']
   }).lean();
   return res.status(200).json({ sections });
 });
@@ -29,7 +29,7 @@ router.get('/:id', requireUser, async (req, res) => {
   const section = await ProductionSection.findById(id).populate('productionLine').populate({
     path: 'equipment.equipmentId',
     model: 'Equipment',
-    populate: ['category', 'type']
+    populate: ['category', 'type', 'brand']
   }).lean();
   if (!section) return res.status(404).json({ message: 'Production section not found' });
   return res.status(200).json({ section });
@@ -66,7 +66,7 @@ router.patch('/:id', requireUser, async (req, res) => {
   const updated = await ProductionSection.findByIdAndUpdate(id, updates, { new: true }).populate('productionLine').populate({
     path: 'equipment.equipmentId',
     model: 'Equipment',
-    populate: ['category', 'type']
+    populate: ['category', 'type', 'brand']
   }).lean();
   if (!updated) return res.status(404).json({ message: 'Production section not found' });
   return res.status(200).json({ success: true, section: updated });
@@ -87,7 +87,7 @@ router.patch('/:id/equipment', requireUser, async (req, res) => {
     // Validate equipment array structure
     for (const item of equipment) {
       if (!item.equipmentId || typeof item.order !== 'number') {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: 'Each equipment item must have equipmentId (string) and order (number)',
           received: item
         });
@@ -95,13 +95,13 @@ router.patch('/:id/equipment', requireUser, async (req, res) => {
     }
 
     const updated = await ProductionSection.findByIdAndUpdate(
-      id, 
-      { equipment }, 
+      id,
+      { equipment },
       { new: true, runValidators: true }
     ).populate({
       path: 'equipment.equipmentId',
       model: 'Equipment',
-      populate: ['category', 'type']
+      populate: ['category', 'type', 'brand']
     }).lean();
 
     if (!updated) {

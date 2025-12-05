@@ -64,7 +64,7 @@ interface ProductionLine {
           status: string
           location: string
           model?: string
-          brand?: string
+          brand?: string | { _id: string, name: string }
         }
         order: number
       }>
@@ -95,7 +95,7 @@ interface Equipment {
   status: string
   location: string
   model?: string
-  brand?: string
+  brand?: string | { _id: string, name: string }
   lastBreakdownType?: string
   lastBreakdownDescription?: string
 }
@@ -110,7 +110,7 @@ interface SortableEquipmentProps {
       status: string
       location: string
       model?: string
-      brand?: string
+      brand?: string | { _id: string, name: string }
     }
   }
   onDelete: () => void
@@ -968,8 +968,9 @@ export function ProductionLines() {
                   </SelectTrigger>
                   <SelectContent className="max-h-[400px]">
                     {equipment.filter((eq) => !sections.some((s) => s.equipment.some((e) => e.equipmentId._id === eq._id))).map((eq) => {
-                      const equipmentName = eq.brand && eq.model
-                        ? `${eq.brand} ${eq.model}`
+                      const brandName = typeof eq.brand === 'object' && eq.brand ? eq.brand.name : eq.brand
+                      const equipmentName = brandName && eq.model
+                        ? `${brandName} ${eq.model}`
                         : `${eq.category?.name} ${eq.type?.name}`
 
                       return (
