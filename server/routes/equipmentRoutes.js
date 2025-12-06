@@ -409,10 +409,27 @@ router.patch('/:id', requireUser, requireRole(['admin', 'maintenance_manager', '
       if (!equipment) return res.status(404).json({ message: 'Equipment not found' });
 
       // Extract status change details
-      const { status, statusChangeReason, statusChangeNotes } = updates;
+      const {
+        status,
+        statusChangeReason,
+        statusChangeNotes,
+        machinistId,
+        mechanicId,
+        electricianId,
+        maintenanceWorkerId,
+        breakdownType,
+        breakdownDescription
+      } = updates;
+
       delete updates.status;
       delete updates.statusChangeReason;
       delete updates.statusChangeNotes;
+      delete updates.machinistId;
+      delete updates.mechanicId;
+      delete updates.electricianId;
+      delete updates.maintenanceWorkerId;
+      delete updates.breakdownType;
+      delete updates.breakdownDescription;
 
       // Update other fields first
       if (Object.keys(updates).length > 0) {
@@ -426,7 +443,13 @@ router.patch('/:id', requireUser, requireRole(['admin', 'maintenance_manager', '
         req.user._id,
         {
           reason: statusChangeReason || '',
-          notes: statusChangeNotes || ''
+          notes: statusChangeNotes || '',
+          machinistId,
+          mechanicId,
+          electricianId,
+          maintenanceWorkerId,
+          breakdownType,
+          breakdownDescription
         }
       );
 

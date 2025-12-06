@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useSearchParams, Link, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -35,34 +35,22 @@ import { getMechanics } from "@/api/mechanics"
 import { getElectricians } from "@/api/electricians"
 import { getMaintenanceWorkers } from "@/api/maintenanceWorkers"
 import { uploadBreakdownMedia } from "@/api/breakdownMedia"
-import api from "@/api/api"
+import { getEquipmentCategories } from "@/api/equipmentCategories"
+import { getEquipmentTypes } from "@/api/equipmentTypes"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
-import { EQUIPMENT_STATUSES, getStatusColor, getStatusLabel } from "@/types/equipment"
-import type { EquipmentStatus } from "@/types/equipment"
+import { EQUIPMENT_STATUSES, EquipmentStatus, getStatusColor, getStatusLabel } from "@/types/equipment"
 
-interface Equipment {
-  _id: string
-  category: Category
-  type: EquipmentType
-  status: string
-  location: string
-  model?: string
-  serialNumber?: string
-  chipNumber?: string
-  brand?: string | { _id: string; name: string }
-  acquisitionDate?: string
-  lastMaintenance: string
-  nextMaintenance: string
-  mtbf: number
-  mttr: number
-  timeSinceAcquisition: number
-  operatingTime: number
-  downtime: number
-  availability: number
-  lastBreakdownType?: string
-  lastBreakdownDescription?: string
-}
+
+
+const breakdownTypes = [
+  { value: 'mechanical', label: 'Mechanical', suggestedPersonnel: 'mechanic' },
+  { value: 'electrical', label: 'Electrical', suggestedPersonnel: 'electrician' },
+  { value: 'hydraulic', label: 'Hydraulic', suggestedPersonnel: 'mechanic' },
+  { value: 'pneumatic', label: 'Pneumatic', suggestedPersonnel: 'mechanic' },
+  { value: 'software', label: 'Software/Control', suggestedPersonnel: 'worker' },
+  { value: 'other', label: 'Other', suggestedPersonnel: 'worker' }
+]
 
 interface Category {
   _id: string
@@ -77,16 +65,44 @@ interface EquipmentType {
   category: Category
 }
 
+interface Equipment {
+  _id: string
+  name: string
+  status: string
+  category: Category
+  type: EquipmentType
+  brand: { _id: string; name: string } | string
+  model: string
+  serialNumber: string
+  chipNumber: string
+  acquisitionDate: string
+  location: string
+  lastBreakdownType?: string
+  lastBreakdownDescription?: string
+  machinistId?: string
+  mechanicId?: string
+  electricianId?: string
+  maintenanceWorkerId?: string
+  mtbf: number
+  mttr: number
+  timeSinceAcquisition: number
+  operatingTime: number
+  downtime: number
+  availability: number
+  lastMaintenance: string
+  nextMaintenance: string
+}
+
+
+
 export function Equipment() {
   const [equipment, setEquipment] = useState<Equipment[]>([])
-  const [sections, setSections] = useState<any[]>([])
-  const [lines, setLines] = useState<any[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [types, setTypes] = useState<EquipmentType[]>([])
   const [brands, setBrands] = useState<{ _id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || "all")
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10) || 1)
   const [total, setTotal] = useState(0)
@@ -95,141 +111,69 @@ export function Equipment() {
   const [order, setOrder] = useState<'asc' | 'desc'>((searchParams.get('order') as any) || 'desc')
   const { toast } = useToast()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<Equipment | null>(null)
-  const [form, setForm] = useState<{
-    category: string;
-    type: string;
-    status: string;
-    location: string;
-    model: string;
-    serialNumber: string;
-    chipNumber: string;
-    brand: string;
-    model?: string;
-    serialNumber?: string;
-    chipNumber?: string;
-    brand?: string;
-    acquisitionDate?: string;
-    mtbf: number;
-    mttr: number;
-  }>({
-    category: "",
-    type: "",
-    status: EQUIPMENT_STATUSES.STORED,
-    location: "",
-    brand: "",
-    serialNumber: "",
-    acquisitionDate: "",
-    mtbf: 0,
-    mttr: 0
-  })
-  const [createdEquipmentId, setCreatedEquipmentId] = useState<string | null>(null)
-  const [isScannerOpen, setIsScannerOpen] = useState(false)
-
-  const handleScan = (decodedText: string) => {
-    setSearchTerm(decodedText)
-    toast({
-      title: "QR Code Scanned",
-      description: `Found: ${decodedText}`,
-    })
-  }
-  const [isSaving, setIsSaving] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-
-  // Personnel states (same as ProductionLines)
-  const [machinists, setMachinists] = useState<any[]>([])
-  const [selectedMachinistId, setSelectedMachinistId] = useState('')
-  const [mechanics, setMechanics] = useState<any[]>([])
-  const [selectedMechanicId, setSelectedMechanicId] = useState('')
-  const [electricians, setElectricians] = useState<any[]>([])
-  const [selectedElectricianId, setSelectedElectricianId] = useState('')
-  const [maintenanceWorkers, setMaintenanceWorkers] = useState<any[]>([])
-  const [selectedMaintenanceWorkerId, setSelectedMaintenanceWorkerId] = useState('')
-
-  // Breakdown information
-  const [breakdownType, setBreakdownType] = useState('')
-  const [breakdownDescription, setBreakdownDescription] = useState('')
-  const [breakdownMedia, setBreakdownMedia] = useState<File[]>([])
-  const [breakdownMediaPreviews, setBreakdownMediaPreviews] = useState<string[]>([])
-
-  // Breakdown types (extensible list)
-  const breakdownTypes = [
-    { value: 'mechanical', label: 'Panne Mécanique', suggestedPersonnel: 'mechanic' },
-    { value: 'electrical', label: 'Panne Électrique', suggestedPersonnel: 'electrician' },
-    { value: 'hydraulic', label: 'Panne Hydraulique', suggestedPersonnel: 'mechanic' },
-    { value: 'pneumatic', label: 'Panne Pneumatique', suggestedPersonnel: 'mechanic' },
-    { value: 'electronic', label: 'Panne Électronique', suggestedPersonnel: 'electrician' },
-    { value: 'software', label: 'Panne Logicielle', suggestedPersonnel: 'electrician' },
-    { value: 'structural', label: 'Panne Structurelle', suggestedPersonnel: 'worker' },
-    { value: 'other', label: 'Autre', suggestedPersonnel: null }
-  ]
-
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  // Fetch personnel
-  const fetchPersonnel = async () => {
-    try {
-      const [machinistsRes, mechanicsRes, electriciansRes, workersRes] = await Promise.all([
-        getMachinists({ isActive: true, limit: 100 }),
-        getMechanics({ isActive: true }),
-        getElectricians({ isActive: true }),
-        getMaintenanceWorkers({ isActive: true })
-      ])
-      setMachinists(machinistsRes.machinists || [])
-      setMechanics(mechanicsRes.mechanics || [])
-      setElectricians(electriciansRes.electricians || [])
-      setMaintenanceWorkers(workersRes.workers || [])
-    } catch (error) {
-      console.error('Error fetching personnel:', error)
-    }
-  }
+  const [form, setForm] = useState<any>({
+    category: "",
+    type: "",
+    brand: "",
+    model: "",
+    serialNumber: "",
+    chipNumber: "",
+    acquisitionDate: "",
+    status: "offline",
+    location: "",
+    machinistId: "",
+    mechanicId: "",
+    electricianId: "",
+    maintenanceWorkerId: "",
+    breakdownType: "",
+    breakdownDescription: "",
+    images: []
+  })
+  const [editingItem, setEditingItem] = useState<any>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
+  const [createdEquipmentId, setCreatedEquipmentId] = useState<string | null>(null)
 
-  // Fetch categories, types, brands, and sections on mount
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [categoriesResponse, typesResponse, brandsResponse, sectionsResponse, linesResponse] = await Promise.all([
-          api.get('/api/equipment-categories'),
-          api.get('/api/equipment-types'),
-          getBrands(),
-          api.get('/api/production-sections'),
-          api.get('/api/process-area')
-        ])
-        setCategories((categoriesResponse.data as any).categories || [])
-        setTypes((typesResponse.data as any).types || [])
-        setBrands(brandsResponse.brands || [])
-        setSections((sectionsResponse.data as any).sections || [])
-        setLines((linesResponse.data as any).productionLines || [])
-      } catch (error) {
-        console.error('Error fetching data:', error)
-        toast({
-          title: "Error",
-          description: "Failed to load equipment data",
-          variant: "destructive",
-        })
-      }
-    }
+  // Personnel state
+  const [machinists, setMachinists] = useState<any[]>([])
+  const [mechanics, setMechanics] = useState<any[]>([])
+  const [electricians, setElectricians] = useState<any[]>([])
+  const [maintenanceWorkers, setMaintenanceWorkers] = useState<any[]>([])
 
-    fetchData()
-    fetchPersonnel()
-  }, [toast])
+  // Selected personnel state
+  const [selectedMachinistId, setSelectedMachinistId] = useState<string>("")
+  const [selectedMechanicId, setSelectedMechanicId] = useState<string>("")
+  const [selectedElectricianId, setSelectedElectricianId] = useState<string>("")
+  const [selectedMaintenanceWorkerId, setSelectedMaintenanceWorkerId] = useState<string>("")
+
+  // Breakdown state
+  const [breakdownType, setBreakdownType] = useState<string>("")
+  const [breakdownDescription, setBreakdownDescription] = useState<string>("")
+  const [breakdownMedia, setBreakdownMedia] = useState<File[]>([])
+  const [breakdownMediaPreviews, setBreakdownMediaPreviews] = useState<string[]>([])
+  const [isSaving, setIsSaving] = useState(false)
 
   const fetchEquipment = async () => {
     try {
-      console.log('Fetching equipment data...')
-      const params: any = { page, limit, sort, order }
-      if (statusFilter !== 'all') params.status = statusFilter
-      if (searchTerm) params.q = searchTerm
-      const response = await getEquipment(params)
-      setEquipment((response as any).equipment)
-      setTotal((response as any).total || 0)
-      console.log('Equipment data loaded successfully')
+      setLoading(true)
+      const data = await getEquipment({
+        page,
+        limit,
+        sort,
+        order,
+        q: searchTerm,
+        status: statusFilter !== 'all' ? statusFilter : undefined
+      })
+      setEquipment(data.equipment || [])
+      setTotal(data.total)
     } catch (error) {
-      console.error('Error fetching equipment:', error)
+      console.error("Error fetching equipment:", error)
       toast({
         title: "Error",
-        description: "Failed to load equipment data",
+        description: "Failed to fetch equipment",
         variant: "destructive",
       })
     } finally {
@@ -239,84 +183,117 @@ export function Equipment() {
 
   useEffect(() => {
     fetchEquipment()
-  }, [toast, page, statusFilter, limit, sort, order])
+  }, [page, limit, sort, order, searchTerm, statusFilter])
 
   useEffect(() => {
-    // Refresh data every 30 seconds for dynamic metrics
-    const interval = setInterval(fetchEquipment, 30000)
-    return () => clearInterval(interval)
+    const fetchData = async () => {
+      try {
+        const [categoriesData, typesData, brandsData, machinistsData, mechanicsData, electriciansData, workersData] = await Promise.all([
+          getEquipmentCategories(),
+          getEquipmentTypes(),
+          getBrands(),
+          getMachinists(),
+          getMechanics(),
+          getElectricians(),
+          getMaintenanceWorkers()
+        ])
+        setCategories(categoriesData.categories || categoriesData)
+        setTypes(typesData.types || typesData)
+        setBrands(brandsData.brands || [])
+        setMachinists(machinistsData.machinists || [])
+        setMechanics(mechanicsData.mechanics || [])
+        setElectricians(electriciansData.electricians || [])
+        setMaintenanceWorkers(workersData.workers || [])
+      } catch (error) {
+        console.error("Error fetching initial data:", error)
+      }
+    }
+    fetchData()
   }, [])
 
-  // Sync state to URL
-  useEffect(() => {
-    const next = new URLSearchParams()
-    if (page && page !== 1) next.set('page', String(page))
-    if (statusFilter && statusFilter !== 'all') next.set('status', statusFilter)
-    if (searchTerm) next.set('q', searchTerm)
-    if (sort && sort !== 'createdAt') next.set('sort', sort)
-    if (order && order !== 'desc') next.set('order', order)
-    setSearchParams(next, { replace: true })
-  }, [page, statusFilter, searchTerm, sort, order, setSearchParams])
+  const openAddDialog = () => {
+    setEditingItem(null)
+    setForm({
+      category: "",
+      type: "",
+      brand: "",
+      model: "",
+      serialNumber: "",
+      chipNumber: "",
+      acquisitionDate: "",
+      status: "offline",
+      location: "",
+      machinistId: "",
+      mechanicId: "",
+      electricianId: "",
+      maintenanceWorkerId: "",
+      breakdownType: "",
+      breakdownDescription: "",
+      images: []
+    })
+    setSelectedMachinistId("")
+    setSelectedMechanicId("")
+    setSelectedElectricianId("")
+    setSelectedMaintenanceWorkerId("")
+    setBreakdownType("")
+    setBreakdownDescription("")
+    setBreakdownMedia([])
+    setBreakdownMediaPreviews([])
+    setIsDialogOpen(true)
+  }
 
-  // Persist limit
-  useEffect(() => {
-    localStorage.setItem('eq_limit', String(limit))
-  }, [limit])
-
-  const rangeLabel = useMemo(() => {
-    const start = total === 0 ? 0 : (page - 1) * limit + 1
-    const end = Math.min(page * limit, total)
-    return `${start}-${end} of ${total}`
-  }, [page, limit, total])
-
-
-  // Handle media file upload
-  const handleMediaUpload = (files: FileList | null) => {
-    if (!files) return
-
-    const newFiles = Array.from(files).filter(file => {
-      const isImage = file.type.startsWith('image/')
-      const isVideo = file.type.startsWith('video/')
-      const isUnder10MB = file.size <= 10 * 1024 * 1024 // 10MB limit
-
-      if (!isImage && !isVideo) {
-        toast({
-          title: 'Type de fichier non supporté',
-          description: `${file.name} n'est pas une image ou vidéo`,
-          variant: 'destructive'
-        })
-        return false
-      }
-
-      if (!isUnder10MB) {
-        toast({
-          title: 'Fichier trop volumineux',
-          description: `${file.name} dépasse 10MB`,
-          variant: 'destructive'
-        })
-        return false
-      }
-
-      return true
+  const openEditDialog = (item: any) => {
+    setEditingItem(item)
+    setForm({
+      category: item.category?._id || "",
+      type: item.type?._id || "",
+      brand: item.brand?._id || "",
+      model: item.model || "",
+      serialNumber: item.serialNumber || "",
+      chipNumber: item.chipNumber || "",
+      acquisitionDate: item.acquisitionDate ? item.acquisitionDate.split('T')[0] : "",
+      status: item.status || "offline",
+      location: item.location || "",
+      machinistId: item.machinistId || "",
+      mechanicId: item.mechanicId || "",
+      electricianId: item.electricianId || "",
+      maintenanceWorkerId: item.maintenanceWorkerId || "",
+      breakdownType: item.lastBreakdownType || "",
+      breakdownDescription: item.lastBreakdownDescription || "",
+      images: []
     })
 
-    if (newFiles.length === 0) return
+    setSelectedMachinistId(item.machinistId || "")
+    setSelectedMechanicId(item.mechanicId || "")
+    setSelectedElectricianId(item.electricianId || "")
+    setSelectedMaintenanceWorkerId(item.maintenanceWorkerId || "")
 
-    // Create previews
-    const newPreviews = newFiles.map(file => URL.createObjectURL(file))
+    if (item.status === EQUIPMENT_STATUSES.BREAKDOWN) {
+      setBreakdownType(item.lastBreakdownType || "")
+      setBreakdownDescription(item.lastBreakdownDescription || "")
+    } else {
+      setBreakdownType("")
+      setBreakdownDescription("")
+    }
 
-    setBreakdownMedia(prev => [...prev, ...newFiles])
-    setBreakdownMediaPreviews(prev => [...prev, ...newPreviews])
+    setBreakdownMedia([])
+    setBreakdownMediaPreviews([])
+    setIsDialogOpen(true)
   }
 
-  // Remove media file
-  const removeMedia = (index: number) => {
-    URL.revokeObjectURL(breakdownMediaPreviews[index])
-    setBreakdownMedia(prev => prev.filter((_, i) => i !== index))
-    setBreakdownMediaPreviews(prev => prev.filter((_, i) => i !== index))
+
+
+  const handleScan = (data: string) => {
+    if (data) {
+      setSearchTerm(data)
+      setIsScannerOpen(false)
+      toast({
+        title: "QR Code Scanned",
+        description: `Found equipment: ${data}`,
+      })
+    }
   }
 
-  // Handle drag and drop
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -325,53 +302,26 @@ export function Equipment() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    handleMediaUpload(e.dataTransfer.files)
-  }
-
-  const openAddDialog = () => {
-    setEditingItem(null)
-    setForm({ category: "cutting", type: "", status: EQUIPMENT_STATUSES.STORED, location: "", model: "", serialNumber: "", chipNumber: "", brand: "", acquisitionDate: "" })
-    // Reset personnel selections
-    setSelectedMachinistId('')
-    setSelectedMechanicId('')
-    setSelectedElectricianId('')
-    setSelectedMaintenanceWorkerId('')
-    // Reset breakdown info
-    setBreakdownType('')
-    setBreakdownDescription('')
-    setBreakdownMedia([])
-    setBreakdownMediaPreviews([])
-    setIsDialogOpen(true)
-  }
-
-  const openEditDialog = async (item: Equipment) => {
-    setEditingItem(item)
-    const brandId = typeof item.brand === 'object' && item.brand ? item.brand._id : (item.brand || "")
-    setForm({ category: item.category._id, type: item.type._id, status: item.status, location: item.location, model: item.model || "", serialNumber: item.serialNumber || "", chipNumber: item.chipNumber || "", brand: brandId, acquisitionDate: item.acquisitionDate ? new Date(item.acquisitionDate).toISOString().split('T')[0] : "" })
-    // Reset personnel selections
-    setSelectedMachinistId('')
-    setSelectedMechanicId('')
-    setSelectedElectricianId('')
-    setSelectedMaintenanceWorkerId('')
-    // Reset breakdown info
-    setBreakdownType('')
-    setBreakdownDescription('')
-    setBreakdownMedia([])
-    setBreakdownMediaPreviews([])
-
-    // Load breakdown info if equipment is in breakdown status
-    if (item.status === EQUIPMENT_STATUSES.BREAKDOWN) {
-      console.log('🔍 Loading breakdown info for equipment:', item._id)
-      if (item.lastBreakdownType) {
-        console.log('✅ Found breakdown info in equipment:', item.lastBreakdownType)
-        setBreakdownType(item.lastBreakdownType)
-        setBreakdownDescription(item.lastBreakdownDescription || '')
-      } else {
-        console.log('⚠️ No breakdown info found in equipment')
-      }
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleMediaUpload(e.dataTransfer.files)
     }
+  }
 
-    setIsDialogOpen(true)
+  const handleMediaUpload = (files: FileList | null) => {
+    if (!files) return
+    const newFiles = Array.from(files)
+    setBreakdownMedia(prev => [...prev, ...newFiles])
+
+    const newPreviews = newFiles.map(file => URL.createObjectURL(file))
+    setBreakdownMediaPreviews(prev => [...prev, ...newPreviews])
+  }
+
+  const removeMedia = (index: number) => {
+    setBreakdownMedia(prev => prev.filter((_, i) => i !== index))
+    setBreakdownMediaPreviews(prev => {
+      URL.revokeObjectURL(prev[index])
+      return prev.filter((_, i) => i !== index)
+    })
   }
 
   const handleSave = async () => {
@@ -444,7 +394,7 @@ export function Equipment() {
           if (statusChanged) {
             // Step 1: Change status (with or without personnel)
             await changeEquipmentStatus(editingItem._id, {
-              status: form.status as EquipmentStatus,
+              status: form.status as any,
               machinistId: selectedMachinistId || undefined,
               mechanicId: selectedMechanicId || undefined,
               electricianId: selectedElectricianId || undefined,
@@ -513,6 +463,7 @@ export function Equipment() {
         const tempType = types.find(t => t._id === form.type) || { _id: form.type, name: 'Loading...', category: tempCategory }
         const tempItem: Equipment = {
           _id: tempId,
+          name: 'New Equipment',
           category: tempCategory,
           type: tempType,
           status: form.status,
@@ -573,11 +524,20 @@ export function Equipment() {
       try {
         await deleteEquipment(id)
         toast({ title: "Deleted", description: "Equipment deleted" })
-      } catch (err) {
-        setEquipment(prev)
-        throw err
+      } catch (err: any) {
+        if (err.response && err.response.status === 404) {
+          // Item already deleted on server, just keep the local removal
+          toast({ title: "Deleted", description: "Equipment was already deleted" })
+        } else {
+          setEquipment(prev)
+          throw err
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response && error.response.status === 404) {
+        // Already handled above, but just in case
+        return
+      }
       console.error('Delete equipment error:', error)
       toast({ title: "Error", description: "Failed to delete equipment", variant: "destructive" })
     }
@@ -633,16 +593,13 @@ export function Equipment() {
   }
 
   const getEquipmentLocation = (equipmentId: string) => {
-    const section = sections.find(s => s.equipment.some((e: any) => e.equipmentId._id === equipmentId))
-    if (section) {
-      const line = lines.find(l => l._id === section.productionLine._id)
-      return `Line: ${line?.name || 'Unknown'}, Section: ${section.name}`
-    }
     return 'Not assigned'
   }
 
-
   const filteredEquipment = equipment
+  const start = (page - 1) * limit + 1
+  const end = Math.min(page * limit, total)
+  const rangeLabel = total > 0 ? `Showing ${start}-${end} of ${total}` : 'No equipment found'
 
   if (loading) {
     return (
@@ -754,7 +711,7 @@ export function Equipment() {
 
       {/* Equipment Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredEquipment.map((item) => (
+        {filteredEquipment?.map((item) => (
           <Card key={item._id} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -953,20 +910,9 @@ export function Equipment() {
                 const previousStatus = editingItem?.status || form.status
                 setForm({ ...form, status: value })
 
-                // Debug logs
-                console.log('=== AUTO-SUGGESTION DEBUG ===')
-                console.log('New Status:', value)
-                console.log('Previous Status:', previousStatus)
-                console.log('Breakdown Type:', breakdownType)
-                console.log('Is Under Repair?', value === EQUIPMENT_STATUSES.UNDER_REPAIR)
-                console.log('Was Breakdown?', previousStatus === EQUIPMENT_STATUSES.BREAKDOWN)
-                console.log('Has Breakdown Type?', !!breakdownType)
-
                 // Auto-suggest personnel when changing to Under Repair or In Workshop from Breakdown
                 if ((value === EQUIPMENT_STATUSES.UNDER_REPAIR || value === EQUIPMENT_STATUSES.IN_WORKSHOP) && previousStatus === EQUIPMENT_STATUSES.BREAKDOWN && breakdownType) {
-                  console.log('✅ Conditions met! Looking for personnel...')
                   const selectedType = breakdownTypes.find(t => t.value === breakdownType)
-                  console.log('Selected Type:', selectedType)
                   if (selectedType?.suggestedPersonnel === 'mechanic' && mechanics.length > 0) {
                     setSelectedMechanicId(mechanics[0]._id)
                     toast({
@@ -1055,12 +1001,12 @@ export function Equipment() {
               </Select>
             </div>
 
-            {/* Machinist Selection - Only show when status is "In Production" */}
+            {/* Machinist Selection for Production */}
             {form.status === EQUIPMENT_STATUSES.IN_PRODUCTION && (
-              <div className="grid gap-2">
-                <Label htmlFor="machinist">Machinist <span className="text-red-500">*</span></Label>
+              <div className="grid gap-2 p-3 bg-green-50 rounded-md border border-green-200">
+                <Label htmlFor="machinist" className="text-green-800">Assigned Machinist *</Label>
                 <Select value={selectedMachinistId} onValueChange={setSelectedMachinistId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white">
                     <SelectValue placeholder="Select machinist" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
@@ -1083,7 +1029,100 @@ export function Equipment() {
               </div>
             )}
 
-            {/* Breakdown Information - Only show when status is "Breakdown" */}
+            {/* Maintenance Personnel Selection */}
+            {([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE, EQUIPMENT_STATUSES.IN_WORKSHOP] as EquipmentStatus[]).includes(form.status as EquipmentStatus) && (
+              <div className={`space-y-4 p-4 border rounded-lg ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'bg-red-50 border-red-300' : 'bg-orange-50'}`}>
+                <div className="flex items-center gap-2">
+                  <Wrench className={`h-5 w-5 ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-600' : 'text-orange-600'}`} />
+                  <Label className={`text-base font-semibold ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-900' : 'text-orange-900'}`}>
+                    Maintenance Personnel <span className="text-red-500">*</span>
+                  </Label>
+                </div>
+                <p className={`text-sm ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-700 font-medium' : 'text-orange-700'}`}>
+                  {!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? '⚠️ Please select at least one maintenance personnel to continue' : 'Select at least one maintenance personnel who will perform the maintenance work'}
+                </p>
+
+                {/* Mechanic */}
+                <div className={`grid gap-2 ${breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'mechanic' ? 'p-3 border-2 border-green-400 rounded-lg bg-green-50' : ''}`}>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="mechanic">Mechanic</Label>
+                    {breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'mechanic' && (
+                      <Badge className="bg-green-500 text-white text-xs">✓ Suggéré</Badge>
+                    )}
+                  </div>
+                  <Select value={selectedMechanicId} onValueChange={(val) => setSelectedMechanicId(val === 'none' ? '' : val)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select mechanic (optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      <SelectItem value="none">None</SelectItem>
+                      {mechanics.map((mechanic) => (
+                        <SelectItem key={mechanic._id} value={mechanic._id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{mechanic.fullName}</span>
+                            <span className="text-xs text-slate-500">Matricule: {mechanic.matricule}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Electrician */}
+                <div className={`grid gap-2 ${breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'electrician' ? 'p-3 border-2 border-green-400 rounded-lg bg-green-50' : ''}`}>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="electrician">Electrician</Label>
+                    {breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'electrician' && (
+                      <Badge className="bg-green-500 text-white text-xs">✓ Suggéré</Badge>
+                    )}
+                  </div>
+                  <Select value={selectedElectricianId} onValueChange={(val) => setSelectedElectricianId(val === 'none' ? '' : val)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select electrician (optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      <SelectItem value="none">None</SelectItem>
+                      {electricians.map((electrician) => (
+                        <SelectItem key={electrician._id} value={electrician._id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{electrician.fullName}</span>
+                            <span className="text-xs text-slate-500">Matricule: {electrician.matricule}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Maintenance Worker */}
+                <div className={`grid gap-2 ${breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'worker' ? 'p-3 border-2 border-green-400 rounded-lg bg-green-50' : ''}`}>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="maintenanceWorker">Maintenance Worker</Label>
+                    {breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'worker' && (
+                      <Badge className="bg-green-500 text-white text-xs">✓ Suggéré</Badge>
+                    )}
+                  </div>
+                  <Select value={selectedMaintenanceWorkerId} onValueChange={(val) => setSelectedMaintenanceWorkerId(val === 'none' ? '' : val)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select maintenance worker (optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      <SelectItem value="none">None</SelectItem>
+                      {maintenanceWorkers.map((worker) => (
+                        <SelectItem key={worker._id} value={worker._id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{worker.fullName}</span>
+                            <span className="text-xs text-slate-500">Matricule: {worker.matricule}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {/* Breakdown Info */}
             {form.status === EQUIPMENT_STATUSES.BREAKDOWN && (
               <div className={`space-y-4 p-4 border rounded-lg ${!breakdownType || !breakdownDescription ? 'bg-red-50 border-red-300' : 'bg-yellow-50 border-yellow-300'}`}>
                 <div className="flex items-center gap-2">
@@ -1204,99 +1243,6 @@ export function Equipment() {
                   <p className="text-xs text-slate-500">
                     {breakdownMedia.length} fichier(s) sélectionné(s)
                   </p>
-                </div>
-              </div>
-            )}
-
-            {/* Maintenance Personnel Selection - Only show for maintenance statuses */}
-            {([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE, EQUIPMENT_STATUSES.IN_WORKSHOP] as EquipmentStatus[]).includes(form.status as EquipmentStatus) && (
-              <div className={`space-y-4 p-4 border rounded-lg ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'bg-red-50 border-red-300' : 'bg-orange-50'}`}>
-                <div className="flex items-center gap-2">
-                  <Wrench className={`h-5 w-5 ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-600' : 'text-orange-600'}`} />
-                  <Label className={`text-base font-semibold ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-900' : 'text-orange-900'}`}>
-                    Maintenance Personnel <span className="text-red-500">*</span>
-                  </Label>
-                </div>
-                <p className={`text-sm ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-700 font-medium' : 'text-orange-700'}`}>
-                  {!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? '⚠️ Please select at least one maintenance personnel to continue' : 'Select at least one maintenance personnel who will perform the maintenance work'}
-                </p>
-
-                {/* Mechanic */}
-                <div className={`grid gap-2 ${breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'mechanic' ? 'p-3 border-2 border-green-400 rounded-lg bg-green-50' : ''}`}>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="mechanic">Mechanic</Label>
-                    {breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'mechanic' && (
-                      <Badge className="bg-green-500 text-white text-xs">✓ Suggéré</Badge>
-                    )}
-                  </div>
-                  <Select value={selectedMechanicId} onValueChange={(val) => setSelectedMechanicId(val === 'none' ? '' : val)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select mechanic (optional)" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
-                      <SelectItem value="none">None</SelectItem>
-                      {mechanics.map((mechanic) => (
-                        <SelectItem key={mechanic._id} value={mechanic._id}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{mechanic.fullName}</span>
-                            <span className="text-xs text-slate-500">Matricule: {mechanic.matricule}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Electrician */}
-                <div className={`grid gap-2 ${breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'electrician' ? 'p-3 border-2 border-green-400 rounded-lg bg-green-50' : ''}`}>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="electrician">Electrician</Label>
-                    {breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'electrician' && (
-                      <Badge className="bg-green-500 text-white text-xs">✓ Suggéré</Badge>
-                    )}
-                  </div>
-                  <Select value={selectedElectricianId} onValueChange={(val) => setSelectedElectricianId(val === 'none' ? '' : val)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select electrician (optional)" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
-                      <SelectItem value="none">None</SelectItem>
-                      {electricians.map((electrician) => (
-                        <SelectItem key={electrician._id} value={electrician._id}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{electrician.fullName}</span>
-                            <span className="text-xs text-slate-500">Matricule: {electrician.matricule}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Maintenance Worker */}
-                <div className={`grid gap-2 ${breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'worker' ? 'p-3 border-2 border-green-400 rounded-lg bg-green-50' : ''}`}>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="maintenanceWorker">Maintenance Worker</Label>
-                    {breakdownType && breakdownTypes.find(t => t.value === breakdownType)?.suggestedPersonnel === 'worker' && (
-                      <Badge className="bg-green-500 text-white text-xs">✓ Suggéré</Badge>
-                    )}
-                  </div>
-                  <Select value={selectedMaintenanceWorkerId} onValueChange={(val) => setSelectedMaintenanceWorkerId(val === 'none' ? '' : val)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select maintenance worker (optional)" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
-                      <SelectItem value="none">None</SelectItem>
-                      {maintenanceWorkers.map((worker) => (
-                        <SelectItem key={worker._id} value={worker._id}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{worker.fullName}</span>
-                            <span className="text-xs text-slate-500">Matricule: {worker.matricule}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             )}

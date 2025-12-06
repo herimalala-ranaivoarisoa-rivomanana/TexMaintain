@@ -57,7 +57,7 @@ export function PartEquipmentsList({ partId }: PartEquipmentsListProps) {
       default:
         return 0
     }
-  })
+  }).filter(assoc => assoc && assoc.equipment)
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {

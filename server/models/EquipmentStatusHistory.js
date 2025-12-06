@@ -19,7 +19,7 @@ const EQUIPMENT_STATUSES = {
   CHANGEOVER: 'changeover',
   BREAKDOWN: 'breakdown',
   OFFLINE: 'offline',
-  
+
   // Maintenance States
   SCHEDULED_MAINTENANCE: 'scheduled_maintenance',
   UNDER_REPAIR: 'under_repair',
@@ -28,7 +28,7 @@ const EQUIPMENT_STATUSES = {
   TESTING_AFTER_REPAIR: 'testing_after_repair',
   UNDER_INSPECTION: 'under_inspection',
   PENDING_VALIDATION: 'pending_validation',
-  
+
   // Out of Service States
   STORED: 'stored',
   SCRAPPED: 'scrapped'
@@ -51,7 +51,7 @@ const STATUS_METADATA = {
     color: 'blue',
     icon: 'settings',
     description: 'Equipment being set up or adjusted before production',
-    allowedTransitions: ['in_production', 'breakdown', 'scheduled_maintenance','offline', 'stored']
+    allowedTransitions: ['in_production', 'breakdown', 'scheduled_maintenance', 'offline', 'stored']
   },
   paused_by_operator: {
     label: 'Paused by Operator',
@@ -59,7 +59,7 @@ const STATUS_METADATA = {
     color: 'yellow',
     icon: 'pause',
     description: 'Temporarily paused by operator',
-    allowedTransitions: ['in_production', 'changeover','offline', 'stored']
+    allowedTransitions: ['in_production', 'changeover', 'offline', 'stored']
   },
   changeover: {
     label: 'Changeover',
@@ -69,7 +69,7 @@ const STATUS_METADATA = {
     description: 'Changing product series or configuration',
     allowedTransitions: ['setup_adjustment', 'in_production', 'breakdown', 'scheduled_maintenance', 'offline', 'stored']
   },
-  
+
   // Maintenance States
   scheduled_maintenance: {
     label: 'Scheduled Maintenance',
@@ -77,8 +77,7 @@ const STATUS_METADATA = {
     color: 'orange',
     icon: 'calendar',
     description: 'Preventive maintenance in progress',
-    //allowedTransitions: ['testing_after_repair', 'pending_validation', 'in_production', 'under_repair']
-    allowedTransitions: ['in_production', 'offine', 'stored']
+    allowedTransitions: ['in_production', 'offline', 'stored', 'scrapped']
   },
   breakdown: {
     label: 'Breakdown',
@@ -86,7 +85,7 @@ const STATUS_METADATA = {
     color: 'red',
     icon: 'alert-triangle',
     description: 'Equipment has broken down',
-    allowedTransitions: ['under_inspection', 'under_repair', 'in_workshop']
+    allowedTransitions: ['under_inspection', 'under_repair', 'in_workshop', 'in_production', 'stored', 'scrapped']
   },
   under_repair: {
     label: 'Under Repair',
@@ -94,7 +93,7 @@ const STATUS_METADATA = {
     color: 'red',
     icon: 'wrench',
     description: 'Equipment is being repaired',
-    allowedTransitions: ['in_workshop', 'in_production', 'offline']
+    allowedTransitions: ['in_workshop', 'in_production', 'offline', 'stored', 'scrapped']
   },
   in_workshop: {
     label: 'In Workshop',
@@ -102,7 +101,7 @@ const STATUS_METADATA = {
     color: 'red',
     icon: 'tool',
     description: 'Equipment moved to workshop for repair',
-    allowedTransitions: ['waiting_spare_parts', 'testing_after_repair','in_production','stored', 'scrapped']
+    allowedTransitions: ['waiting_spare_parts', 'testing_after_repair', 'in_production', 'stored', 'scrapped']
   },
   waiting_spare_parts: {
     label: 'Waiting Spare Parts',
@@ -110,7 +109,7 @@ const STATUS_METADATA = {
     color: 'orange',
     icon: 'package',
     description: 'Waiting for spare parts to arrive',
-    allowedTransitions: ['under_repair', 'in_workshop']
+    allowedTransitions: ['under_repair', 'in_workshop', 'in_production', 'stored', 'scrapped']
   },
   testing_after_repair: {
     label: 'Testing After Repair',
@@ -118,7 +117,7 @@ const STATUS_METADATA = {
     color: 'blue',
     icon: 'check-circle',
     description: 'Testing equipment after repair',
-    allowedTransitions: ['pending_validation', 'in_production', 'under_repair']
+    allowedTransitions: ['pending_validation', 'in_production', 'under_repair', 'stored', 'scrapped']
   },
   under_inspection: {
     label: 'Under Inspection',
@@ -126,7 +125,7 @@ const STATUS_METADATA = {
     color: 'yellow',
     icon: 'search',
     description: 'Equipment being inspected or diagnosed',
-    allowedTransitions: ['under_repair', 'in_workshop', 'scheduled_maintenance', 'in_production']
+    allowedTransitions: ['under_repair', 'in_workshop', 'scheduled_maintenance', 'in_production', 'stored', 'scrapped']
   },
   pending_validation: {
     label: 'Pending Validation',
@@ -134,9 +133,9 @@ const STATUS_METADATA = {
     color: 'blue',
     icon: 'clipboard-check',
     description: 'Awaiting validation for maintenance completion',
-    allowedTransitions: ['in_production', 'setup_adjustment', 'under_repair']
+    allowedTransitions: ['in_production', 'setup_adjustment', 'under_repair', 'stored', 'scrapped']
   },
-  
+
   // Out of Service States
   stored: {
     label: 'Stored',
@@ -152,7 +151,7 @@ const STATUS_METADATA = {
     color: 'gray',
     icon: 'power',
     description: 'Equipment temporarily not in use',
-    allowedTransitions: ['in_production','stored', 'setup_adjustment', 'scheduled_maintenance', 'scrapped']
+    allowedTransitions: ['in_production', 'stored', 'setup_adjustment', 'scheduled_maintenance', 'scrapped']
   },
   scrapped: {
     label: 'Scrapped',
@@ -246,12 +245,12 @@ equipmentStatusHistorySchema.index({ newStatus: 1, timestamp: -1 });
 equipmentStatusHistorySchema.index({ changedBy: 1, timestamp: -1 });
 
 // Virtual for status category
-equipmentStatusHistorySchema.virtual('statusCategory').get(function() {
+equipmentStatusHistorySchema.virtual('statusCategory').get(function () {
   return STATUS_METADATA[this.newStatus]?.category || 'unknown';
 });
 
 // Virtual for status metadata
-equipmentStatusHistorySchema.virtual('statusMetadata').get(function() {
+equipmentStatusHistorySchema.virtual('statusMetadata').get(function () {
   return STATUS_METADATA[this.newStatus] || {};
 });
 

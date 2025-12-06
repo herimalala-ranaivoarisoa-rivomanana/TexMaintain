@@ -101,11 +101,19 @@ router.post('/', requireUser, async (req, res) => {
       .lean();
 
     // Trigger metric recalculation if intervention affects metrics
-    if (created.equipmentId && created.status === 'Completed' && ['Corrective', 'Emergency'].includes(created.type)) {
-      // Don't await to avoid blocking response
-      EquipmentMetricsService.calculateMetrics(created.equipmentId).catch(err =>
-        console.error(`Error recalculating metrics for ${created.equipmentId}:`, err)
-      );
+    if (created.equipmentId && created.status === 'Completed') {
+      // Update lastMaintenance
+      const completionDate = created.completedDate || created.dueDate || new Date();
+      Equipment.findByIdAndUpdate(created.equipmentId, {
+        lastMaintenance: completionDate
+      }).catch(err => console.error(`Error updating lastMaintenance for ${created.equipmentId}:`, err));
+
+      if (['Corrective', 'Emergency'].includes(created.type)) {
+        // Don't await to avoid blocking response
+        EquipmentMetricsService.calculateMetrics(created.equipmentId).catch(err =>
+          console.error(`Error recalculating metrics for ${created.equipmentId}:`, err)
+        );
+      }
     }
 
     return res.status(200).json({
@@ -149,6 +157,14 @@ router.patch('/:id', requireUser, async (req, res) => {
 
     // Trigger metric recalculation if intervention affects metrics
     if (updated.equipmentId) {
+      // If intervention is completed, update lastMaintenance on equipment
+      if (updated.status === 'Completed') {
+        const completionDate = updated.completedDate || updated.dueDate || new Date();
+        await Equipment.findByIdAndUpdate(updated.equipmentId, {
+          lastMaintenance: completionDate
+        });
+      }
+
       // Recalculate if status is Completed or was Completed, or if dates changed
       // Simplest approach: always recalculate for Corrective/Emergency
       if (['Corrective', 'Emergency'].includes(updated.type)) {

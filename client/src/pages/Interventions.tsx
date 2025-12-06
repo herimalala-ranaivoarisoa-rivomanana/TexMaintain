@@ -8,12 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  Wrench, 
-  AlertTriangle, 
+import {
+  Search,
+  Filter,
+  Plus,
+  Wrench,
+  AlertTriangle,
   Clock,
   User,
   Calendar,
@@ -21,8 +21,15 @@ import {
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { getInterventions, createIntervention, updateIntervention, deleteIntervention } from "@/api/interventions"
+import { getEquipment, changeEquipmentStatus } from "@/api/equipment"
+import { EQUIPMENT_STATUSES, STATUS_METADATA, getStatusLabel, EQUIPMENT_STATUS_CATEGORIES } from "@/types/equipment"
+import { getMechanics } from "@/api/mechanics"
+import { getElectricians } from "@/api/electricians"
+import { getMaintenanceWorkers } from "@/api/maintenanceWorkers"
+import { getMachinists } from "@/api/machinists"
 import { useAuth } from "@/contexts/AuthContext"
 import { useToast } from "@/hooks/useToast"
+import { useDebounce } from "@/hooks/useDebounce"
 import { saveAs } from "file-saver"
 
 interface Intervention {
@@ -35,32 +42,65 @@ interface Intervention {
   assignedTo: string
   createdDate: string
   dueDate: string
+  equipmentId?: {
+    _id: string
+    status: string
+    location: string
+    category: { name: string }
+    type: { name: string }
+  }
 }
 
 export function Interventions() {
   const [interventions, setInterventions] = useState<Intervention[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const debouncedSearchTerm = useDebounce(searchTerm, 500)
   const [searchParams, setSearchParams] = useSearchParams()
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || "all")
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10) || 1)
   const [total, setTotal] = useState(0)
   const [limit, setLimit] = useState<number>(() => parseInt(localStorage.getItem('int_limit') || '12', 10) || 12)
   const [sort, setSort] = useState<string>(searchParams.get('sort') || 'createdDate')
-  const [order, setOrder] = useState<'asc'|'desc'>((searchParams.get('order') as any) || 'desc')
+  const [order, setOrder] = useState<'asc' | 'desc'>((searchParams.get('order') as any) || 'desc')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [newIntervention, setNewIntervention] = useState({
     title: "",
     type: "",
     priority: "",
+    equipmentId: "",
     equipment: "",
-    description: ""
+    assignedTo: "",
+    description: "",
+    dueDate: ""
   })
+  const [equipmentList, setEquipmentList] = useState<any[]>([])
+  const [personnelList, setPersonnelList] = useState<any[]>([])
   const { toast } = useToast()
   const { user } = useAuth()
   const [creating, setCreating] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  // Start Intervention Dialog State
+  const [startDialogOpen, setStartDialogOpen] = useState(false)
+  const [selectedIntervention, setSelectedIntervention] = useState<any>(null)
+  const [selectedMechanicId, setSelectedMechanicId] = useState<string>("")
+  const [selectedElectricianId, setSelectedElectricianId] = useState<string>("")
+  const [selectedMaintenanceWorkerId, setSelectedMaintenanceWorkerId] = useState<string>("")
+  const [isStarting, setIsStarting] = useState(false)
+
+  // Update Status Dialog State
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
+  const [selectedUpdateStatus, setSelectedUpdateStatus] = useState<string>("")
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [updateMechanicId, setUpdateMechanicId] = useState<string>("")
+  const [updateElectricianId, setUpdateElectricianId] = useState<string>("")
+  const [updateMaintenanceWorkerId, setUpdateMaintenanceWorkerId] = useState<string>("")
+  const [updateMachinistId, setUpdateMachinistId] = useState<string>("")
+
+  // Statuses that require personnel selection
+  const PERSONNEL_REQUIRED_STATUSES = ['under_repair', 'under_inspection', 'scheduled_maintenance', 'in_workshop']
 
   useEffect(() => {
     const fetchInterventions = async () => {
@@ -68,7 +108,7 @@ export function Interventions() {
         console.log('Fetching interventions data...')
         const params: any = { page, limit, sort, order }
         if (statusFilter !== 'all') params.status = statusFilter
-        if (searchTerm) params.q = searchTerm
+        if (debouncedSearchTerm) params.q = debouncedSearchTerm
         const response = await getInterventions(params)
         setInterventions((response as any).interventions)
         setTotal((response as any).total || 0)
@@ -85,8 +125,38 @@ export function Interventions() {
       }
     }
 
+    const fetchResources = async () => {
+      try {
+        const [eqRes, mechRes, elecRes, workRes, machRes] = await Promise.all([
+          getEquipment({ limit: 1000 }), // Get all equipment for selection
+          getMechanics({ isActive: true }),
+          getElectricians({ isActive: true }),
+          getMaintenanceWorkers({ isActive: true }),
+          getMachinists({ isActive: true })
+        ])
+        setEquipmentList((eqRes as any).equipment || [])
+
+        const mechanics = (mechRes as any).mechanics || []
+        const electricians = (elecRes as any).electricians || []
+        const workers = (workRes as any).workers || []
+        const machinists = (machRes as any).machinists || []
+
+        // Combine all maintenance personnel
+        const allPersonnel = [
+          ...mechanics.map((p: any) => ({ ...p, role: 'Mechanic' })),
+          ...electricians.map((p: any) => ({ ...p, role: 'Electrician' })),
+          ...workers.map((p: any) => ({ ...p, role: 'Maintenance Worker' })),
+          ...machinists.map((p: any) => ({ ...p, role: 'Machinist' }))
+        ]
+        setPersonnelList(allPersonnel)
+      } catch (error) {
+        console.error('Error fetching resources:', error)
+      }
+    }
+
     fetchInterventions()
-  }, [toast, page, statusFilter, limit, sort, order])
+    fetchResources()
+  }, [toast, page, statusFilter, limit, sort, order, debouncedSearchTerm])
 
   // Sync state to URL
   useEffect(() => {
@@ -139,7 +209,7 @@ export function Interventions() {
   }
 
   const exportCSV = () => {
-    const headers = ['Title','Type','Priority','Status','Equipment','AssignedTo','Created','Due']
+    const headers = ['Title', 'Type', 'Priority', 'Status', 'Equipment', 'AssignedTo', 'Created', 'Due']
     const rows = interventions.map(i => [
       i.title,
       i.type,
@@ -160,10 +230,30 @@ export function Interventions() {
       console.log('Creating new intervention...')
       setCreating(true)
       const tempId = `temp-${Date.now()}`
-      const temp = { _id: tempId, status: 'Pending', createdDate: new Date().toISOString(), dueDate: new Date().toISOString(), assignedTo: '', ...newIntervention }
+      const temp = {
+        _id: tempId,
+        status: 'Pending',
+        createdDate: new Date().toISOString(),
+        ...newIntervention,
+        // Ensure defaults if empty in newIntervention
+        assignedTo: newIntervention.assignedTo || '',
+        dueDate: newIntervention.dueDate || new Date().toISOString()
+      }
       setInterventions([temp as any, ...interventions])
       try {
-        const res = await createIntervention(newIntervention)
+        // Find equipment name if not set but ID is
+        let equipmentName = newIntervention.equipment
+        if (!equipmentName && newIntervention.equipmentId) {
+          const eq = equipmentList.find(e => e._id === newIntervention.equipmentId)
+          if (eq) equipmentName = eq.location || `Equipment ${eq._id}`
+        }
+
+        const payload = {
+          ...newIntervention,
+          equipment: equipmentName
+        }
+
+        const res = await createIntervention(payload)
         const created = (res as any).intervention
         setInterventions(list => list.map(i => i._id === tempId ? created : i))
       } catch (err) {
@@ -175,7 +265,7 @@ export function Interventions() {
         description: "Intervention created successfully",
       })
       setIsDialogOpen(false)
-      setNewIntervention({ title: "", type: "", priority: "", equipment: "", description: "" })
+      setNewIntervention({ title: "", type: "", priority: "", equipment: "", equipmentId: "", assignedTo: "", description: "", dueDate: "" })
     } catch (error) {
       console.error('Error creating intervention:', error)
       toast({
@@ -207,6 +297,197 @@ export function Interventions() {
     }
     finally {
       setUpdatingId(null)
+    }
+  }
+
+  const handleStartIntervention = (intervention: any) => {
+    // Check if equipment is in BREAKDOWN status
+    if (intervention.equipmentId && intervention.equipmentId.status === EQUIPMENT_STATUSES.BREAKDOWN) {
+      setSelectedIntervention(intervention)
+      // Pre-select assigned personnel if possible (simple match by name)
+      // Note: Ideally we should have IDs, but here we might only have name strings in assignedTo
+      // So we leave it empty for user to select explicitly
+      setSelectedMechanicId("")
+      setSelectedElectricianId("")
+      setSelectedMaintenanceWorkerId("")
+      setStartDialogOpen(true)
+    } else {
+      // Just start normally
+      handleUpdateStatus(intervention._id, 'In Progress')
+    }
+  }
+
+  const confirmStartIntervention = async () => {
+    if (!selectedIntervention) return
+
+    // Validate at least one personnel selected
+    if (!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId) {
+      toast({
+        title: 'Personnel Required',
+        description: 'Please select at least one maintenance personnel',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      setIsStarting(true)
+
+      // 1. Change Equipment Status to UNDER_REPAIR
+      await changeEquipmentStatus(selectedIntervention.equipmentId._id, {
+        status: EQUIPMENT_STATUSES.UNDER_REPAIR,
+        mechanicId: selectedMechanicId || undefined,
+        electricianId: selectedElectricianId || undefined,
+        maintenanceWorkerId: selectedMaintenanceWorkerId || undefined,
+        interventionId: selectedIntervention._id
+      })
+
+      // 2. Update Intervention Status to In Progress
+      await updateIntervention(selectedIntervention._id, {
+        status: 'In Progress',
+        // Update assignedTo with selected names
+        assignedTo: [
+          personnelList.find(p => p._id === selectedMechanicId)?.firstName,
+          personnelList.find(p => p._id === selectedElectricianId)?.firstName,
+          personnelList.find(p => p._id === selectedMaintenanceWorkerId)?.firstName
+        ].filter(Boolean).join(', ')
+      })
+
+      // Update local state
+      setInterventions(prev => prev.map(i => i._id === selectedIntervention._id ? {
+        ...i,
+        status: 'In Progress',
+        assignedTo: [
+          personnelList.find(p => p._id === selectedMechanicId)?.firstName,
+          personnelList.find(p => p._id === selectedElectricianId)?.firstName,
+          personnelList.find(p => p._id === selectedMaintenanceWorkerId)?.firstName
+        ].filter(Boolean).join(', ')
+      } : i))
+
+      toast({ title: 'Started', description: 'Intervention started and equipment set to Under Repair' })
+      setStartDialogOpen(false)
+    } catch (error) {
+      console.error('Error starting intervention:', error)
+      toast({ title: 'Error', description: 'Failed to start intervention', variant: 'destructive' })
+    } finally {
+      setIsStarting(false)
+    }
+  }
+
+  const openUpdateDialog = (intervention: any) => {
+    setSelectedIntervention(intervention)
+    setSelectedUpdateStatus("")
+    setUpdateMechanicId("")
+    setUpdateElectricianId("")
+    setUpdateMaintenanceWorkerId("")
+    setUpdateMachinistId("")
+    setUpdateDialogOpen(true)
+  }
+
+  const confirmUpdateStatus = async () => {
+    if (!selectedIntervention || !selectedUpdateStatus) return
+
+    try {
+      setIsUpdatingStatus(true)
+
+      if (selectedUpdateStatus === 'completed') {
+        // Complete Intervention Logic
+
+        // Validate Machinist if going to IN_PRODUCTION
+        if (!updateMachinistId) {
+          toast({
+            title: 'Machinist Required',
+            description: 'Please select a machinist to hand over the equipment',
+            variant: 'destructive'
+          })
+          setIsUpdatingStatus(false)
+          return
+        }
+
+        // 1. Update Equipment Status to IN_PRODUCTION (or previous status if not breakdown)
+        // For now, let's assume back to IN_PRODUCTION is the standard "Fix"
+        await changeEquipmentStatus(selectedIntervention.equipmentId._id, {
+          status: EQUIPMENT_STATUSES.IN_PRODUCTION,
+          machinistId: updateMachinistId
+        })
+
+        // 2. Update Intervention Status to Completed
+        await updateIntervention(selectedIntervention._id, { status: 'Completed' })
+
+        // Update local state
+        setInterventions(prev => prev.map(i => i._id === selectedIntervention._id ? { ...i, status: 'Completed' } : i))
+        toast({ title: 'Completed', description: 'Intervention completed and equipment back in production' })
+
+      } else {
+        // Check if the new status is a non-maintenance status (Production or Out of Service)
+        // If so, we should auto-complete the intervention
+        const newStatusMetadata = STATUS_METADATA[selectedUpdateStatus]
+        const isMaintenanceStatus = newStatusMetadata?.category === EQUIPMENT_STATUS_CATEGORIES.MAINTENANCE
+
+        if (!isMaintenanceStatus) {
+          // Auto-complete logic
+
+          // If going to IN_PRODUCTION, validate Machinist
+          if (selectedUpdateStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !updateMachinistId) {
+            toast({
+              title: 'Machinist Required',
+              description: 'Please select a machinist to hand over the equipment',
+              variant: 'destructive'
+            })
+            setIsUpdatingStatus(false)
+            return
+          }
+
+          // 1. Change Equipment Status
+          await changeEquipmentStatus(selectedIntervention.equipmentId._id, {
+            status: selectedUpdateStatus as any,
+            machinistId: updateMachinistId || undefined
+          })
+
+          // 2. Update Intervention Status to Completed
+          await updateIntervention(selectedIntervention._id, { status: 'Completed' })
+
+          // Update local state
+          setInterventions(prev => prev.map(i => i._id === selectedIntervention._id ? { ...i, status: 'Completed' } : i))
+          toast({ title: 'Completed', description: `Intervention completed (Status: ${getStatusLabel(selectedUpdateStatus as any)})` })
+
+        } else {
+          // Standard Maintenance Status Change (Intervention remains In Progress)
+
+          // Validate personnel if required
+          if (PERSONNEL_REQUIRED_STATUSES.includes(selectedUpdateStatus)) {
+            if (!updateMechanicId && !updateElectricianId && !updateMaintenanceWorkerId) {
+              toast({
+                title: 'Personnel Required',
+                description: 'Please select at least one maintenance personnel for this status',
+                variant: 'destructive'
+              })
+              setIsUpdatingStatus(false)
+              return
+            }
+          }
+
+          // Change Equipment Status Logic
+          await changeEquipmentStatus(selectedIntervention.equipmentId._id, {
+            status: selectedUpdateStatus as any,
+            mechanicId: updateMechanicId || undefined,
+            electricianId: updateElectricianId || undefined,
+            maintenanceWorkerId: updateMaintenanceWorkerId || undefined
+          })
+
+          // Intervention remains In Progress
+          toast({ title: 'Updated', description: 'Equipment status updated' })
+        }
+
+
+      }
+
+      setUpdateDialogOpen(false)
+    } catch (error) {
+      console.error('Error updating status:', error)
+      toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' })
+    } finally {
+      setIsUpdatingStatus(false)
     }
   }
 
@@ -254,88 +535,321 @@ export function Interventions() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-              <Plus className="mr-2 h-4 w-4" />
-              New Intervention
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] bg-white">
-            <DialogHeader>
-              <DialogTitle>Create New Intervention</DialogTitle>
-              <DialogDescription>
-                Create a new maintenance intervention for equipment.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={newIntervention.title}
-                  onChange={(e) => setNewIntervention({...newIntervention, title: e.target.value})}
-                  placeholder="Enter intervention title"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="type">Type</Label>
-                <Select value={newIntervention.type} onValueChange={(value) => setNewIntervention({...newIntervention, type: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Preventive">Preventive</SelectItem>
-                    <SelectItem value="Corrective">Corrective</SelectItem>
-                    <SelectItem value="Emergency">Emergency</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="priority">Priority</Label>
-                <Select value={newIntervention.priority} onValueChange={(value) => setNewIntervention({...newIntervention, priority: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Low">Low</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Critical">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="equipment">Equipment</Label>
-                <Input
-                  id="equipment"
-                  value={newIntervention.equipment}
-                  onChange={(e) => setNewIntervention({...newIntervention, equipment: e.target.value})}
-                  placeholder="Enter equipment name"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={newIntervention.description}
-                  onChange={(e) => setNewIntervention({...newIntervention, description: e.target.value})}
-                  placeholder="Enter intervention description"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancel
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                <Plus className="mr-2 h-4 w-4" />
+                New Intervention
               </Button>
-              <Button onClick={handleCreateIntervention} className="bg-gradient-to-r from-blue-600 to-indigo-600">
-                Create Intervention
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px] bg-white">
+              <DialogHeader>
+                <DialogTitle>Create New Intervention</DialogTitle>
+                <DialogDescription>
+                  Create a new maintenance intervention for equipment.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={newIntervention.title}
+                    onChange={(e) => setNewIntervention({ ...newIntervention, title: e.target.value })}
+                    placeholder="Enter intervention title"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="type">Type</Label>
+                  <Select value={newIntervention.type} onValueChange={(value) => setNewIntervention({ ...newIntervention, type: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Preventive">Preventive</SelectItem>
+                      <SelectItem value="Corrective">Corrective</SelectItem>
+                      <SelectItem value="Emergency">Emergency</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="priority">Priority</Label>
+                  <Select value={newIntervention.priority} onValueChange={(value) => setNewIntervention({ ...newIntervention, priority: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Low">Low</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="equipment">Equipment</Label>
+                  <Select
+                    value={newIntervention.equipmentId}
+                    onValueChange={(value) => {
+                      const eq = equipmentList.find(e => e._id === value)
+                      setNewIntervention({
+                        ...newIntervention,
+                        equipmentId: value,
+                        equipment: eq ? (eq.location || eq.name) : "" // Fallback name
+                      })
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select equipment" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {equipmentList.map(eq => (
+                        <SelectItem key={eq._id} value={eq._id}>
+                          {eq.category?.name} - {eq.type?.name} ({eq.location})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="assignedTo">Assigned To</Label>
+                  <Select
+                    value={newIntervention.assignedTo}
+                    onValueChange={(value) => setNewIntervention({ ...newIntervention, assignedTo: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select personnel" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      {personnelList.map(p => (
+                        <SelectItem key={p._id} value={`${p.firstName} ${p.lastName}`}>
+                          {p.firstName} {p.lastName} ({p.role})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="dueDate">Due Date</Label>
+                  <Input
+                    id="dueDate"
+                    type="date"
+                    value={newIntervention.dueDate ? new Date(newIntervention.dueDate).toISOString().split('T')[0] : ''}
+                    onChange={(e) => setNewIntervention({ ...newIntervention, dueDate: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={newIntervention.description}
+                    onChange={(e) => setNewIntervention({ ...newIntervention, description: e.target.value })}
+                    placeholder="Enter intervention description"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateIntervention} disabled={creating} className="bg-gradient-to-r from-blue-600 to-indigo-600">
+                  {creating ? 'Creating...' : 'Create Intervention'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
+
+      {/* Start Intervention Dialog */}
+      <Dialog open={startDialogOpen} onOpenChange={setStartDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-white">
+          <DialogHeader>
+            <DialogTitle>Start Intervention</DialogTitle>
+            <DialogDescription>
+              This equipment is currently in <strong>BREAKDOWN</strong>. Starting this intervention will change the status to <strong>UNDER REPAIR</strong>.
+              Please select the personnel performing the repair.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Mechanic</Label>
+              <Select value={selectedMechanicId} onValueChange={setSelectedMechanicId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select mechanic" />
+                </SelectTrigger>
+                <SelectContent>
+                  {personnelList.filter(p => p.role === 'Mechanic').map(p => (
+                    <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Electrician</Label>
+              <Select value={selectedElectricianId} onValueChange={setSelectedElectricianId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select electrician" />
+                </SelectTrigger>
+                <SelectContent>
+                  {personnelList.filter(p => p.role === 'Electrician').map(p => (
+                    <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Maintenance Worker</Label>
+              <Select value={selectedMaintenanceWorkerId} onValueChange={setSelectedMaintenanceWorkerId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select worker" />
+                </SelectTrigger>
+                <SelectContent>
+                  {personnelList.filter(p => p.role === 'Maintenance Worker').map(p => (
+                    <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStartDialogOpen(false)}>Cancel</Button>
+            <Button onClick={confirmStartIntervention} disabled={isStarting} className="bg-gradient-to-r from-blue-600 to-indigo-600">
+              {isStarting ? 'Starting...' : 'Confirm Start'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Status Dialog */}
+      <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-white">
+          <DialogHeader>
+            <DialogTitle>Update Intervention Status</DialogTitle>
+            <DialogDescription>
+              Update the status of the intervention and the equipment.
+              <br />
+              <span className="text-xs text-muted-foreground">
+                Current Status: {selectedIntervention?.equipmentId?.status || 'Unknown'}
+                {!STATUS_METADATA[selectedIntervention?.equipmentId?.status || ''] && ' (Metadata Missing)'}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Action</Label>
+              <Select value={selectedUpdateStatus} onValueChange={setSelectedUpdateStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select action" />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Only show Complete if transition to IN_PRODUCTION is allowed */}
+                  {selectedIntervention?.equipmentId?.status &&
+                    STATUS_METADATA[selectedIntervention.equipmentId.status]?.allowedTransitions?.includes(EQUIPMENT_STATUSES.IN_PRODUCTION) && (
+                      <SelectItem value="completed">Complete Intervention (Back to Production)</SelectItem>
+                    )}
+
+                  {/* Standard Allowed Transitions */}
+                  {selectedIntervention?.equipmentId?.status && STATUS_METADATA[selectedIntervention.equipmentId.status]?.allowedTransitions?.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {getStatusLabel(status)}
+                    </SelectItem>
+                  ))}
+
+                  {/* Fallback: If no allowed transitions found (e.g. invalid status), show all maintenance statuses */}
+                  {(!selectedIntervention?.equipmentId?.status ||
+                    !STATUS_METADATA[selectedIntervention.equipmentId.status] ||
+                    !STATUS_METADATA[selectedIntervention.equipmentId.status]?.allowedTransitions?.length) && (
+                      <>
+                        <SelectItem value="completed">Complete Intervention (Back to Production)</SelectItem>
+                        {Object.values(EQUIPMENT_STATUSES)
+                          .filter(s => STATUS_METADATA[s]?.category === EQUIPMENT_STATUS_CATEGORIES.MAINTENANCE ||
+                            s === EQUIPMENT_STATUSES.STORED ||
+                            s === EQUIPMENT_STATUSES.SCRAPPED)
+                          .map(status => (
+                            <SelectItem key={status} value={status}>
+                              {getStatusLabel(status)} (Fallback)
+                            </SelectItem>
+                          ))
+                        }
+                      </>
+                    )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Machinist Selection for Completion or In Production transition */}
+            {(selectedUpdateStatus === 'completed' || selectedUpdateStatus === EQUIPMENT_STATUSES.IN_PRODUCTION) && (
+              <div className="grid gap-2">
+                <Label>Hand over to Machinist</Label>
+                <Select value={updateMachinistId} onValueChange={setUpdateMachinistId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select machinist" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {personnelList.filter(p => p.role === 'Machinist').map(p => (
+                      <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+
+            {/* Conditional Personnel Selection */}
+            {PERSONNEL_REQUIRED_STATUSES.includes(selectedUpdateStatus) && (
+              <>
+                <div className="grid gap-2">
+                  <Label>Mechanic</Label>
+                  <Select value={updateMechanicId} onValueChange={setUpdateMechanicId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select mechanic" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {personnelList.filter(p => p.role === 'Mechanic').map(p => (
+                        <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Electrician</Label>
+                  <Select value={updateElectricianId} onValueChange={setUpdateElectricianId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select electrician" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {personnelList.filter(p => p.role === 'Electrician').map(p => (
+                        <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Maintenance Worker</Label>
+                  <Select value={updateMaintenanceWorkerId} onValueChange={setUpdateMaintenanceWorkerId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select worker" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {personnelList.filter(p => p.role === 'Maintenance Worker').map(p => (
+                        <SelectItem key={p._id} value={p._id}>{p.firstName} {p.lastName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUpdateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={confirmUpdateStatus} disabled={isUpdatingStatus || !selectedUpdateStatus} className="bg-gradient-to-r from-blue-600 to-indigo-600">
+              {isUpdatingStatus ? 'Updating...' : 'Confirm Update'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Filters */}
       <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
@@ -449,9 +963,15 @@ export function Interventions() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(intervention._id, 'In Progress')} disabled={updatingId === intervention._id}>{updatingId === intervention._id ? 'Updating...' : 'Start'}</Button>
-                <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(intervention._id, 'Completed')} disabled={updatingId === intervention._id}>{updatingId === intervention._id ? 'Updating...' : 'Complete'}</Button>
-                {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
+                {intervention.status !== 'In Progress' && intervention.status !== 'Completed' && (
+                  <Button variant="outline" size="sm" onClick={() => handleStartIntervention(intervention)} disabled={updatingId === intervention._id}>{updatingId === intervention._id ? 'Updating...' : 'Start'}</Button>
+                )}
+
+                {intervention.status === 'In Progress' && (
+                  <Button variant="outline" size="sm" onClick={() => openUpdateDialog(intervention)} disabled={updatingId === intervention._id}>Update Status</Button>
+                )}
+
+                {intervention.status !== 'In Progress' && intervention.status !== 'Completed' && (user?.role === 'admin' || user?.role === 'maintenance_manager') && (
                   <Button variant="destructive" size="sm" onClick={() => handleDeleteIntervention(intervention._id)} disabled={deletingId === intervention._id}>{deletingId === intervention._id ? 'Deleting...' : 'Delete'}</Button>
                 )}
               </div>
@@ -468,15 +988,17 @@ export function Interventions() {
         <Button variant="outline" disabled={loading || page * limit >= total} onClick={() => setPage(p => p + 1)}>{loading ? 'Loading…' : 'Next'}</Button>
       </div>
 
-      {filteredInterventions.length === 0 && (
-        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
-          <CardContent className="p-12 text-center">
-            <Wrench className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No interventions found</h3>
-            <p className="text-slate-600">Try adjusting your search or filter criteria.</p>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+      {
+        filteredInterventions.length === 0 && (
+          <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
+            <CardContent className="p-12 text-center">
+              <Wrench className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+              <h3 className="text-lg font-medium text-slate-900 mb-2">No interventions found</h3>
+              <p className="text-slate-600">Try adjusting your search or filter criteria.</p>
+            </CardContent>
+          </Card>
+        )
+      }
+    </div >
   )
 }

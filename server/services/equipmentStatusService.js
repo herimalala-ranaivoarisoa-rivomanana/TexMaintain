@@ -1,6 +1,10 @@
 const { Equipment } = require('../models/Equipment');
 const { EquipmentStatusHistory, STATUS_METADATA } = require('../models/EquipmentStatusHistory');
 const { Intervention } = require('../models/Intervention');
+const { Machinist } = require('../models/Machinist');
+const { Mechanic } = require('../models/Mechanic');
+const { Electrician } = require('../models/Electrician');
+const { MaintenanceWorker } = require('../models/MaintenanceWorker');
 const EquipmentMetricsService = require('./equipmentMetricsService');
 
 /**
@@ -54,7 +58,7 @@ class EquipmentStatusService {
         const newMeta = STATUS_METADATA[newStatus];
         throw new Error(
           `Invalid status transition from "${currentMeta?.label}" to "${newMeta?.label}". ` +
-          `Allowed transitions: ${equipment.getAllowedTransitions().map(t => t.metadata.label).join(', ')}`
+          `Allowed transitions: ${equipment.getAllowedTransitions().map(t => t.metadata?.label || t.status).join(', ')}`
         );
       }
     }
@@ -74,6 +78,67 @@ class EquipmentStatusService {
       );
     }
 
+    // Auto-create intervention if needed for specific statuses
+    let createdInterventionId = null;
+    const autoInterventionStatuses = ['breakdown', 'scheduled_maintenance', 'setup_adjustment'];
+
+    if (autoInterventionStatuses.includes(newStatus) && !interventionId) {
+      try {
+        // Determine type and priority
+        let type = 'Preventive';
+        let priority = 'Medium';
+
+        if (newStatus === 'breakdown') {
+          type = 'Corrective';
+          priority = 'Critical';
+        } else if (newStatus === 'setup_adjustment') {
+          priority = 'Low';
+        }
+
+        // Resolve assigned personnel name
+        const personnelNames = [];
+
+        if (machinistId) {
+          const p = await Machinist.findById(machinistId);
+          if (p) personnelNames.push(`${p.firstName} ${p.lastName}`);
+        }
+        if (mechanicId) {
+          const p = await Mechanic.findById(mechanicId);
+          if (p) personnelNames.push(`${p.firstName} ${p.lastName}`);
+        }
+        if (electricianId) {
+          const p = await Electrician.findById(electricianId);
+          if (p) personnelNames.push(`${p.firstName} ${p.lastName}`);
+        }
+        if (maintenanceWorkerId) {
+          const p = await MaintenanceWorker.findById(maintenanceWorkerId);
+          if (p) personnelNames.push(`${p.firstName} ${p.lastName}`);
+        }
+
+        const assignedToName = personnelNames.join(', ');
+
+        // Create Intervention
+        const newIntervention = await Intervention.create({
+          title: `Auto: ${STATUS_METADATA[newStatus]?.label || newStatus} - ${equipment.name || 'Equipment'}`,
+          type,
+          priority,
+          status: personnelNames.length > 0 ? 'In Progress' : 'Pending',
+          equipmentId: equipment._id,
+          equipment: equipment.location || equipment.name || 'Unknown Location', // Legacy field support
+          description: breakdownDescription || reason || notes || `Automatically created due to status change to ${STATUS_METADATA[newStatus]?.label || newStatus}`,
+          assignedTo: assignedToName,
+          dueDate: new Date(), // Immediate attention
+          createdDate: new Date()
+        });
+
+        createdInterventionId = newIntervention._id;
+        console.log(`Auto-created intervention ${newIntervention._id} for status ${newStatus}`);
+      } catch (err) {
+        console.error('Error auto-creating intervention:', err);
+        // Don't block status change if intervention creation fails
+      }
+    }
+
     // Create history entry
     const historyEntry = await EquipmentStatusHistory.create({
       equipment: equipmentId,
@@ -82,7 +147,7 @@ class EquipmentStatusService {
       changedBy: userId,
       reason: reason || '',
       notes: notes || '',
-      intervention: interventionId || null,
+      intervention: interventionId || createdInterventionId || null,
       machinist: machinistId || null,
       mechanic: mechanicId || null,
       electrician: electricianId || null,

@@ -100,6 +100,22 @@ const schema = new mongoose.Schema({
     type: Number, // Mean Time To Repair (hours)
     default: 0,
   },
+  availability: {
+    type: Number, // Percentage
+    default: 0
+  },
+  downtime: {
+    type: Number, // Hours
+    default: 0
+  },
+  operatingTime: {
+    type: Number, // Hours
+    default: 0
+  },
+  timeSinceAcquisition: {
+    type: Number, // Days
+    default: 0
+  },
   lastMetricsUpdate: {
     type: Date,
     default: null

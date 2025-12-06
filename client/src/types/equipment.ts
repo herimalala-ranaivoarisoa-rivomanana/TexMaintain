@@ -7,7 +7,7 @@ export const EQUIPMENT_STATUSES = {
   PAUSED_BY_OPERATOR: 'paused_by_operator',
   CHANGEOVER: 'changeover',
   OFFLINE: 'offline',
-  
+
   // Maintenance States
   SCHEDULED_MAINTENANCE: 'scheduled_maintenance',
   BREAKDOWN: 'breakdown',
@@ -17,7 +17,7 @@ export const EQUIPMENT_STATUSES = {
   TESTING_AFTER_REPAIR: 'testing_after_repair',
   UNDER_INSPECTION: 'under_inspection',
   PENDING_VALIDATION: 'pending_validation',
-  
+
   // Out of Service States
   STORED: 'stored',
   SCRAPPED: 'scrapped'
@@ -32,6 +32,134 @@ export const EQUIPMENT_STATUS_CATEGORIES = {
 } as const;
 
 export type EquipmentStatusCategory = typeof EQUIPMENT_STATUS_CATEGORIES[keyof typeof EQUIPMENT_STATUS_CATEGORIES];
+
+export const STATUS_METADATA: Record<string, StatusMetadata> = {
+  // Production States
+  in_production: {
+    label: 'In Production',
+    category: EQUIPMENT_STATUS_CATEGORIES.PRODUCTION,
+    color: 'green',
+    icon: 'play',
+    description: 'Equipment is actively producing',
+    allowedTransitions: ['setup_adjustment', 'paused_by_operator', 'changeover', 'breakdown', 'scheduled_maintenance', 'offline', 'stored'] as EquipmentStatus[]
+  },
+  setup_adjustment: {
+    label: 'Setup/Adjustment',
+    category: EQUIPMENT_STATUS_CATEGORIES.PRODUCTION,
+    color: 'blue',
+    icon: 'settings',
+    description: 'Equipment being set up or adjusted before production',
+    allowedTransitions: ['in_production', 'breakdown', 'scheduled_maintenance', 'offline', 'stored'] as EquipmentStatus[]
+  },
+  paused_by_operator: {
+    label: 'Paused by Operator',
+    category: EQUIPMENT_STATUS_CATEGORIES.PRODUCTION,
+    color: 'yellow',
+    icon: 'pause',
+    description: 'Temporarily paused by operator',
+    allowedTransitions: ['in_production', 'changeover', 'offline', 'stored'] as EquipmentStatus[]
+  },
+  changeover: {
+    label: 'Changeover',
+    category: EQUIPMENT_STATUS_CATEGORIES.PRODUCTION,
+    color: 'blue',
+    icon: 'refresh',
+    description: 'Changing product series or configuration',
+    allowedTransitions: ['setup_adjustment', 'in_production', 'breakdown', 'scheduled_maintenance', 'offline', 'stored'] as EquipmentStatus[]
+  },
+
+  // Maintenance States
+  scheduled_maintenance: {
+    label: 'Scheduled Maintenance',
+    category: EQUIPMENT_STATUS_CATEGORIES.MAINTENANCE,
+    color: 'orange',
+    icon: 'calendar',
+    description: 'Preventive maintenance in progress',
+    allowedTransitions: ['in_production', 'offline', 'stored', 'scrapped'] as EquipmentStatus[]
+  },
+  breakdown: {
+    label: 'Breakdown',
+    category: EQUIPMENT_STATUS_CATEGORIES.MAINTENANCE,
+    color: 'red',
+    icon: 'alert-triangle',
+    description: 'Equipment has broken down',
+    allowedTransitions: ['under_inspection', 'under_repair', 'in_workshop', 'in_production', 'stored', 'scrapped'] as EquipmentStatus[]
+  },
+  under_repair: {
+    label: 'Under Repair',
+    category: EQUIPMENT_STATUS_CATEGORIES.MAINTENANCE,
+    color: 'red',
+    icon: 'wrench',
+    description: 'Equipment is being repaired',
+    allowedTransitions: ['in_workshop', 'in_production', 'offline', 'stored', 'scrapped'] as EquipmentStatus[]
+  },
+  in_workshop: {
+    label: 'In Workshop',
+    category: EQUIPMENT_STATUS_CATEGORIES.MAINTENANCE,
+    color: 'red',
+    icon: 'tool',
+    description: 'Equipment moved to workshop for repair',
+    allowedTransitions: ['waiting_spare_parts', 'testing_after_repair', 'in_production', 'stored', 'scrapped'] as EquipmentStatus[]
+  },
+  waiting_spare_parts: {
+    label: 'Waiting Spare Parts',
+    category: EQUIPMENT_STATUS_CATEGORIES.MAINTENANCE,
+    color: 'orange',
+    icon: 'package',
+    description: 'Waiting for spare parts to arrive',
+    allowedTransitions: ['under_repair', 'in_workshop', 'in_production', 'stored', 'scrapped'] as EquipmentStatus[]
+  },
+  testing_after_repair: {
+    label: 'Testing After Repair',
+    category: EQUIPMENT_STATUS_CATEGORIES.MAINTENANCE,
+    color: 'blue',
+    icon: 'check-circle',
+    description: 'Testing equipment after repair',
+    allowedTransitions: ['pending_validation', 'in_production', 'under_repair', 'stored', 'scrapped'] as EquipmentStatus[]
+  },
+  under_inspection: {
+    label: 'Under Inspection',
+    category: EQUIPMENT_STATUS_CATEGORIES.MAINTENANCE,
+    color: 'yellow',
+    icon: 'search',
+    description: 'Equipment being inspected or diagnosed',
+    allowedTransitions: ['under_repair', 'in_workshop', 'scheduled_maintenance', 'in_production', 'stored', 'scrapped'] as EquipmentStatus[]
+  },
+  pending_validation: {
+    label: 'Pending Validation',
+    category: EQUIPMENT_STATUS_CATEGORIES.MAINTENANCE,
+    color: 'blue',
+    icon: 'clipboard-check',
+    description: 'Awaiting validation for maintenance completion',
+    allowedTransitions: ['in_production', 'setup_adjustment', 'under_repair', 'stored', 'scrapped'] as EquipmentStatus[]
+  },
+
+  // Out of Service States
+  stored: {
+    label: 'Stored',
+    category: EQUIPMENT_STATUS_CATEGORIES.OUT_OF_SERVICE,
+    color: 'gray',
+    icon: 'archive',
+    description: 'Equipment in storage/reserve',
+    allowedTransitions: ['offline', 'setup_adjustment', 'under_inspection', 'scrapped'] as EquipmentStatus[]
+  },
+  offline: {
+    label: 'Offline',
+    category: EQUIPMENT_STATUS_CATEGORIES.OUT_OF_SERVICE,
+    color: 'gray',
+    icon: 'power',
+    description: 'Equipment temporarily not in use',
+    allowedTransitions: ['in_production', 'stored', 'setup_adjustment', 'scheduled_maintenance', 'scrapped'] as EquipmentStatus[]
+  },
+  scrapped: {
+    label: 'Scrapped',
+    category: EQUIPMENT_STATUS_CATEGORIES.OUT_OF_SERVICE,
+    color: 'black',
+    icon: 'trash',
+    description: 'Equipment permanently decommissioned',
+    allowedTransitions: [] as EquipmentStatus[]
+  }
+};
 
 export interface StatusMetadata {
   label: string;
@@ -118,7 +246,7 @@ export const getStatusColor = (status: EquipmentStatus): string => {
     setup_adjustment: 'bg-blue-500',
     paused_by_operator: 'bg-yellow-500',
     changeover: 'bg-blue-400',
-    
+
     // Maintenance - Orange/Red tones
     scheduled_maintenance: 'bg-orange-500',
     breakdown: 'bg-red-600',
@@ -128,13 +256,13 @@ export const getStatusColor = (status: EquipmentStatus): string => {
     testing_after_repair: 'bg-blue-400',
     under_inspection: 'bg-yellow-400',
     pending_validation: 'bg-blue-300',
-    
+
     // Out of Service - Gray/Black tones
     stored: 'bg-gray-500',
     offline: 'bg-gray-600',
     scrapped: 'bg-black'
   };
-  
+
   return colorMap[status] || 'bg-gray-500';
 };
 
@@ -157,7 +285,7 @@ export const getStatusLabel = (status: EquipmentStatus): string => {
     offline: 'Offline',
     scrapped: 'Scrapped'
   };
-  
+
   return labelMap[status] || status;
 };
 
@@ -168,7 +296,7 @@ export const getCategoryColor = (category: EquipmentStatusCategory): string => {
     maintenance: 'bg-orange-500',
     out_of_service: 'bg-gray-500'
   };
-  
+
   return colorMap[category] || 'bg-gray-500';
 };
 
@@ -179,6 +307,6 @@ export const getCategoryLabel = (category: EquipmentStatusCategory): string => {
     maintenance: 'Maintenance',
     out_of_service: 'Out of Service'
   };
-  
+
   return labelMap[category] || category;
 };

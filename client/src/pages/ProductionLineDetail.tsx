@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, Link } from "react-router-dom"
-import { ArrowLeft, Activity, Wrench, Package, Settings, Factory } from "lucide-react"
+import { ArrowLeft, Activity, Wrench, Package, Settings, Factory, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +24,7 @@ import {
 import { getProductionLineById, getProductionLineDashboardStats } from "@/api/productionLines"
 import { updateProductionSectionEquipment } from "@/api/productionSections"
 import { UpdateStatsDialog } from "@/components/production/UpdateStatsDialog"
+import { UpdateSectionDialog } from "@/components/production/UpdateSectionDialog"
 import {
     DndContext,
     closestCenter,
@@ -161,6 +162,7 @@ export function ProductionLineDetail() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [activeDialog, setActiveDialog] = useState<'interventions' | 'parts' | 'stats' | null>(null)
+    const [editingSection, setEditingSection] = useState<{ id: string, name: string, code: string } | null>(null)
     const { toast } = useToast()
 
     const sensors = useSensors(
@@ -395,9 +397,23 @@ export function ProductionLineDetail() {
                                 <CardHeader>
                                     <CardTitle className="text-lg font-medium flex items-center justify-between">
                                         <span>{section.sectionId.name}</span>
-                                        <Badge variant="outline" className="font-normal">
-                                            Code: {section.sectionId.code}
-                                        </Badge>
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="outline" className="font-normal">
+                                                Code: {section.sectionId.code}
+                                            </Badge>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                onClick={() => setEditingSection({
+                                                    id: section.sectionId._id,
+                                                    name: section.sectionId.name,
+                                                    code: section.sectionId.code
+                                                })}
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
@@ -537,6 +553,16 @@ export function ProductionLineDetail() {
                 onSuccess={() => {
                     // Refresh data
                     getProductionLineDashboardStats(id || '').then(setStats)
+                    getProductionLineById(id || '').then(res => setLine(res.productionLine))
+                }}
+            />
+
+            <UpdateSectionDialog
+                open={!!editingSection}
+                onOpenChange={(open) => !open && setEditingSection(null)}
+                sectionId={editingSection?.id || ''}
+                currentData={editingSection ? { name: editingSection.name, code: editingSection.code } : undefined}
+                onSuccess={() => {
                     getProductionLineById(id || '').then(res => setLine(res.productionLine))
                 }}
             />

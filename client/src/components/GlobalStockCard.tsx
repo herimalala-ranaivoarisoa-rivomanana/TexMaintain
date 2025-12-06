@@ -262,7 +262,7 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
               🏭 Distribution by equipment ({data.globalStock.details.length})
             </h3>
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {data.globalStock.details.map((detail, index) => (
+              {data.globalStock.details.filter(detail => detail && detail.equipment).map((detail, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between text-sm p-2 hover:bg-slate-50 rounded"
