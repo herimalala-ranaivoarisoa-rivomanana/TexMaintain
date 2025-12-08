@@ -12,11 +12,11 @@ const schema = new mongoose.Schema({
     required: true
   },
   part: {
-    type: mongoose.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Part',
     required: true
   },
-  
+
   // === PARAMÈTRES DE CONSOMMATION ===
   quantityPerMachine: {
     type: Number,
@@ -32,7 +32,7 @@ const schema = new mongoose.Schema({
     min: 0,
     description: 'Nombre de remplacements par an (ex: 2 = tous les 6 mois, 0.5 = tous les 2 ans)'
   },
-  
+
   // === CRITICITÉ ET IMPORTANCE ===
   criticality: {
     type: String,
@@ -54,7 +54,7 @@ const schema = new mongoose.Schema({
     max: 100,
     description: 'Importance de cet équipement dans la production (1-100, utilisé pour pondération)'
   },
-  
+
   // === DÉLAIS ET APPROVISIONNEMENT ===
   leadTimeDays: {
     type: Number,
@@ -69,7 +69,7 @@ const schema = new mongoose.Schema({
     max: 3,
     description: 'Coefficient de sécurité (1.2 = +20%, 1.5 = +50%)'
   },
-  
+
   // === CALCULS AUTOMATIQUES (mis à jour par le système) ===
   annualConsumption: {
     type: Number,
@@ -91,7 +91,7 @@ const schema = new mongoose.Schema({
     default: 0,
     description: 'Point de réapprovisionnement = safetyStock + (dailyConsumption × leadTimeDays)'
   },
-  
+
   // === HISTORIQUE ET SUIVI ===
   isStandardPart: {
     type: Boolean,
@@ -112,7 +112,7 @@ const schema = new mongoose.Schema({
     performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     notes: String
   }],
-  
+
   notes: {
     type: String,
     trim: true,
@@ -141,7 +141,7 @@ schema.index({ part: 1 });
 /**
  * Pre-save hook: Calcule automatiquement les valeurs de consommation et de stock
  */
-schema.pre('save', function(next) {
+schema.pre('save', function (next) {
   // Mise à jour du score de criticité
   const criticalityMap = {
     'low': 1,
@@ -150,35 +150,35 @@ schema.pre('save', function(next) {
     'critical': 4
   };
   this.criticalityScore = criticalityMap[this.criticality] || 2;
-  
+
   // Calcul de la consommation annuelle
   this.annualConsumption = this.quantityPerMachine * this.replacementFrequencyPerYear;
-  
+
   // Calcul de la consommation journalière
   this.dailyConsumption = this.annualConsumption / 365;
-  
+
   // Calcul du stock de sécurité
   // SS = (Consommation journalière) × (Délai appro) × Coeff. sécurité
   this.safetyStock = Math.ceil(
     this.dailyConsumption * this.leadTimeDays * this.safetyCoefficient
   );
-  
+
   // Calcul du point de réapprovisionnement
   // SR = SS + (Consommation pendant le délai)
   this.reorderPoint = Math.ceil(
     this.safetyStock + (this.dailyConsumption * this.leadTimeDays)
   );
-  
+
   // Calcul de la prochaine date de remplacement
   // Recalculer si:
   // - On a une date de dernier remplacement ET
   // - La fréquence > 0 ET
   // - (La fréquence a changé OU la date de dernier remplacement a changé OU c'est une nouvelle association)
   if (this.lastReplacementDate && this.replacementFrequencyPerYear > 0) {
-    const shouldRecalculate = this.isModified('replacementFrequencyPerYear') || 
-                              this.isModified('lastReplacementDate') || 
-                              this.isNew;
-    
+    const shouldRecalculate = this.isModified('replacementFrequencyPerYear') ||
+      this.isModified('lastReplacementDate') ||
+      this.isNew;
+
     if (shouldRecalculate) {
       const daysUntilNext = Math.round(365 / this.replacementFrequencyPerYear);
       this.nextReplacementDate = new Date(
@@ -187,7 +187,7 @@ schema.pre('save', function(next) {
       console.log(`📅 Next replacement recalculated for part: ${this.part} - ${this.nextReplacementDate.toLocaleDateString()}`);
     }
   }
-  
+
   next();
 });
 
@@ -196,29 +196,29 @@ schema.pre('save', function(next) {
 /**
  * Enregistre un remplacement de pièce
  */
-schema.methods.recordReplacement = function(quantityUsed, userId, notes = '') {
+schema.methods.recordReplacement = function (quantityUsed, userId, notes = '') {
   this.replacementHistory.push({
     date: new Date(),
     quantityUsed,
     performedBy: userId,
     notes
   });
-  
+
   this.lastReplacementDate = new Date();
-  
+
   // Calcul de la prochaine date de remplacement
   if (this.replacementFrequencyPerYear > 0) {
     const daysUntilNext = Math.round(365 / this.replacementFrequencyPerYear);
     this.nextReplacementDate = new Date(Date.now() + daysUntilNext * 24 * 60 * 60 * 1000);
   }
-  
+
   return this.save();
 };
 
 /**
  * Vérifie si le remplacement est dû
  */
-schema.methods.isReplacementDue = function() {
+schema.methods.isReplacementDue = function () {
   if (!this.nextReplacementDate) return false;
   return new Date() >= this.nextReplacementDate;
 };
@@ -226,7 +226,7 @@ schema.methods.isReplacementDue = function() {
 /**
  * Retourne les statistiques de consommation
  */
-schema.methods.getConsumptionStats = function() {
+schema.methods.getConsumptionStats = function () {
   return {
     annual: this.annualConsumption,
     monthly: this.annualConsumption / 12,
@@ -242,11 +242,11 @@ schema.methods.getConsumptionStats = function() {
 /**
  * Calcule le stock global nécessaire pour une pièce sur tous les équipements
  */
-schema.statics.calculateGlobalStock = async function(partId) {
+schema.statics.calculateGlobalStock = async function (partId) {
   const associations = await this.find({ part: partId })
     .populate('equipment', 'model serialNumber')
     .lean();
-  
+
   if (associations.length === 0) {
     return {
       totalAnnualConsumption: 0,
@@ -258,44 +258,44 @@ schema.statics.calculateGlobalStock = async function(partId) {
       details: []
     };
   }
-  
+
   // Calcul de la consommation totale
   const totalAnnualConsumption = associations.reduce(
     (sum, assoc) => sum + assoc.annualConsumption, 0
   );
-  
+
   const totalDailyConsumption = totalAnnualConsumption / 365;
-  
+
   // Calcul de la criticité moyenne pondérée
   const totalImportance = associations.reduce(
     (sum, assoc) => sum + assoc.machineImportance, 0
   );
-  
+
   const weightedCriticality = associations.reduce(
     (sum, assoc) => sum + (assoc.criticalityScore * assoc.machineImportance), 0
   ) / totalImportance;
-  
+
   // Utiliser le délai max et le coefficient de sécurité le plus élevé
   const maxLeadTime = Math.max(...associations.map(a => a.leadTimeDays));
   const maxSafetyCoeff = Math.max(...associations.map(a => a.safetyCoefficient));
-  
+
   // Stock de sécurité global
   const globalSafetyStock = Math.ceil(
     totalDailyConsumption * maxLeadTime * maxSafetyCoeff
   );
-  
+
   // Point de réapprovisionnement global
   const globalReorderPoint = Math.ceil(
     globalSafetyStock + (totalDailyConsumption * maxLeadTime)
   );
-  
+
   return {
     totalAnnualConsumption,
     totalDailyConsumption,
     weightedCriticality,
-    weightedCriticalityLabel: weightedCriticality <= 1.5 ? 'low' : 
-                               weightedCriticality <= 2.5 ? 'medium' : 
-                               weightedCriticality <= 3.5 ? 'high' : 'critical',
+    weightedCriticalityLabel: weightedCriticality <= 1.5 ? 'low' :
+      weightedCriticality <= 2.5 ? 'medium' :
+        weightedCriticality <= 3.5 ? 'high' : 'critical',
     globalSafetyStock,
     globalReorderPoint,
     recommendedInitialStock: globalReorderPoint,
@@ -314,16 +314,19 @@ schema.statics.calculateGlobalStock = async function(partId) {
 /**
  * Trouve les pièces nécessitant un réapprovisionnement
  */
-schema.statics.findPartsNeedingReorder = async function() {
+schema.statics.findPartsNeedingReorder = async function () {
   const { Part } = require('./Part');
-  
+
   // Récupérer toutes les associations
   const associations = await this.find().populate('part').lean();
-  
+
   // Grouper par pièce
   const partMap = new Map();
-  
+
   for (const assoc of associations) {
+    // Skip if part is missing (deleted but association remains)
+    if (!assoc.part) continue;
+
     const partId = assoc.part._id.toString();
     if (!partMap.has(partId)) {
       partMap.set(partId, {
@@ -333,14 +336,14 @@ schema.statics.findPartsNeedingReorder = async function() {
     }
     partMap.get(partId).associations.push(assoc);
   }
-  
+
   // Calculer pour chaque pièce
   const results = [];
-  
+
   for (const [partId, data] of partMap) {
     const globalStock = await this.calculateGlobalStock(partId);
     const currentStock = data.part.currentStock || 0;
-    
+
     if (currentStock <= globalStock.globalReorderPoint) {
       results.push({
         part: data.part,
@@ -353,7 +356,7 @@ schema.statics.findPartsNeedingReorder = async function() {
       });
     }
   }
-  
+
   // Trier par urgence et déficit
   return results.sort((a, b) => {
     if (a.urgency === 'critical' && b.urgency !== 'critical') return -1;

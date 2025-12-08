@@ -1,4 +1,4 @@
-# AQUA-MAINTAIN - Dev DB via Docker
+# Computerized Maintenance Management System for AQUARELLE ANTSIRABE-1 - Dev DB via Docker
 
 ## Prérequis
 - Docker Desktop
@@ -64,7 +64,7 @@ cd server && npm run seed
 Cette commande exécute automatiquement tous les seeders dans l'ordre correct.
 
 ### Via API (alternative)
-1) Importer `AQUA-MAINTAIN.postman_collection.json` dans Postman/Insomnia.
+1) Importer `Computerized Maintenance Management System for AQUARELLE ANTSIRABE-1.postman_collection.json` dans Postman/Insomnia.
 2) Définir la variable `baseUrl` (par défaut http://localhost:3000).
 3) Appeler `Seed > Seed All` pour initialiser toute la base de données.
 4) Ou utiliser individuellement :

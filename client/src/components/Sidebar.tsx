@@ -59,7 +59,7 @@ export function Sidebar() {
           <div className="flex items-center space-x-2">
             <Factory className="h-8 w-8 text-blue-600" />
             <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              AQUARELLE ATSIRABE
+              AQUARELLE ATSIRABE-1
             </span>
           </div>
         )}

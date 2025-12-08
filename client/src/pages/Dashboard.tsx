@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/useToast"
 interface ProductionLine {
   _id: string
   name: string
+  createdAt: string
 }
 
 export function Dashboard() {
@@ -20,7 +21,11 @@ export function Dashboard() {
     const fetchLines = async () => {
       try {
         const response = await getProductionLines()
-        setProductionLines(response.productionLines)
+        // Sort by creation date (Oldest first)
+        const sortedLines = [...response.productionLines].sort((a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        )
+        setProductionLines(sortedLines)
       } catch (error) {
         console.error('Error fetching process areas:', error)
         toast({

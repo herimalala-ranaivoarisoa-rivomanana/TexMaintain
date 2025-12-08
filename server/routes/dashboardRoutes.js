@@ -225,7 +225,7 @@ router.get('/activities', requireUser, async (req, res) => {
       ...recentEquipment.map(e => ({
         _id: String(e._id),
         type: 'equipment',
-        description: `Equipment updated: ${e.name || e.code || 'Unknown'} (${e.code || e._id})`,
+        description: `Equipment updated: ${e.model || e.serialNumber || 'Unknown'}`,
         timestamp: e.updatedAt,
         priority: 'low'
       }))
