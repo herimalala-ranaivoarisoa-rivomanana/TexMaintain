@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Search,
   Filter,
@@ -17,7 +19,16 @@ import {
   Clock,
   User,
   Calendar,
-  CheckCircle
+  CheckCircle,
+  LayoutGrid,
+  List,
+  TrendingUp,
+  Activity,
+  Target,
+  FileText,
+  Download,
+  Eye,
+  X
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { getInterventions, createIntervention, updateIntervention, deleteIntervention } from "@/api/interventions"
@@ -58,6 +69,14 @@ export function Interventions() {
   const debouncedSearchTerm = useDebounce(searchTerm, 500)
   const [searchParams, setSearchParams] = useSearchParams()
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || "all")
+  const [typeFilter, setTypeFilter] = useState("all")
+  const [priorityFilter, setPriorityFilter] = useState("all")
+  const [equipmentFilter, setEquipmentFilter] = useState("all")
+  const [personnelFilter, setPersonnelFilter] = useState("all")
+  const [dateFilter, setDateFilter] = useState<'all' | 'overdue' | 'today' | 'week' | 'month'>('all')
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
+  const [quickViewOpen, setQuickViewOpen] = useState(false)
+  const [quickViewIntervention, setQuickViewIntervention] = useState<Intervention | null>(null)
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10) || 1)
   const [total, setTotal] = useState(0)
   const [limit, setLimit] = useState<number>(() => parseInt(localStorage.getItem('int_limit') || '12', 10) || 12)
@@ -514,6 +533,85 @@ export function Interventions() {
 
   const filteredInterventions = interventions
 
+  // Calculate Statistics
+  const statistics = useMemo(() => {
+    const totalCount = total
+    const pendingCount = interventions.filter(i => i.status === 'Pending').length
+    const inProgressCount = interventions.filter(i => i.status === 'In Progress').length
+    const completedCount = interventions.filter(i => i.status === 'Completed').length
+    const criticalCount = interventions.filter(i => i.priority === 'Critical' || i.priority === 'High').length
+    const overdueCount = interventions.filter(i => {
+      const dueDate = new Date(i.dueDate)
+      const today = new Date()
+      return dueDate < today && i.status !== 'Completed'
+    }).length
+    const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+
+    return {
+      totalCount,
+      pendingCount,
+      inProgressCount,
+      completedCount,
+      criticalCount,
+      overdueCount,
+      completionRate
+    }
+  }, [interventions, total])
+
+  // Apply advanced filters
+  const advancedFilteredInterventions = useMemo(() => {
+    return filteredInterventions.filter(intervention => {
+      // Type filter
+      if (typeFilter !== 'all' && intervention.type !== typeFilter) return false
+      
+      // Priority filter
+      if (priorityFilter !== 'all' && intervention.priority !== priorityFilter) return false
+      
+      // Equipment filter
+      if (equipmentFilter !== 'all' && intervention.equipmentId?._id !== equipmentFilter) return false
+      
+      // Personnel filter
+      if (personnelFilter !== 'all' && !intervention.assignedTo?.includes(personnelFilter)) return false
+      
+      // Date filter
+      if (dateFilter !== 'all') {
+        const dueDate = new Date(intervention.dueDate)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        
+        switch (dateFilter) {
+          case 'overdue':
+            if (dueDate >= today || intervention.status === 'Completed') return false
+            break
+          case 'today':
+            const dueDateDay = new Date(dueDate)
+            dueDateDay.setHours(0, 0, 0, 0)
+            if (dueDateDay.getTime() !== today.getTime()) return false
+            break
+          case 'week':
+            const weekFromNow = new Date()
+            weekFromNow.setDate(weekFromNow.getDate() + 7)
+            if (dueDate > weekFromNow) return false
+            break
+          case 'month':
+            const monthFromNow = new Date()
+            monthFromNow.setMonth(monthFromNow.getMonth() + 1)
+            if (dueDate > monthFromNow) return false
+            break
+        }
+      }
+      
+      return true
+    })
+  }, [filteredInterventions, typeFilter, priorityFilter, equipmentFilter, personnelFilter, dateFilter])
+
+  // Check if intervention is overdue
+  const isOverdue = (intervention: Intervention) => {
+    const dueDate = new Date(intervention.dueDate)
+    const today = new Date()
+    return dueDate < today && intervention.status !== 'Completed'
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -524,6 +622,7 @@ export function Interventions() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
@@ -534,7 +633,10 @@ export function Interventions() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
+          <Button variant="outline" onClick={exportCSV}>
+            <Download className="mr-2 h-4 w-4" />
+            CSV
+          </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
@@ -659,6 +761,61 @@ export function Interventions() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
+
+      {/* KPI Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardHeader className="pb-3">
+            <CardDescription className="text-blue-700 font-medium">Total Interventions</CardDescription>
+            <CardTitle className="text-3xl text-blue-900">{statistics.totalCount}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center text-sm text-blue-700">
+              <Activity className="mr-2 h-4 w-4" />
+              All time
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+          <CardHeader className="pb-3">
+            <CardDescription className="text-yellow-700 font-medium">In Progress</CardDescription>
+            <CardTitle className="text-3xl text-yellow-900">{statistics.inProgressCount}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center text-sm text-yellow-700">
+              <Wrench className="mr-2 h-4 w-4" />
+              Active now
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardHeader className="pb-3">
+            <CardDescription className="text-green-700 font-medium">Completion Rate</CardDescription>
+            <CardTitle className="text-3xl text-green-900">{statistics.completionRate}%</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center text-sm text-green-700">
+              <Target className="mr-2 h-4 w-4" />
+              {statistics.completedCount} completed
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+          <CardHeader className="pb-3">
+            <CardDescription className="text-red-700 font-medium">Critical & Overdue</CardDescription>
+            <CardTitle className="text-3xl text-red-900">{statistics.overdueCount}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center text-sm text-red-700">
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              {statistics.criticalCount} high priority
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Start Intervention Dialog */}
@@ -854,131 +1011,451 @@ export function Interventions() {
       {/* Filters */}
       <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
         <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Search interventions..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="space-y-4">
+            {/* Search and View Toggle */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search interventions..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={viewMode === 'cards' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('cards')}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'table' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('table')}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-48">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="In Progress">In Progress</SelectItem>
-                <SelectItem value="Completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={sort} onValueChange={(v) => { setPage(1); setSort(v) }}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="createdDate">Created</SelectItem>
-                <SelectItem value="dueDate">Due date</SelectItem>
-                <SelectItem value="priority">Priority</SelectItem>
-                <SelectItem value="status">Status</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={order} onValueChange={(v: any) => { setPage(1); setOrder(v) }}>
-              <SelectTrigger className="w-full sm:w-32">
-                <SelectValue placeholder="Order" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="desc">Desc</SelectItem>
-                <SelectItem value="asc">Asc</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={String(limit)} onValueChange={(v) => { setPage(1); setLimit(parseInt(v, 10)) }}>
-              <SelectTrigger className="w-full sm:w-32">
-                <SelectValue placeholder="Per page" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="6">6 / page</SelectItem>
-                <SelectItem value="12">12 / page</SelectItem>
-                <SelectItem value="24">24 / page</SelectItem>
-                <SelectItem value="48">48 / page</SelectItem>
-              </SelectContent>
-            </Select>
+
+            {/* Advanced Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="Preventive">Preventive</SelectItem>
+                  <SelectItem value="Corrective">Corrective</SelectItem>
+                  <SelectItem value="Emergency">Emergency</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Due Date" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Dates</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="today">Due Today</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={sort} onValueChange={(v) => { setPage(1); setSort(v) }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="createdDate">Created</SelectItem>
+                  <SelectItem value="dueDate">Due date</SelectItem>
+                  <SelectItem value="priority">Priority</SelectItem>
+                  <SelectItem value="status">Status</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={order} onValueChange={(v: any) => { setPage(1); setOrder(v) }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Order" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="desc">Desc</SelectItem>
+                  <SelectItem value="asc">Asc</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Active Filters Info */}
+            {(typeFilter !== 'all' || priorityFilter !== 'all' || dateFilter !== 'all') && (
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <Filter className="h-4 w-4" />
+                <span>Active filters:</span>
+                {typeFilter !== 'all' && <Badge variant="secondary">{typeFilter}</Badge>}
+                {priorityFilter !== 'all' && <Badge variant="secondary">{priorityFilter}</Badge>}
+                {dateFilter !== 'all' && <Badge variant="secondary">{dateFilter}</Badge>}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setTypeFilter('all')
+                    setPriorityFilter('all')
+                    setDateFilter('all')
+                  }}
+                  className="h-6 px-2"
+                >
+                  Clear all
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Interventions List */}
-      <div className="space-y-4">
-        {filteredInterventions.map((intervention) => (
-          <Card key={intervention._id} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg"><Link className="hover:underline" to={`/interventions/${intervention._id}`}>{intervention.title}</Link></CardTitle>
-                  <CardDescription className="flex items-center gap-4">
-                    <span className="flex items-center">
-                      <Wrench className="mr-1 h-3 w-3" />
-                      {intervention.type}
-                    </span>
-                    <span className="flex items-center">
-                      <User className="mr-1 h-3 w-3" />
-                      {intervention.assignedTo}
-                    </span>
-                  </CardDescription>
+      {/* Interventions List - Cards View */}
+      {viewMode === 'cards' && (
+        <div className="space-y-4">
+          {advancedFilteredInterventions.map((intervention) => (
+            <Card key={intervention._id} className={`bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200 ${
+              isOverdue(intervention) ? 'border-l-4 border-l-red-500' : ''
+            }`}>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-lg">
+                        <Link className="hover:underline" to={`/interventions/${intervention._id}`}>
+                          {intervention.title}
+                        </Link>
+                      </CardTitle>
+                      {isOverdue(intervention) && (
+                        <Badge variant="destructive" className="animate-pulse">
+                          <Clock className="h-3 w-3 mr-1" />
+                          OVERDUE
+                        </Badge>
+                      )}
+                    </div>
+                    <CardDescription className="flex items-center gap-4">
+                      <span className="flex items-center">
+                        <Wrench className="mr-1 h-3 w-3" />
+                        {intervention.type}
+                      </span>
+                      <span className="flex items-center">
+                        <User className="mr-1 h-3 w-3" />
+                        {intervention.assignedTo}
+                      </span>
+                      {intervention.equipmentId && (
+                        <span className="flex items-center text-xs">
+                          <Badge variant="outline" className={`${STATUS_METADATA[intervention.equipmentId.status]?.color || 'bg-gray-500'} text-white`}>
+                            {getStatusLabel(intervention.equipmentId.status as any)}
+                          </Badge>
+                        </span>
+                      )}
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Badge className={`${getPriorityColor(intervention.priority)} text-white`}>
+                      {intervention.priority}
+                    </Badge>
+                    <Badge className={`${getStatusColor(intervention.status)} text-white flex items-center gap-1`}>
+                      {getStatusIcon(intervention.status)}
+                      {intervention.status}
+                    </Badge>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-slate-500">Equipment</p>
+                    <p className="font-medium text-slate-900">{intervention.equipment}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">Created</p>
+                    <p className="font-medium text-slate-900 flex items-center">
+                      <Calendar className="mr-1 h-3 w-3" />
+                      {new Date(intervention.createdDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">Due Date</p>
+                    <p className={`font-medium flex items-center ${
+                      isOverdue(intervention) ? 'text-red-600 font-bold' : 'text-slate-900'
+                    }`}>
+                      <Calendar className="mr-1 h-3 w-3" />
+                      {new Date(intervention.dueDate).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex gap-2">
-                  <Badge className={`${getPriorityColor(intervention.priority)} text-white`}>
-                    {intervention.priority}
-                  </Badge>
-                  <Badge className={`${getStatusColor(intervention.status)} text-white flex items-center gap-1`}>
-                    {getStatusIcon(intervention.status)}
-                    {intervention.status}
-                  </Badge>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      setQuickViewIntervention(intervention)
+                      setQuickViewOpen(true)
+                    }}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    Quick View
+                  </Button>
+                  {intervention.status !== 'In Progress' && intervention.status !== 'Completed' && (
+                    <Button variant="outline" size="sm" onClick={() => handleStartIntervention(intervention)} disabled={updatingId === intervention._id}>
+                      {updatingId === intervention._id ? 'Updating...' : 'Start'}
+                    </Button>
+                  )}
+                  {intervention.status === 'In Progress' && (
+                    <Button variant="outline" size="sm" onClick={() => openUpdateDialog(intervention)} disabled={updatingId === intervention._id}>
+                      Update Status
+                    </Button>
+                  )}
+                  {intervention.status !== 'In Progress' && intervention.status !== 'Completed' && (user?.role === 'admin' || user?.role === 'maintenance_manager') && (
+                    <Button variant="destructive" size="sm" onClick={() => handleDeleteIntervention(intervention._id)} disabled={deletingId === intervention._id}>
+                      {deletingId === intervention._id ? 'Deleting...' : 'Delete'}
+                    </Button>
+                  )}
                 </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Interventions List - Table View */}
+      {viewMode === 'table' && (
+        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Equipment</TableHead>
+                  <TableHead>Assigned To</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {advancedFilteredInterventions.map((intervention) => (
+                  <TableRow key={intervention._id} className={isOverdue(intervention) ? 'bg-red-50' : ''}>
+                    <TableCell>
+                      <Link className="hover:underline font-medium" to={`/interventions/${intervention._id}`}>
+                        {intervention.title}
+                      </Link>
+                      {isOverdue(intervention) && (
+                        <Badge variant="destructive" className="ml-2 text-xs">
+                          OVERDUE
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{intervention.type}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`${getPriorityColor(intervention.priority)} text-white`}>
+                        {intervention.priority}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`${getStatusColor(intervention.status)} text-white flex items-center gap-1 w-fit`}>
+                        {getStatusIcon(intervention.status)}
+                        {intervention.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate">{intervention.equipment}</TableCell>
+                    <TableCell>{intervention.assignedTo}</TableCell>
+                    <TableCell className={isOverdue(intervention) ? 'text-red-600 font-bold' : ''}>
+                      {new Date(intervention.dueDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            setQuickViewIntervention(intervention)
+                            setQuickViewOpen(true)
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {intervention.status === 'Pending' && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleStartIntervention(intervention)}
+                            disabled={updatingId === intervention._id}
+                          >
+                            <Wrench className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {intervention.status === 'In Progress' && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => openUpdateDialog(intervention)}
+                          >
+                            <TrendingUp className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quick View Dialog */}
+      <Dialog open={quickViewOpen} onOpenChange={setQuickViewOpen}>
+        <DialogContent className="sm:max-w-[600px] bg-white">
+          <DialogHeader>
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle className="text-xl">{quickViewIntervention?.title}</DialogTitle>
+                <DialogDescription className="mt-2">
+                  {quickViewIntervention?.type} • Created {quickViewIntervention && new Date(quickViewIntervention.createdDate).toLocaleDateString()}
+                </DialogDescription>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-slate-500">Equipment</p>
-                  <p className="font-medium text-slate-900">{intervention.equipment}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">Created</p>
-                  <p className="font-medium text-slate-900 flex items-center">
-                    <Calendar className="mr-1 h-3 w-3" />
-                    {new Date(intervention.createdDate).toLocaleDateString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">Due Date</p>
-                  <p className="font-medium text-slate-900 flex items-center">
-                    <Calendar className="mr-1 h-3 w-3" />
-                    {new Date(intervention.dueDate).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
+              <Button variant="ghost" size="sm" onClick={() => setQuickViewOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          {quickViewIntervention && (
+            <div className="space-y-4">
+              {/* Status Badges */}
               <div className="flex gap-2">
-                {intervention.status !== 'In Progress' && intervention.status !== 'Completed' && (
-                  <Button variant="outline" size="sm" onClick={() => handleStartIntervention(intervention)} disabled={updatingId === intervention._id}>{updatingId === intervention._id ? 'Updating...' : 'Start'}</Button>
-                )}
-
-                {intervention.status === 'In Progress' && (
-                  <Button variant="outline" size="sm" onClick={() => openUpdateDialog(intervention)} disabled={updatingId === intervention._id}>Update Status</Button>
-                )}
-
-                {intervention.status !== 'In Progress' && intervention.status !== 'Completed' && (user?.role === 'admin' || user?.role === 'maintenance_manager') && (
-                  <Button variant="destructive" size="sm" onClick={() => handleDeleteIntervention(intervention._id)} disabled={deletingId === intervention._id}>{deletingId === intervention._id ? 'Deleting...' : 'Delete'}</Button>
+                <Badge className={`${getPriorityColor(quickViewIntervention.priority)} text-white`}>
+                  {quickViewIntervention.priority} Priority
+                </Badge>
+                <Badge className={`${getStatusColor(quickViewIntervention.status)} text-white`}>
+                  {quickViewIntervention.status}
+                </Badge>
+                {isOverdue(quickViewIntervention) && (
+                  <Badge variant="destructive">
+                    <Clock className="h-3 w-3 mr-1" />
+                    OVERDUE
+                  </Badge>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">Equipment</p>
+                  <p className="font-medium">{quickViewIntervention.equipment}</p>
+                  {quickViewIntervention.equipmentId && (
+                    <Badge variant="outline" className="mt-1 text-xs">
+                      Status: {getStatusLabel(quickViewIntervention.equipmentId.status as any)}
+                    </Badge>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">Assigned To</p>
+                  <p className="font-medium">{quickViewIntervention.assignedTo || 'Unassigned'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">Due Date</p>
+                  <p className={`font-medium ${
+                    isOverdue(quickViewIntervention) ? 'text-red-600' : ''
+                  }`}>
+                    {new Date(quickViewIntervention.dueDate).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">Created Date</p>
+                  <p className="font-medium">{new Date(quickViewIntervention.createdDate).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              {/* Equipment Location */}
+              {quickViewIntervention.equipmentId && (
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-700 font-medium mb-2">Equipment Details</p>
+                  <div className="space-y-1 text-sm">
+                    <p><strong>Location:</strong> {quickViewIntervention.equipmentId.location}</p>
+                    <p><strong>Category:</strong> {quickViewIntervention.equipmentId.category?.name}</p>
+                    <p><strong>Type:</strong> {quickViewIntervention.equipmentId.type?.name}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-4 border-t">
+                <Button 
+                  variant="default" 
+                  className="flex-1"
+                  onClick={() => {
+                    setQuickViewOpen(false)
+                    window.location.href = `/interventions/${quickViewIntervention._id}`
+                  }}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  View Full Details
+                </Button>
+                {quickViewIntervention.status === 'Pending' && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setQuickViewOpen(false)
+                      handleStartIntervention(quickViewIntervention)
+                    }}
+                  >
+                    Start Now
+                  </Button>
+                )}
+                {quickViewIntervention.status === 'In Progress' && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setQuickViewOpen(false)
+                      openUpdateDialog(quickViewIntervention)
+                    }}
+                  >
+                    Update Status
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Pagination */}
       <div className="flex items-center justify-center gap-4">
@@ -988,17 +1465,28 @@ export function Interventions() {
         <Button variant="outline" disabled={loading || page * limit >= total} onClick={() => setPage(p => p + 1)}>{loading ? 'Loading…' : 'Next'}</Button>
       </div>
 
-      {
-        filteredInterventions.length === 0 && (
-          <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
-            <CardContent className="p-12 text-center">
-              <Wrench className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">No interventions found</h3>
-              <p className="text-slate-600">Try adjusting your search or filter criteria.</p>
-            </CardContent>
-          </Card>
-        )
-      }
+      {advancedFilteredInterventions.length === 0 && (
+        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
+          <CardContent className="p-12 text-center">
+            <Wrench className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+            <h3 className="text-lg font-medium text-slate-900 mb-2">No interventions found</h3>
+            <p className="text-slate-600 mb-4">Try adjusting your search or filter criteria.</p>
+            {(typeFilter !== 'all' || priorityFilter !== 'all' || dateFilter !== 'all' || statusFilter !== 'all') && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setTypeFilter('all')
+                  setPriorityFilter('all')
+                  setDateFilter('all')
+                  setStatusFilter('all')
+                }}
+              >
+                Clear All Filters
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div >
   )
 }
