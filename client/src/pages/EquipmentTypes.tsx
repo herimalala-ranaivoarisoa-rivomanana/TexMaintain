@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,15 @@ import {
   Pencil,
   Trash,
   Wrench,
-  Filter
+  Filter,
+  Search,
+  Layers,
+  Activity,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle2,
+  BarChart3,
+  Package
 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
@@ -62,6 +70,8 @@ export function EquipmentTypes() {
   const [stats, setStats] = useState<EquipmentStats[]>([])
   const [loading, setLoading] = useState(true)
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [sortBy, setSortBy] = useState<'name' | 'equipment' | 'availability'>('name')
   const { toast } = useToast()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<EquipmentType | null>(null)
@@ -159,6 +169,51 @@ export function EquipmentTypes() {
     ? types
     : types.filter(type => type.category._id === categoryFilter)
 
+  // Apply search and sort
+  const processedTypes = useMemo(() => {
+    let result = filteredTypes.filter(type =>
+      type.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      type.category.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+
+    // Sort
+    result.sort((a, b) => {
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name)
+      } else if (sortBy === 'equipment') {
+        const aCount = stats.find(s => s.typeId === a._id)?.totalEquipment || 0
+        const bCount = stats.find(s => s.typeId === b._id)?.totalEquipment || 0
+        return bCount - aCount
+      } else if (sortBy === 'availability') {
+        const aAvail = stats.find(s => s.typeId === a._id)?.availability || 0
+        const bAvail = stats.find(s => s.typeId === b._id)?.availability || 0
+        return bAvail - aAvail
+      }
+      return 0
+    })
+
+    return result
+  }, [filteredTypes, searchTerm, sortBy, stats])
+
+  // Global Statistics
+  const globalStats = useMemo(() => {
+    const totalTypes = types.length
+    const totalEquipment = stats.reduce((sum, s) => sum + s.totalEquipment, 0)
+    const totalOnline = stats.reduce((sum, s) => sum + s.byStatus.online, 0)
+    const totalMaintenance = stats.reduce((sum, s) => sum + s.byStatus.maintenance, 0)
+    const totalBreakdown = stats.reduce((sum, s) => sum + s.byStatus.breakdown, 0)
+    const avgAvailability = stats.length > 0 ? stats.reduce((sum, s) => sum + s.availability, 0) / stats.length : 0
+
+    return {
+      totalTypes,
+      totalEquipment,
+      totalOnline,
+      totalMaintenance,
+      totalBreakdown,
+      avgAvailability: Math.round(avgAvailability * 100) / 100
+    }
+  }, [types, stats])
+
   const openAddDialog = () => {
     setEditingItem(null)
     setForm({ name: "", description: "", category: "" })
@@ -173,6 +228,16 @@ export function EquipmentTypes() {
 
   const handleSave = async () => {
     try {
+      // Validation
+      if (!form.name.trim()) {
+        toast({ title: "Validation Error", description: "Name is required", variant: "destructive" })
+        return
+      }
+      if (!form.category) {
+        toast({ title: "Validation Error", description: "Category is required", variant: "destructive" })
+        return
+      }
+
       setIsSaving(true)
       if (editingItem) {
         await updateEquipmentType(editingItem._id, form)
@@ -215,6 +280,7 @@ export function EquipmentTypes() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
@@ -232,49 +298,142 @@ export function EquipmentTypes() {
         )}
       </div>
 
-      {/* Filter */}
+      {/* Global KPI Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardHeader className="pb-3">
+            <CardDescription className="text-blue-700 font-medium">Total Types</CardDescription>
+            <CardTitle className="text-3xl text-blue-900">{globalStats.totalTypes}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center text-sm text-blue-700">
+              <Layers className="mr-2 h-4 w-4" />
+              {categories.length} categories
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+          <CardHeader className="pb-3">
+            <CardDescription className="text-purple-700 font-medium">Total Equipment</CardDescription>
+            <CardTitle className="text-3xl text-purple-900">{globalStats.totalEquipment}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center text-sm text-purple-700">
+              <Package className="mr-2 h-4 w-4" />
+              Across all types
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardHeader className="pb-3">
+            <CardDescription className="text-green-700 font-medium">Average Availability</CardDescription>
+            <CardTitle className="text-3xl text-green-900">{globalStats.avgAvailability}%</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center text-sm text-green-700">
+              <TrendingUp className="mr-2 h-4 w-4" />
+              {globalStats.totalOnline} online
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+          <CardHeader className="pb-3">
+            <CardDescription className="text-red-700 font-medium">In Breakdown</CardDescription>
+            <CardTitle className="text-3xl text-red-900">{globalStats.totalBreakdown}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center text-sm text-red-700">
+              <AlertCircle className="mr-2 h-4 w-4" />
+              {globalStats.totalMaintenance} in maintenance
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters and Search */}
       <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
         <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-slate-400" />
-              <span className="text-sm font-medium">Filter by Category:</span>
+          <div className="space-y-4">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search types by name or category..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full sm:w-64">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category._id} value={category._id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+            {/* Filters Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-slate-400" />
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category._id} value={category._id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Name (A-Z)</SelectItem>
+                  <SelectItem value="equipment">Equipment Count</SelectItem>
+                  <SelectItem value="availability">Availability</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <BarChart3 className="h-4 w-4" />
+                <span>Showing {processedTypes.length} of {types.length} types</span>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Statistics Table */}
+      {/* Compact Statistics Table */}
       {stats.length > 0 && (
         <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
           <CardHeader>
-            <CardTitle className="text-xl">Equipment Statistics by Type</CardTitle>
-            <CardDescription>Overview of equipment performance and status distribution</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl">Equipment Statistics by Type</CardTitle>
+                <CardDescription>Performance metrics and status distribution</CardDescription>
+              </div>
+              <Badge variant="outline" className="text-sm">
+                <Activity className="h-3 w-3 mr-1" />
+                Live Data
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Type</TableHead>
-                  <TableHead>Category</TableHead>
                   <TableHead className="text-center">Total</TableHead>
-                  <TableHead className="text-center">Status Distribution</TableHead>
-                  <TableHead className="text-center">MTBF (h)</TableHead>
-                  <TableHead className="text-center">MTTR (h)</TableHead>
-                  <TableHead className="text-center">Availability (%)</TableHead>
+                  <TableHead className="text-center">Online</TableHead>
+                  <TableHead className="text-center">Maintenance</TableHead>
+                  <TableHead className="text-center">Breakdown</TableHead>
+                  <TableHead className="text-center">MTBF</TableHead>
+                  <TableHead className="text-center">MTTR</TableHead>
+                  <TableHead className="text-center">Availability</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -282,39 +441,34 @@ export function EquipmentTypes() {
                   .filter(stat => categoryFilter === "all" || categories.find(c => c.name === stat.categoryName)?._id === categoryFilter)
                   .map((stat) => (
                     <TableRow key={stat.typeId}>
-                      <TableCell className="font-medium">{stat.typeName}</TableCell>
-                      <TableCell>{stat.categoryName}</TableCell>
-                      <TableCell className="text-center font-semibold">{stat.totalEquipment}</TableCell>
                       <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-xs">
-                            <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                            <span>Online: {stat.byStatus.online}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                            <span>Maintenance: {stat.byStatus.maintenance}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <div className="w-3 h-3 bg-red-500 rounded"></div>
-                            <span>Breakdown: {stat.byStatus.breakdown}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <div className="w-3 h-3 bg-gray-500 rounded"></div>
-                            <span>Offline: {stat.byStatus.offline}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <div className="w-3 h-3 bg-red-900 rounded"></div>
-                            <span>Scrapped: {stat.byStatus.scrapped}</span>
-                          </div>
+                        <div>
+                          <p className="font-medium">{stat.typeName}</p>
+                          <p className="text-xs text-slate-500">{stat.categoryName}</p>
                         </div>
                       </TableCell>
-                      <TableCell className="text-center">{stat.avgMtbf}</TableCell>
-                      <TableCell className="text-center">{stat.avgMttr}</TableCell>
                       <TableCell className="text-center">
-                        <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{stat.totalEquipment}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge className="bg-green-500 text-white">{stat.byStatus.online}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge className="bg-yellow-500 text-white">{stat.byStatus.maintenance}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge className="bg-red-500 text-white">{stat.byStatus.breakdown}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-sm">{stat.avgMtbf.toFixed(1)}h</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-sm">{stat.avgMttr.toFixed(1)}h</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
                           <Progress value={stat.availability} className="w-16 h-2" />
-                          <span className="text-sm font-medium">{stat.availability}%</span>
+                          <span className="text-sm font-medium min-w-[3rem]">{stat.availability.toFixed(1)}%</span>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -325,54 +479,160 @@ export function EquipmentTypes() {
         </Card>
       )}
 
+      {/* Equipment Types Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTypes.map((type) => (
-          <Card key={type._id} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{type.name}</CardTitle>
-                <Badge variant="secondary">
-                  <Wrench className="h-3 w-3 mr-1" />
-                  Type
-                </Badge>
-              </div>
-              <CardDescription className="flex items-center text-slate-600">
-                Category: {type.category.name}
-              </CardDescription>
-              {type.description && (
-                <CardDescription className="mt-2">{type.description}</CardDescription>
-              )}
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm text-slate-500 mb-4">
-                Created: {new Date(type.createdAt).toLocaleDateString()}
-              </div>
-              {user?.role === 'admin' && (
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => openEditDialog(type)} disabled={deletingId === type._id}>
-                    <Pencil className="mr-2 h-4 w-4" /> Edit
-                  </Button>
-                  <Button variant="destructive" size="sm" className="flex-1" onClick={() => handleDelete(type._id)} disabled={deletingId === type._id}>
-                    <Trash className="mr-2 h-4 w-4" /> {deletingId === type._id ? 'Deleting...' : 'Delete'}
-                  </Button>
+        {processedTypes.map((type) => {
+          const typeStat = stats.find(s => s.typeId === type._id)
+          const hasEquipment = typeStat && typeStat.totalEquipment > 0
+
+          return (
+            <Card key={type._id} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{type.name}</CardTitle>
+                  <Badge variant="secondary">
+                    <Wrench className="h-3 w-3 mr-1" />
+                    Type
+                  </Badge>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                <CardDescription className="flex items-center text-slate-600">
+                  Category: {type.category.name}
+                </CardDescription>
+                {type.description && (
+                  <CardDescription className="mt-2">{type.description}</CardDescription>
+                )}
+              </CardHeader>
+              <CardContent>
+                {/* Equipment Statistics */}
+                {hasEquipment ? (
+                  <div className="space-y-3 mb-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-slate-50 rounded-lg p-3">
+                        <p className="text-xs text-slate-500 mb-1">Total Equipment</p>
+                        <p className="text-2xl font-bold text-slate-900">{typeStat.totalEquipment}</p>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-3">
+                        <p className="text-xs text-green-700 mb-1">Availability</p>
+                        <p className="text-2xl font-bold text-green-900">{typeStat.availability.toFixed(0)}%</p>
+                      </div>
+                    </div>
+
+                    {/* Status Distribution Mini Chart */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-slate-600">Status Distribution</p>
+                      <div className="flex gap-1 h-2 rounded overflow-hidden">
+                        {typeStat.byStatus.online > 0 && (
+                          <div
+                            className="bg-green-500"
+                            style={{ width: `${(typeStat.byStatus.online / typeStat.totalEquipment) * 100}%` }}
+                            title={`Online: ${typeStat.byStatus.online}`}
+                          />
+                        )}
+                        {typeStat.byStatus.maintenance > 0 && (
+                          <div
+                            className="bg-yellow-500"
+                            style={{ width: `${(typeStat.byStatus.maintenance / typeStat.totalEquipment) * 100}%` }}
+                            title={`Maintenance: ${typeStat.byStatus.maintenance}`}
+                          />
+                        )}
+                        {typeStat.byStatus.breakdown > 0 && (
+                          <div
+                            className="bg-red-500"
+                            style={{ width: `${(typeStat.byStatus.breakdown / typeStat.totalEquipment) * 100}%` }}
+                            title={`Breakdown: ${typeStat.byStatus.breakdown}`}
+                          />
+                        )}
+                        {typeStat.byStatus.offline > 0 && (
+                          <div
+                            className="bg-gray-500"
+                            style={{ width: `${(typeStat.byStatus.offline / typeStat.totalEquipment) * 100}%` }}
+                            title={`Offline: ${typeStat.byStatus.offline}`}
+                          />
+                        )}
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-green-500 rounded-full" />
+                          {typeStat.byStatus.online}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                          {typeStat.byStatus.maintenance}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-red-500 rounded-full" />
+                          {typeStat.byStatus.breakdown}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-gray-500 rounded-full" />
+                          {typeStat.byStatus.offline}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* KPIs */}
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t">
+                      <div>
+                        <p className="text-xs text-slate-500">MTBF</p>
+                        <p className="text-sm font-semibold">{typeStat.avgMtbf.toFixed(1)}h</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">MTTR</p>
+                        <p className="text-sm font-semibold">{typeStat.avgMttr.toFixed(1)}h</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-4 p-4 bg-slate-50 rounded-lg text-center">
+                    <Package className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                    <p className="text-sm text-slate-500">No equipment assigned yet</p>
+                  </div>
+                )}
+
+                <div className="text-sm text-slate-500 mb-4">
+                  Created: {new Date(type.createdAt).toLocaleDateString()}
+                </div>
+
+                {user?.role === 'admin' && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => openEditDialog(type)} disabled={deletingId === type._id}>
+                      <Pencil className="mr-2 h-4 w-4" /> Edit
+                    </Button>
+                    <Button variant="destructive" size="sm" className="flex-1" onClick={() => handleDelete(type._id)} disabled={deletingId === type._id}>
+                      <Trash className="mr-2 h-4 w-4" /> {deletingId === type._id ? 'Deleting...' : 'Delete'}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
-      {filteredTypes.length === 0 && (
+      {processedTypes.length === 0 && (
         <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
           <CardContent className="p-12 text-center">
             <Wrench className="mx-auto h-12 w-12 text-slate-400 mb-4" />
             <h3 className="text-lg font-medium text-slate-900 mb-2">No equipment types found</h3>
-            <p className="text-slate-600">
-              {categoryFilter === "all"
-                ? "Start by adding your first equipment type."
-                : "No types found for the selected category. Try selecting a different category or add a new type."
+            <p className="text-slate-600 mb-4">
+              {searchTerm
+                ? `No types match "${searchTerm}". Try a different search term.`
+                : categoryFilter === "all"
+                  ? "Start by adding your first equipment type."
+                  : "No types found for the selected category. Try selecting a different category or add a new type."
               }
             </p>
+            {(searchTerm || categoryFilter !== 'all') && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchTerm('')
+                  setCategoryFilter('all')
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
