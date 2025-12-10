@@ -64,6 +64,15 @@ async function runSeeder() {
       console.error('❌ Error seeding types:', error.message + '\n');
     }
 
+    // Seed process areas and sections (moved before equipment)
+    console.log('🏭 Seeding process areas and sections...');
+    try {
+      results.productionLines = await SeedService.seedProductionLines();
+      console.log(`✅ Process areas seeded: ${results.productionLines.created} created, ${results.productionLines.skipped} skipped\n`);
+    } catch (error) {
+      console.error('❌ Error seeding process areas:', error.message + '\n');
+    }
+
     // Seed brands
     console.log('🏷️  Seeding brands...');
     try {
@@ -98,15 +107,6 @@ async function runSeeder() {
       console.log(`✅ Parts seeded: ${results.parts.created} created, ${results.parts.skipped} skipped\n`);
     } catch (error) {
       console.error('❌ Error seeding parts:', error.message + '\n');
-    }
-
-    // Seed process areas and sections
-    console.log('🏭 Seeding process areas and sections...');
-    try {
-      results.productionLines = await SeedService.seedProductionLines();
-      console.log(`✅ Process areas seeded: ${results.productionLines.created} created, ${results.productionLines.skipped} skipped\n`);
-    } catch (error) {
-      console.error('❌ Error seeding process areas:', error.message + '\n');
     }
 
     // Seed equipment parts associations

@@ -91,6 +91,8 @@ interface Equipment {
   availability: number
   lastMaintenance: string
   nextMaintenance: string
+  productionLine?: { _id: string; name: string }
+  productionSection?: { _id: string; name: string }
 }
 
 
@@ -104,6 +106,7 @@ export function Equipment() {
   const [searchTerm, setSearchTerm] = useState("")
   const [searchParams] = useSearchParams()
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || "all")
+  const [categoryFilter, setCategoryFilter] = useState(searchParams.get('category') || "all")
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10) || 1)
   const [total, setTotal] = useState(0)
   const [limit, setLimit] = useState<number>(() => parseInt(localStorage.getItem('eq_limit') || '12', 10) || 12)
@@ -165,7 +168,8 @@ export function Equipment() {
         sort,
         order,
         q: searchTerm,
-        status: statusFilter !== 'all' ? statusFilter : undefined
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        category: categoryFilter !== 'all' ? categoryFilter : undefined
       })
       setEquipment(data.equipment || [])
       setTotal(data.total)
@@ -183,7 +187,7 @@ export function Equipment() {
 
   useEffect(() => {
     fetchEquipment()
-  }, [page, limit, sort, order, searchTerm, statusFilter])
+  }, [page, limit, sort, order, searchTerm, statusFilter, categoryFilter])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -353,8 +357,7 @@ export function Equipment() {
         })
         return
       }
-      // Note: Media files are collected but not sent to API yet
-      // TODO: Create separate API endpoint for file uploads
+      // Media files are collected and uploaded after equipment save/update
     }
 
     // Validate maintenance personnel for maintenance statuses
@@ -413,13 +416,18 @@ export function Equipment() {
             await updateEquipment(editingItem._id, form)
           }
 
-          // Step 3: Upload breakdown media if status is Breakdown and there are files
-          if (form.status === EQUIPMENT_STATUSES.BREAKDOWN && breakdownMedia.length > 0) {
+          // Step 3: Upload media if there are files
+          if (breakdownMedia.length > 0) {
             try {
+              // If not in breakdown status, use generic type/description
+              const isBreakdown = form.status === EQUIPMENT_STATUSES.BREAKDOWN
+              const typeToUse = isBreakdown ? breakdownType : 'other'
+              const descToUse = isBreakdown ? breakdownDescription : 'General Equipment Media / Documentation'
+
               await uploadBreakdownMedia(
                 editingItem._id,
-                breakdownType,
-                breakdownDescription,
+                typeToUse,
+                descToUse,
                 breakdownMedia
               )
               toast({
@@ -492,6 +500,35 @@ export function Equipment() {
           // Show QR Code dialog for new equipment
           if (created && created._id) {
             setCreatedEquipmentId(created._id)
+
+            // Upload breakdown media if needed
+            if (breakdownMedia.length > 0) {
+              try {
+                // If not in breakdown status, use generic type/description
+                const isBreakdown = form.status === EQUIPMENT_STATUSES.BREAKDOWN
+                const typeToUse = isBreakdown ? breakdownType : 'other'
+                const descToUse = isBreakdown ? breakdownDescription : 'General Equipment Media / Documentation'
+
+                await uploadBreakdownMedia(
+                  created._id,
+                  typeToUse,
+                  descToUse,
+                  breakdownMedia
+                )
+                toast({
+                  title: "Created with Media",
+                  description: `Equipment created and ${breakdownMedia.length} media file(s) uploaded`
+                })
+              } catch (mediaErr: any) {
+                console.error('❌ Error uploading media for new equipment:', mediaErr)
+                const errorMessage = mediaErr?.response?.data?.error || 'Media upload failed'
+                toast({
+                  title: "Created (Partial)",
+                  description: `Equipment created but media upload failed: ${errorMessage}`,
+                  variant: "destructive"
+                })
+              }
+            }
           }
 
           // Reload data from server to ensure UI reflects actual database state
@@ -651,6 +688,21 @@ export function Equipment() {
                 <QrCode className="h-4 w-4" />
               </Button>
             </div>
+            <Select value={categoryFilter} onValueChange={(v) => { setPage(1); setCategoryFilter(v) }}>
+              <SelectTrigger className="w-full sm:w-48">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat._id} value={cat._id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-48">
                 <Filter className="mr-2 h-4 w-4" />
@@ -732,6 +784,18 @@ export function Equipment() {
                   </p>
                 </div>
                 <div>
+                  <p className="text-slate-500">Assigned to</p>
+                  <div className="text-slate-900 text-xs mt-1">
+                    {item.productionLine ? (
+                      <span className="block font-medium text-blue-700">{item.productionLine.name}</span>
+                    ) : null}
+                    {item.productionSection ? (
+                      <span className="block text-slate-600">{item.productionSection.name}</span>
+                    ) : null}
+                    {!item.productionLine && !item.productionSection && <span className="text-slate-400 italic">Not assigned</span>}
+                  </div>
+                </div>
+                <div>
                   <p className="text-slate-500">Model</p>
                   <p className="text-slate-900">{item.model || '-'}</p>
                 </div>
@@ -748,11 +812,6 @@ export function Equipment() {
                   <p className="text-slate-500">Serial Number</p>
                   <p className="text-slate-900">{item.serialNumber || '-'}</p>
                 </div>
-              </div>
-
-              <div className="text-sm">
-                <p className="text-slate-500">Assigned to</p>
-                <p className="text-slate-900">{getEquipmentLocation(item._id)}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1178,72 +1237,7 @@ export function Equipment() {
                   </p>
                 </div>
 
-                {/* Media Upload - Photos/Videos */}
-                <div className="grid gap-2">
-                  <Label htmlFor="breakdownMedia">Photos / Vidéos (optionnel)</Label>
-                  <div
-                    className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-slate-400 transition-colors cursor-pointer"
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                    onClick={() => document.getElementById('breakdownMediaInput')?.click()}
-                  >
-                    <Package className="h-12 w-12 mx-auto text-slate-400 mb-2" />
-                    <p className="text-sm text-slate-600 mb-1">
-                      Glissez-déposez vos fichiers ici ou cliquez pour sélectionner
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Images et vidéos acceptées (max 10MB par fichier)
-                    </p>
-                    <input
-                      id="breakdownMediaInput"
-                      type="file"
-                      accept="image/*,video/*"
-                      capture="environment"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => handleMediaUpload(e.target.files)}
-                    />
-                  </div>
 
-                  {/* Media Previews */}
-                  {breakdownMediaPreviews.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 mt-2">
-                      {breakdownMediaPreviews.map((preview, index) => (
-                        <div key={index} className="relative group">
-                          {breakdownMedia[index].type.startsWith('image/') ? (
-                            <img
-                              src={preview}
-                              alt={`Preview ${index + 1}`}
-                              className="w-full h-24 object-cover rounded border"
-                            />
-                          ) : (
-                            <video
-                              src={preview}
-                              className="w-full h-24 object-cover rounded border"
-                              controls={false}
-                            />
-                          )}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              removeMedia(index)
-                            }}
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash className="h-3 w-3" />
-                          </button>
-                          <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
-                            {breakdownMedia[index].type.startsWith('image/') ? '📷' : '🎥'}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <p className="text-xs text-slate-500">
-                    {breakdownMedia.length} fichier(s) sélectionné(s)
-                  </p>
-                </div>
               </div>
             )}
 
@@ -1283,6 +1277,75 @@ export function Equipment() {
               <Input id="acquisitionDate" type="date" value={form.acquisitionDate} onChange={(e) => setForm({ ...form, acquisitionDate: e.target.value })} placeholder="Select installation date" />
             </div>
 
+            {/* Media Upload - Photos/Videos - Generique */}
+            <div className="col-span-1 md:col-span-2 border-t pt-4 mt-2">
+              <Label className="mb-2 block">Photos / Vidéos / Documents</Label>
+              <div className="grid gap-2">
+                <div
+                  className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-slate-400 transition-colors cursor-pointer bg-slate-50/50"
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById('breakdownMediaInput')?.click()}
+                >
+                  <Package className="h-12 w-12 mx-auto text-slate-400 mb-2" />
+                  <p className="text-sm text-slate-600 mb-1">
+                    Glissez-déposez vos fichiers ici ou cliquez pour sélectionner
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Images et vidéos acceptées (max 10MB par fichier)
+                  </p>
+                  <input
+                    id="breakdownMediaInput"
+                    type="file"
+                    accept="image/*,video/*"
+                    capture="environment"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleMediaUpload(e.target.files)}
+                  />
+                </div>
+
+                {/* Media Previews */}
+                {breakdownMediaPreviews.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {breakdownMediaPreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
+                        {breakdownMedia[index].type.startsWith('image/') ? (
+                          <img
+                            src={preview}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-24 object-cover rounded border"
+                          />
+                        ) : (
+                          <video
+                            src={preview}
+                            className="w-full h-24 object-cover rounded border"
+                            controls={false}
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeMedia(index)
+                          }}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash className="h-3 w-3" />
+                        </button>
+                        <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
+                          {breakdownMedia[index].type.startsWith('image/') ? '📷' : '🎥'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-slate-500">
+                  {breakdownMedia.length} fichier(s) sélectionné(s)
+                </p>
+              </div>
+            </div>
+
             {/* QR Code Section - Only show when editing existing equipment */}
             {editingItem && (
               <div className="col-span-1 md:col-span-2 border-t pt-4 mt-2">
@@ -1303,15 +1366,17 @@ export function Equipment() {
         </DialogContent>
       </Dialog>
 
-      {filteredEquipment.length === 0 && (
-        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
-          <CardContent className="p-12 text-center">
-            <Settings className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No equipment found</h3>
-            <p className="text-slate-600">Try adjusting your search or filter criteria.</p>
-          </CardContent>
-        </Card>
-      )}
+      {
+        filteredEquipment.length === 0 && (
+          <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
+            <CardContent className="p-12 text-center">
+              <Settings className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+              <h3 className="text-lg font-medium text-slate-900 mb-2">No equipment found</h3>
+              <p className="text-slate-600">Try adjusting your search or filter criteria.</p>
+            </CardContent>
+          </Card>
+        )
+      }
 
       <QRCodeScanner
         isOpen={isScannerOpen}
@@ -1359,7 +1424,7 @@ export function Equipment() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   )
 }
 

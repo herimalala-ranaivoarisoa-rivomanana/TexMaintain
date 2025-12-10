@@ -41,8 +41,8 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: 
       console.error('Error fetching reorder alerts:', error)
       if (!isRefresh) {
         toast({
-          title: 'Erreur',
-          description: 'Impossible de charger les alertes',
+          title: 'Error',
+          description: 'Failed to load alerts',
           variant: 'destructive'
         })
       }
@@ -72,11 +72,11 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: 
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            Alertes de Réapprovisionnement
+            Reorder Alerts
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-500">Chargement...</p>
+          <p className="text-sm text-slate-500">Loading...</p>
         </CardContent>
       </Card>
     )
@@ -88,7 +88,7 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: 
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            Alertes de Réapprovisionnement
+            Reorder Alerts
             {alerts.length > 0 && (
               <Badge variant="destructive">{alerts.length}</Badge>
             )}
@@ -106,7 +106,7 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: 
           <div className="flex gap-2 mt-2">
             {criticalCount > 0 && (
               <Badge variant="destructive" className="text-xs">
-                🔴 {criticalCount} critique{criticalCount > 1 ? 's' : ''}
+                🔴 {criticalCount} critical
               </Badge>
             )}
             {warningCount > 0 && (
@@ -122,10 +122,10 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: 
           <div className="text-center py-8">
             <Package className="h-12 w-12 mx-auto text-green-400 mb-3" />
             <p className="text-sm text-slate-600 font-medium text-green-700">
-              ✅ Aucune alerte
+              ✅ No alerts
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              Tous les stocks sont au niveau requis
+              All stock levels are adequate
             </p>
           </div>
         ) : (
@@ -134,8 +134,8 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: 
               <div
                 key={alert.part._id}
                 className={`border rounded-lg p-3 ${alert.urgency === 'critical'
-                    ? 'bg-red-50 border-red-200'
-                    : 'bg-orange-50 border-orange-200'
+                  ? 'bg-red-50 border-red-200'
+                  : 'bg-orange-50 border-orange-200'
                   }`}
               >
                 <div className="flex items-start justify-between mb-2">
@@ -156,32 +156,32 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: 
                     variant={alert.urgency === 'critical' ? 'destructive' : 'default'}
                     className={alert.urgency === 'warning' ? 'bg-orange-500' : ''}
                   >
-                    {alert.urgency === 'critical' ? 'CRITIQUE' : 'WARNING'}
+                    {alert.urgency === 'critical' ? 'CRITICAL' : 'WARNING'}
                   </Badge>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 text-xs mb-2">
                   <div>
-                    <p className="text-slate-500">Stock actuel</p>
+                    <p className="text-slate-500">Current Stock</p>
                     <p className="font-bold text-red-600">{alert.currentStock}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Requis</p>
+                    <p className="text-slate-500">Required</p>
                     <p className="font-bold">{alert.reorderPoint}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Déficit</p>
+                    <p className="text-slate-500">Deficit</p>
                     <p className="font-bold text-red-600">-{alert.deficit}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t">
                   <p className="text-xs text-slate-600">
-                    Utilisé sur {alert.equipmentCount} équipement{alert.equipmentCount > 1 ? 's' : ''}
+                    Used on {alert.equipmentCount} equipment
                   </p>
                   <Button size="sm" variant="outline" className="h-7 text-xs">
                     <ShoppingCart className="h-3 w-3 mr-1" />
-                    Commander
+                    Order
                   </Button>
                 </div>
               </div>
@@ -191,7 +191,7 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: 
               <div className="pt-2 border-t">
                 <Link to="/reorder-alerts">
                   <Button variant="outline" className="w-full" size="sm">
-                    Voir toutes les alertes ({alerts.length})
+                    View all alerts ({alerts.length})
                   </Button>
                 </Link>
               </div>

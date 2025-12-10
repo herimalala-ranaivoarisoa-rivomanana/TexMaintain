@@ -27,7 +27,7 @@ router.get('/', requireUser, async (req, res) => {
   const sortSpec = { [String(sort)]: String(order).toLowerCase() === 'asc' ? 1 : -1, _id: 1 };
   const lmt = Math.max(1, Number(limit));
   const requestedPage = Math.max(1, Number(page));
-  
+
   // Count filtered total first to clamp page
   const total = await Part.countDocuments(query);
   const totalPages = Math.max(1, Math.ceil(total / lmt));
@@ -35,26 +35,35 @@ router.get('/', requireUser, async (req, res) => {
   const skip = (safePage - 1) * lmt;
 
   // Get paginated results and GLOBAL statistics based on ALL parts
-  const [parts, globalStats, allCount] = await Promise.all([
+  const [partsRaw, globalStats, allCount] = await Promise.all([
     Part.find(query).sort(sortSpec).skip(skip).limit(lmt).lean(),
     Part.aggregate([
       { $group: { _id: '$type', count: { $sum: 1 } } }
     ]),
     Part.countDocuments({})
   ]);
-  
+
+  // Attach stock status ensuring backend SSOT
+  const parts = partsRaw.map(p => {
+    const doc = new Part(p);
+    return {
+      ...p,
+      stockStatus: doc.getStockStatus() // Includes status, color, label, etc.
+    };
+  });
+
   // Format global statistics (ALL parts in inventory)
   const statistics = {
     total: allCount,
     parts: 0,
     consumables: 0
   };
-  
+
   globalStats.forEach(stat => {
     if (stat._id === 'part') statistics.parts = stat.count;
     if (stat._id === 'consumable') statistics.consumables = stat.count;
   });
-  
+
   statistics.total = statistics.parts + statistics.consumables;
 
   // Compute FILTERED aggregates (independent of pagination)
@@ -66,10 +75,10 @@ router.get('/', requireUser, async (req, res) => {
         filteredTotal: { $sum: 1 },
         filteredCritical: {
           $sum: {
-            $cond: [ { $lte: [ { $ifNull: ['$currentStock', 0] }, { $ifNull: ['$minStock', 0] } ] }, 1, 0 ]
+            $cond: [{ $lte: [{ $ifNull: ['$currentStock', 0] }, { $ifNull: ['$minStock', 0] }] }, 1, 0]
           }
         },
-        filteredTotalValue: { $sum: { $multiply: [ { $ifNull: ['$currentStock', 0] }, { $ifNull: ['$unitPrice', 0] } ] } }
+        filteredTotalValue: { $sum: { $multiply: [{ $ifNull: ['$currentStock', 0] }, { $ifNull: ['$unitPrice', 0] }] } }
       }
     },
     {
@@ -79,14 +88,14 @@ router.get('/', requireUser, async (req, res) => {
         filteredCritical: 1,
         filteredTotalValue: 1,
         filteredAverageValue: {
-          $cond: [ { $gt: ['$filteredTotal', 0] }, { $divide: ['$filteredTotalValue', '$filteredTotal'] }, 0 ]
+          $cond: [{ $gt: ['$filteredTotal', 0] }, { $divide: ['$filteredTotalValue', '$filteredTotal'] }, 0]
         }
       }
     }
   ]);
 
   const filtered = filteredAgg[0] || { filteredTotal: 0, filteredCritical: 0, filteredTotalValue: 0, filteredAverageValue: 0 };
-  
+
   return res.status(200).json({
     parts,
     page: safePage,
@@ -104,18 +113,18 @@ router.get('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
   const part = await Part.findById(id);
   if (!part) return res.status(404).json({ message: 'Part not found' });
-  
+
   // Calculer le statut du stock
   const stockStatus = part.getStockStatus();
-  
-  return res.status(200).json({ 
+
+  return res.status(200).json({
     part: part.toObject(),
     stockStatus
   });
 });
 
 // PUT /api/inventory/:id/stock
-router.put('/:id/stock', requireUser, requireRole(['admin','maintenance_manager','procurement_manager','assistant_maintenance_manager','foreman']), async (req, res) => {
+router.put('/:id/stock', requireUser, requireRole(['admin', 'maintenance_manager', 'procurement_manager', 'assistant_maintenance_manager', 'foreman']), async (req, res) => {
   const { id } = req.params;
   const { quantity, type } = req.body || {};
   const part = await Part.findById(id);
@@ -129,7 +138,7 @@ router.put('/:id/stock', requireUser, requireRole(['admin','maintenance_manager'
     newStock: part.currentStock
   });
 });
- 
+
 // POST /api/inventory
 const { z } = require('zod');
 const partSchema = z.object({
@@ -153,7 +162,7 @@ router.post('/', requireUser, requireRole('admin'), async (req, res) => {
 });
 
 // PATCH /api/inventory/:id
-router.patch('/:id', requireUser, requireRole(['admin','procurement_manager']), async (req, res) => {
+router.patch('/:id', requireUser, requireRole(['admin', 'procurement_manager']), async (req, res) => {
   const { id } = req.params;
   const updates = req.body || {};
   const updated = await Part.findByIdAndUpdate(id, updates, { new: true }).lean();
@@ -175,18 +184,18 @@ router.delete('/:id', requireUser, requireRole('admin'), async (req, res) => {
  * POST /api/inventory/:id/order
  * Créer une commande pour une pièce
  */
-router.post('/:id/order', requireUser, requireRole(['admin','procurement_manager','maintenance_manager']), async (req, res) => {
+router.post('/:id/order', requireUser, requireRole(['admin', 'procurement_manager', 'maintenance_manager']), async (req, res) => {
   try {
     const { id } = req.params;
     const { quantity, expectedDate, supplier, orderNumber, notes } = req.body;
-    
+
     if (!quantity || quantity <= 0) {
       return res.status(400).json({ message: 'Quantity must be greater than 0' });
     }
-    
+
     const part = await Part.findById(id);
     if (!part) return res.status(404).json({ message: 'Part not found' });
-    
+
     await part.addOrder({
       quantity: Number(quantity),
       status: 'ordered',
@@ -195,7 +204,7 @@ router.post('/:id/order', requireUser, requireRole(['admin','procurement_manager
       orderNumber,
       notes
     });
-    
+
     return res.status(200).json({
       success: true,
       message: 'Order created successfully',
@@ -212,25 +221,25 @@ router.post('/:id/order', requireUser, requireRole(['admin','procurement_manager
  * PATCH /api/inventory/:id/order/:orderId
  * Mettre à jour le statut d'une commande
  */
-router.patch('/:id/order/:orderId', requireUser, requireRole(['admin','procurement_manager','maintenance_manager']), async (req, res) => {
+router.patch('/:id/order/:orderId', requireUser, requireRole(['admin', 'procurement_manager', 'maintenance_manager']), async (req, res) => {
   try {
     const { id, orderId } = req.params;
     const { status } = req.body;
-    
+
     if (!status) {
       return res.status(400).json({ message: 'Status is required' });
     }
-    
+
     const validStatuses = ['pending', 'ordered', 'in_transit', 'received', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
-    
+
     const part = await Part.findById(id);
     if (!part) return res.status(404).json({ message: 'Part not found' });
-    
+
     await part.updateOrderStatus(orderId, status);
-    
+
     return res.status(200).json({
       success: true,
       message: 'Order status updated successfully',
@@ -247,12 +256,12 @@ router.patch('/:id/order/:orderId', requireUser, requireRole(['admin','procureme
  * POST /api/inventory/:id/calculate-min-max
  * Calculer automatiquement min/max à partir des associations
  */
-router.post('/:id/calculate-min-max', requireUser, requireRole(['admin','procurement_manager','maintenance_manager']), async (req, res) => {
+router.post('/:id/calculate-min-max', requireUser, requireRole(['admin', 'procurement_manager', 'maintenance_manager']), async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const result = await Part.updateMinMaxFromAssociations(id);
-    
+
     if (!result) {
       return res.status(200).json({
         success: true,
@@ -260,7 +269,7 @@ router.post('/:id/calculate-min-max', requireUser, requireRole(['admin','procure
         calculated: false
       });
     }
-    
+
     return res.status(200).json({
       success: true,
       message: 'Min/Max calculated and updated successfully',
@@ -284,14 +293,14 @@ router.get('/:id/stock-status', requireUser, async (req, res) => {
     const { id } = req.params;
     const part = await Part.findById(id);
     if (!part) return res.status(404).json({ message: 'Part not found' });
-    
+
     const stockStatus = part.getStockStatus();
-    
+
     // Récupérer aussi les associations pour plus d'infos
     const associations = await EquipmentPart.find({ part: id })
       .populate('equipment', 'model serialNumber location')
       .lean();
-    
+
     return res.status(200).json({
       success: true,
       stockStatus,

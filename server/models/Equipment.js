@@ -55,10 +55,21 @@ const schema = new mongoose.Schema({
     type: Number, // Duration in minutes
     default: 0
   },
+  productionLine: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ProductionLine',
+    required: false // Optional initially, but recommended
+  },
+  productionSection: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ProductionSection',
+    required: false
+  },
   location: {
-    type: String,
+    type: String, // Factory Name e.g. "Antsirabe-1"
     required: true,
     trim: true,
+    default: 'Antsirabe-1'
   },
   manufacturer: {
     type: String,

@@ -8,11 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
-  Search, 
-  Filter, 
-  Package, 
-  AlertTriangle, 
+import {
+  Search,
+  Filter,
+  Package,
+  AlertTriangle,
   TrendingDown,
   TrendingUp,
   MapPin,
@@ -38,6 +38,14 @@ interface InventoryItem {
   unitPrice: number
   supplier: string
   location: string
+  pendingQuantity?: number
+  stockStatus?: {
+    status: 'critical' | 'low' | 'normal' | 'high'
+    label: string
+    color: string
+    icon: string
+    message: string
+  }
 }
 
 export function Inventory() {
@@ -56,7 +64,7 @@ export function Inventory() {
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10) || 1)
   const [limit, setLimit] = useState<number>(() => parseInt(localStorage.getItem('inv_limit') || '12', 10) || 12)
   const [sort, setSort] = useState<string>(searchParams.get('sort') || 'updatedAt')
-  const [order, setOrder] = useState<'asc'|'desc'>((searchParams.get('order') as any) || 'desc')
+  const [order, setOrder] = useState<'asc' | 'desc'>((searchParams.get('order') as any) || 'desc')
   const initialType = (searchParams.get('type') || '').toLowerCase()
   const initialTab: 'parts' | 'consumables' | 'all' = initialType === 'part' ? 'parts' : initialType === 'consumable' ? 'consumables' : 'all'
   const [activeTab, setActiveTab] = useState<'parts' | 'consumables' | 'all'>(initialTab)
@@ -168,8 +176,12 @@ export function Inventory() {
   }, [limit])
 
   const getStockStatus = (item: InventoryItem) => {
-    if (item.currentStock <= item.minStock) return 'critical'
-    if (item.currentStock <= item.minStock * 1.5) return 'low'
+    // Prefer backend status if available (SSOT)
+    if (item.stockStatus?.status) return item.stockStatus.status
+
+    // Fallback logic
+    if (item.currentStock <= item.minStock * 0.5) return 'critical'
+    if (item.currentStock <= item.minStock) return 'low'
     return 'normal'
   }
 
@@ -192,7 +204,7 @@ export function Inventory() {
   }
 
   const exportCSV = () => {
-    const headers = ['Name','PartNumber','Category','Current','Min','Max','UnitPrice','Supplier','Location']
+    const headers = ['Name', 'PartNumber', 'Category', 'Current', 'Min', 'Max', 'UnitPrice', 'Supplier', 'Location']
     const rows = inventory.map(p => [
       p.name,
       p.partNumber,
@@ -334,71 +346,71 @@ export function Inventory() {
   // The API already returns the filtered/typed list; use it directly
   const currentItems = inventory
 
-const getReferenceLabel = () => {
-return activeTab === 'parts' ? 'Part Number' : activeTab === 'consumables' ? 'Reference' : 'Part Number'
-}
-
-const getAddButtonText = () => {
-return activeTab === 'parts' ? 'Add Part' : activeTab === 'consumables' ? 'Add Consumable' : 'Add Item'
-}
-
-const getAddButtonIcon = () => {
-  return activeTab === 'parts' ? <Wrench className="mr-2 h-4 w-4" /> : activeTab === 'consumables' ? <Droplet className="mr-2 h-4 w-4" /> : <Package className="mr-2 h-4 w-4" />
-}
-
-const getCategoryOptions = () => {
-  if (activeTab === 'parts') {
-    return [
-      'Belts',
-      'Bearings',
-      'Gears',
-      'Motors',
-      'Pumps',
-      'Valves',
-      'Filters',
-      'Sensors',
-      'Actuators',
-      'Cables',
-      'Connectors',
-      'Switches',
-      'Relays',
-      'Circuit Boards',
-      'Mechanical Parts',
-      'Fasteners',
-      'Tools',
-      'Maintenance Equipment',
-      'Sewing Supplies',
-      'Cutting Tools'
-    ]
-  } else if (activeTab === 'consumables') {
-    return [
-      'Lubricants',
-      'Oils',
-      'Greases',
-      'Coolants',
-      'Cleaning Agents',
-      'Adhesives',
-      'Sealants',
-      'Paints',
-      'Coatings',
-      'Chemicals',
-      'Solvents',
-      'Fuels',
-      'Batteries',
-      'Filters',
-      'Cartridges',
-      'Tapes',
-      'Glues',
-      'Welding Supplies'
-    ]
-  } else {
-    // Pour 'all', retourner toutes les catégories
-    return [
-      'Belts', 'Bearings', 'Gears', 'Motors', 'Pumps', 'Valves', 'Filters', 'Sensors', 'Actuators', 'Cables', 'Connectors', 'Switches', 'Relays', 'Circuit Boards', 'Mechanical Parts', 'Fasteners', 'Tools', 'Maintenance Equipment', 'Sewing Supplies', 'Cutting Tools',
-      'Lubricants', 'Oils', 'Greases', 'Coolants', 'Cleaning Agents', 'Adhesives', 'Sealants', 'Paints', 'Coatings', 'Chemicals', 'Solvents', 'Fuels', 'Batteries', 'Cartridges', 'Tapes', 'Glues', 'Welding Supplies'
-    ]
+  const getReferenceLabel = () => {
+    return activeTab === 'parts' ? 'Part Number' : activeTab === 'consumables' ? 'Reference' : 'Part Number'
   }
-}
+
+  const getAddButtonText = () => {
+    return activeTab === 'parts' ? 'Add Part' : activeTab === 'consumables' ? 'Add Consumable' : 'Add Item'
+  }
+
+  const getAddButtonIcon = () => {
+    return activeTab === 'parts' ? <Wrench className="mr-2 h-4 w-4" /> : activeTab === 'consumables' ? <Droplet className="mr-2 h-4 w-4" /> : <Package className="mr-2 h-4 w-4" />
+  }
+
+  const getCategoryOptions = () => {
+    if (activeTab === 'parts') {
+      return [
+        'Belts',
+        'Bearings',
+        'Gears',
+        'Motors',
+        'Pumps',
+        'Valves',
+        'Filters',
+        'Sensors',
+        'Actuators',
+        'Cables',
+        'Connectors',
+        'Switches',
+        'Relays',
+        'Circuit Boards',
+        'Mechanical Parts',
+        'Fasteners',
+        'Tools',
+        'Maintenance Equipment',
+        'Sewing Supplies',
+        'Cutting Tools'
+      ]
+    } else if (activeTab === 'consumables') {
+      return [
+        'Lubricants',
+        'Oils',
+        'Greases',
+        'Coolants',
+        'Cleaning Agents',
+        'Adhesives',
+        'Sealants',
+        'Paints',
+        'Coatings',
+        'Chemicals',
+        'Solvents',
+        'Fuels',
+        'Batteries',
+        'Filters',
+        'Cartridges',
+        'Tapes',
+        'Glues',
+        'Welding Supplies'
+      ]
+    } else {
+      // Pour 'all', retourner toutes les catégories
+      return [
+        'Belts', 'Bearings', 'Gears', 'Motors', 'Pumps', 'Valves', 'Filters', 'Sensors', 'Actuators', 'Cables', 'Connectors', 'Switches', 'Relays', 'Circuit Boards', 'Mechanical Parts', 'Fasteners', 'Tools', 'Maintenance Equipment', 'Sewing Supplies', 'Cutting Tools',
+        'Lubricants', 'Oils', 'Greases', 'Coolants', 'Cleaning Agents', 'Adhesives', 'Sealants', 'Paints', 'Coatings', 'Chemicals', 'Solvents', 'Fuels', 'Batteries', 'Cartridges', 'Tapes', 'Glues', 'Welding Supplies'
+      ]
+    }
+  }
 
   const PartList = ({ items }: { items: InventoryItem[] }) => (
     <>
@@ -539,6 +551,11 @@ const getCategoryOptions = () => {
                 <CardDescription className="flex items-center text-slate-600">
                   <Package className="mr-1 h-3 w-3" />
                   {item.partNumber}
+                  {item.pendingQuantity && item.pendingQuantity > 0 ? (
+                    <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200 text-xs py-0 h-5">
+                      +{item.pendingQuantity} on order
+                    </Badge>
+                  ) : null}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -591,8 +608,8 @@ const getCategoryOptions = () => {
                     </Button>
                   )}
                   {(user?.role === 'admin' || user?.role === 'maintenance_manager' || user?.role === 'procurement_manager') && (
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       className="bg-gradient-to-r from-blue-600 to-indigo-600"
                       onClick={() => openStockDialog(item)} disabled={updatingStockId === item._id}
                     >
@@ -646,13 +663,13 @@ const getCategoryOptions = () => {
           </p>
         </div>
         <div className="flex gap-2">
-        <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
-        {(user?.role === 'admin' || user?.role === 'procurement_manager') && (
-        <Button onClick={openAddPartDialog} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-          {getAddButtonIcon()}
-          {getAddButtonText()}
-        </Button>
-        )}
+          <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
+          {(user?.role === 'admin' || user?.role === 'procurement_manager') && (
+            <Button onClick={openAddPartDialog} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+              {getAddButtonIcon()}
+              {getAddButtonText()}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -698,7 +715,7 @@ const getCategoryOptions = () => {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="type">Transaction Type</Label>
-              <Select value={stockUpdate.type} onValueChange={(value: 'in' | 'out') => setStockUpdate({...stockUpdate, type: value})}>
+              <Select value={stockUpdate.type} onValueChange={(value: 'in' | 'out') => setStockUpdate({ ...stockUpdate, type: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
@@ -714,7 +731,7 @@ const getCategoryOptions = () => {
                 id="quantity"
                 type="number"
                 value={stockUpdate.quantity}
-                onChange={(e) => setStockUpdate({...stockUpdate, quantity: parseInt(e.target.value) || 0})}
+                onChange={(e) => setStockUpdate({ ...stockUpdate, quantity: parseInt(e.target.value) || 0 })}
                 placeholder="Enter quantity"
               />
             </div>
@@ -723,7 +740,7 @@ const getCategoryOptions = () => {
               <Input
                 id="reason"
                 value={stockUpdate.reason}
-                onChange={(e) => setStockUpdate({...stockUpdate, reason: e.target.value})}
+                onChange={(e) => setStockUpdate({ ...stockUpdate, reason: e.target.value })}
                 placeholder="Enter reason for stock change"
               />
             </div>

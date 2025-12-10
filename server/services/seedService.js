@@ -213,173 +213,179 @@ class SeedService {
     try {
       console.log('Starting equipment seeding...');
 
-      // First ensure categories and types exist
       const categories = await EquipmentCategory.find();
-      const types = await EquipmentType.find().populate('category');
-      let brands = await Brand.find();
+      const types = await EquipmentType.find();
+      const brands = await Brand.find();
+      const sections = await ProductionSection.find().populate('productionLine');
+      console.log(`Available sections for assignment: ${sections.length}`);
 
-      if (categories.length === 0 || types.length === 0) {
-        throw new Error('No equipment categories or types found. Please seed categories and types first.');
+
+      if (categories.length === 0 || types.length === 0 || brands.length === 0) {
+        throw new Error('No categories, types, or brands found. Please seed them first.');
       }
 
-      // Ensure at least one brand exists
-      if (brands.length === 0) {
-        console.warn('⚠️  No brands found. Creating default brand...');
-        const defaultBrand = await Brand.create({
-          name: 'Generic',
-          description: 'Default brand for equipment without specific brand'
-        });
-        brands = [defaultBrand];
-        console.log('✅ Default brand created');
-      }
-
-      // Create maps for easy lookup
-      const categoryMap = {};
-      categories.forEach(cat => {
-        categoryMap[cat.name.toLowerCase().replace(/[^a-z0-9]/g, '')] = cat._id;
-      });
-
-      const typeMap = {};
-      types.forEach(type => {
-        typeMap[type.name.toLowerCase().replace(/[^a-z0-9]/g, '')] = type._id;
-      });
-
-      const brandMap = {};
-      brands.forEach(brand => {
-        brandMap[brand.name.toLowerCase().replace(/[^a-z0-9]/g, '')] = brand._id;
-      });
-
-      const equipmentData = [
-        {
-          name: 'Combing Machine CP-2000',
-          code: 'EQ-SPIN-001',
-          category: categoryMap['cuttingmachine'], // Assuming 'spinning' category doesn't exist, using 'cuttingmachine' as a placeholder or if it's meant to be a cutting machine for spinning
-          type: typeMap['cuttingpress'], // Assuming 'spinning' type doesn't exist, using 'cuttingpress' as a placeholder
-          status: 'stored',
-          location: 'Production Floor - Spinning Area',
-          model: 'CP-2000',
-          brand: brandMap['rieter'] || brands[0]._id,
-          manufacturer: 'Rieter',
-          serialNumber: 'CP-2000-001',
-          acquisitionDate: new Date('2022-01-15'),
-          lastMaintenance: new Date('2024-10-01'),
-          nextMaintenance: new Date('2025-01-01'),
-          specifications: {
-            cutting_area: '2.5m x 25m',
-            thickness: '50mm max',
-            accuracy: '±0.5mm'
-          }
-        },
-        {
-          name: 'Industrial Sewing Machine DDL-8700',
-          code: 'EQ-SEW-001',
-          category: categoryMap['sewingmachine'],
-          type: typeMap['singleneedlemachine'],
-          status: 'stored',
-          location: 'Production Floor - Sewing Area',
-          model: 'DDL-8700',
-          brand: brandMap['juki'] || brands[0]._id,
-          manufacturer: 'Juki',
-          serialNumber: 'DDL-8700-001',
-          acquisitionDate: new Date('2021-06-10'),
-          lastMaintenance: new Date('2024-09-15'),
-          nextMaintenance: new Date('2024-12-15'),
-          specifications: {
-            speed: '5500 spm',
-            stitch_length: '5mm max',
-            needle: 'DB x 1'
-          }
-        },
-        {
-          name: 'Steam Press Pro',
-          code: 'EQ-PRESS-001',
-          category: categoryMap['pressingironing'],
-          type: typeMap['pressingmachine'],
-          status: 'stored',
-          location: 'Warehouse - Storage Area B',
-          model: 'SteamPress Pro',
-          brand: brandMap['monforts'] || brands[0]._id,
-          manufacturer: 'Monforts',
-          serialNumber: 'SPP-001',
-          acquisitionDate: new Date('2020-03-20'),
-          lastMaintenance: new Date('2024-10-20'),
-          nextMaintenance: new Date('2024-11-20'),
-          specifications: {
-            temperature: '220°C max',
-            pressure: '6 bar',
-            steam_output: '50kg/h'
-          }
-        },
-        {
-          name: 'Fabric Inspector Pro',
-          code: 'EQ-QC-001',
-          category: categoryMap['qualitycontrol'],
-          type: typeMap['qualitycontrolequipment'],
-          status: 'stored',
-          location: 'Quality Control Lab',
-          model: 'FabricInspector Pro',
-          brand: brandMap['other'] || brands[0]._id,
-          manufacturer: 'QC Systems Ltd.',
-          serialNumber: 'FIP-2023-001',
-          acquisitionDate: new Date('2023-01-10'),
-          lastMaintenance: new Date('2024-08-15'),
-          nextMaintenance: new Date('2025-02-15'),
-          specifications: {
-            resolution: '0.01mm',
-            measurement_range: '500mm x 300mm',
-            accuracy: '±0.05mm'
-          }
-        },
-        {
-          name: 'ToolMaster 500',
-          code: 'EQ-MAINT-001',
-          category: categoryMap['maintenanceequipment'],
-          type: typeMap['maintenanceequipment'],
-          status: 'stored',
-          location: 'Maintenance Workshop',
-          model: 'ToolMaster 500',
-          brand: brandMap['other'] || brands[0]._id,
-          manufacturer: 'Workshop Solutions',
-          serialNumber: 'TM-500-001',
-          acquisitionDate: new Date('2022-11-05'),
-          lastMaintenance: new Date('2024-07-10'),
-          nextMaintenance: new Date('2025-01-10'),
-          specifications: {
-            power: '220V/50Hz',
-            weight: '150kg',
-            dimensions: '1200mm x 800mm x 600mm'
-          }
-        }
+      // Add specific equipment models
+      const SPECIFIC_MODELS = [
+        'LBH 1795A', 'LBH 1795A-S', 'LBH 1796AN', 'LBH1790', 'LBH1790A-S', 'LBH1790AN', 'LBH1790N', 'LBH1790S',
+        'LBH1795A', 'LBH1796AN', 'LK 1903', 'LK 1903A SS', 'LK 1903AN SS', 'LK1900-ASS', 'LK1900A',
+        'LK1900B-SS', 'LK1903', 'LK1903-ASS', 'LK1903A', 'LK1903A-SS', 'LK1903AN-SS', 'LK1903B-SS',
+        'LK1903N-SS', 'Lapseam', 'LF2290A-SS', 'LH-896N', 'LZ2290', 'LZ2290 ASS7', 'LZ2290-ASS-7',
+        'M832-38', 'MH 380', 'MH380', 'MH381', 'MF7923D', 'MF796AN', 'MO 6700', 'MO6716DA', 'MO6716OA',
+        'MO67143', 'MO-6700', 'MO-6743DA', 'MO6743AA', 'MO6743DA', 'NS 45', 'NS 50', 'NS 56', 'NS 58',
+        'NS 87', 'NS 94', 'NS 1504', 'NS 2410', 'NS 310', 'NS 3533', 'NS 650', 'NS 8401', 'NS 8401 P',
+        'NS 8402', 'NS 8402 P', 'NS 8403', 'NS 8403 P', 'NS 8661', 'NS 9205', 'NS 9401', 'NS 9404',
+        'NS 9504', 'NS-55-1', 'NH-602-AS', 'OB-700A', 'OP301', 'Overlock', 'Pegasus', 'PEGASOO', 'PEGASUS',
+        'PFC 320', 'PMM-CP-203', 'PMM-J10', 'PMM-SAP 25', 'PMM-SF-9A', 'PMM-VT-302', 'Prestex', 'Rassage',
+        'RPL-CB13009', 'SBLT-100N', 'Santian', 'SM-201L', 'TP 201', 'UHS 01', 'WI20F', 'WK 001',
+        // Lockstitch
+        'JUKI DDL-9000C', 'JUKI DDL-8700', 'BROTHER S-7300A', 'SIRUBA DL7200', 'JUKI DDL-5550N',
+        'JUKI DLM-5400', 'JUKI DLN-9010',
+        // Overlock
+        'JUKI MO-6800S', 'PEGASUS M900', 'SIRUBA 747K', 'YAMATO CZ-6000', 'BROTHER 3034D',
+        'JUKI MO-6714DA', 'PEGASUS M832',
+        // Buttonhole / Button Attach
+        'JUKI LBH-1790A', 'BROTHER HE-800B', 'JUKI LK-1903B'
       ];
 
-      // Generate 30 more random equipment
-      for (let i = 1; i <= 30; i++) {
-        const randomType = types[Math.floor(Math.random() * types.length)];
-        const randomBrand = brands[Math.floor(Math.random() * brands.length)];
-        // All equipment starts as stored, will be updated when assigned to a line
-        const status = 'stored';
+      const getDetailsFromModel = (model) => {
+        const name = model.toUpperCase();
+        let brandName = 'Juki'; // default
+        let categoryKey = 'sewing'; // default
+        let typeKey = 'lockstitch'; // default
 
-        const equipmentCode = `EQ-${randomType.name.substring(0, 4).toUpperCase()}-${String(i).padStart(3, '0')}`;
-        const equipmentName = `${randomType.name} ${randomBrand.name.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 1000) + 1000}`;
+        // Determine Brand
+        if (name.includes('BROTHER')) brandName = 'Brother';
+        else if (name.includes('PEGASUS')) brandName = 'Pegasus';
+        else if (name.includes('SIRUBA')) brandName = 'Siruba';
+        else if (name.includes('YAMATO')) brandName = 'Yamato';
+        else if (name.includes('EASTMAN')) brandName = 'Eastman';
+        else if (name.includes('KM')) brandName = 'KM';
+        else if (name.includes('HASHIMA')) brandName = 'Hashima';
+        else if (name.includes('MACPI')) brandName = 'Macpi';
+        else if (name.includes('VEIT')) brandName = 'Veit';
+        else if (name.includes('BRISAY')) brandName = 'Brisay';
+        else if (name.includes('HP-')) brandName = 'Hashima'; // Guess
+
+        // Determine Type
+        if (name.includes('MO-') || name.includes('M900') || name.includes('747K') || name.includes('CZ-') || name.includes('3034D') || name.includes('M832')) {
+          typeKey = 'overlock';
+        } else if (name.includes('LBH') || name.includes('HE-')) {
+          typeKey = 'buttonhole';
+        } else if (name.includes('LK-')) {
+          typeKey = 'buttonattach';
+        } else if (name.includes('HP-') || name.includes('HASHIMA') || name.includes('MACPI') || name.includes('VEIT') || name.includes('BRISAY')) {
+          categoryKey = 'ironingpress';
+          typeKey = 'buckpress';
+        } else if (name.includes('EASTMAN') || name.includes('KM')) {
+          categoryKey = 'cutting';
+          typeKey = 'cutter';
+        }
+
+        return { brandName, categoryKey, typeKey };
+      };
+
+      // Helper function to generate realistic metrics
+      const generateMetrics = (acquisitionDate) => {
+        const now = new Date();
+        const daysSinceAcq = (now - acquisitionDate) / (1000 * 60 * 60 * 24);
+
+        // Operating time (approx 8h/day, 5 days/week => ~2000h/year)
+        const years = daysSinceAcq / 365;
+        const operatingTime = Math.floor(years * 2000);
+
+        // MTBF: Random between 500 and 3000 hours
+        const mtbf = 500 + Math.floor(Math.random() * 2500);
+
+        // MTTR: Random between 1 and 8 hours
+        const mttr = 1 + Math.floor(Math.random() * 7);
+
+        // Downtime: OperatingTime / MTBF * MTTR
+        const failures = operatingTime / mtbf;
+        const downtime = Math.floor(failures * mttr);
+
+        // Availability calculation
+        // Total Time = Operating Time + Downtime (simplification)
+        const totalTime = operatingTime + downtime;
+        const availability = totalTime > 0 ? (operatingTime / totalTime) * 100 : 100;
+
+        return {
+          mtbf,
+          mttr,
+          operatingTime,
+          downtime,
+          availability: parseFloat(availability.toFixed(2))
+        };
+      };
+
+      const equipmentData = [];
+      let sectionIndex = 0;
+
+      console.log(`Processing ${SPECIFIC_MODELS.length} specific models...`);
+
+      for (const modelName of SPECIFIC_MODELS) {
+        // Find existing Category, Type, Brand
+        const details = getDetailsFromModel(modelName);
+
+        let category = categories.find(c => c.key === details.categoryKey);
+        if (!category) category = categories.find(c => c.name.toLowerCase().includes(details.categoryKey)) || categories[0];
+
+        let type = types.find(t => t.key === details.typeKey);
+        if (!type) type = types.find(t => t.name.toLowerCase().includes(details.typeKey)) || types[0];
+
+        let brand = brands.find(b => b.name === details.brandName);
+        if (!brand) brand = brands[0];
+
+        const serialNumber = `${modelName.substring(0, 3)}-${Math.floor(Math.random() * 100000)}`;
+
+        // Status distribution
+        let status = 'in_production';
+        const rand = Math.random();
+        if (rand > 0.90) status = 'breakdown';
+        else if (rand > 0.80) status = 'scheduled_maintenance';
+
+        // Assign to a section
+        let location = 'Antsirabe-1';
+        let assignedSection = null;
+        let assignedLineId = null;
+
+        if (sections.length > 0) {
+          assignedSection = sections[sectionIndex % sections.length];
+          assignedLineId = assignedSection.productionLine ? assignedSection.productionLine._id : null;
+          // location = 'Antsirabe-1'; // Already set
+          sectionIndex++;
+        }
+
+        // Generate lifecycle
+        const acquisitionDate = new Date(Date.now() - Math.floor(Math.random() * 1500 * 24 * 60 * 60 * 1000)); // 0-4 years
+        const metrics = generateMetrics(acquisitionDate);
 
         equipmentData.push({
-          name: equipmentName,
-          code: equipmentCode,
-          category: randomType.category._id,
-          type: randomType._id,
+          name: `${details.brandName} ${modelName}`,
+          code: `EQ-${modelName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)}-${Math.floor(Math.random() * 99999)}`,
+          category: category._id,
+          type: type._id,
           status: status,
-          location: `Warehouse - Storage Zone ${Math.floor(Math.random() * 5) + 1}`,
-          model: `${randomBrand.name.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 1000) + 1000}`,
-          brand: randomBrand._id,
-          manufacturer: randomBrand.name,
-          serialNumber: `SN-${Date.now()}-${i}`,
-          acquisitionDate: new Date(Date.now() - Math.floor(Math.random() * 1000 * 24 * 60 * 60 * 1000)), // up to 1000 days ago
-          lastMaintenance: new Date(Date.now() - Math.floor(Math.random() * 90 * 24 * 60 * 60 * 1000)), // up to 90 days ago
-          nextMaintenance: new Date(Date.now() + Math.floor(Math.random() * 90 * 24 * 60 * 60 * 1000)), // up to 90 days future
-          specifications: {
-            power: '220V/380V',
-            capacity: `${Math.floor(Math.random() * 100) + 10} units/hr`
-          }
+          location: location,
+          productionLine: assignedLineId,
+          productionSection: assignedSection ? assignedSection._id : null,
+          model: modelName,
+          brand: brand._id,
+          manufacturer: details.brandName,
+          serialNumber: serialNumber,
+          acquisitionDate: acquisitionDate,
+          lastMaintenance: new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)),
+          nextMaintenance: new Date(Date.now() + Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)),
+
+          // Metrics
+          mtbf: metrics.mtbf,
+          mttr: metrics.mttr,
+          downtime: metrics.downtime,
+          operatingTime: metrics.operatingTime,
+          availability: metrics.availability,
+          timeSinceAcquisition: Math.floor((Date.now() - acquisitionDate) / (1000 * 60 * 60 * 24)),
+
+          // Internal reference for linking
+          _assignedSection: assignedSection
         });
       }
 
@@ -387,19 +393,36 @@ class SeedService {
       let skippedCount = 0;
 
       for (const equipData of equipmentData) {
-        // Check if equipment with same serial number already exists
-        const existingEquipment = await Equipment.findOne({
-          serialNumber: equipData.serialNumber
-        });
-
+        const existingEquipment = await Equipment.findOne({ serialNumber: equipData.serialNumber });
         if (existingEquipment) {
           skippedCount++;
           continue;
         }
 
+        // Extract internal reference
+        const assignedSection = equipData._assignedSection;
+        delete equipData._assignedSection;
+
         const equipment = new Equipment(equipData);
         await equipment.save();
         createdEquipment.push(equipment);
+
+        // Update ProductionSection if assigned
+        if (assignedSection) {
+          await ProductionSection.findByIdAndUpdate(assignedSection._id, {
+            $push: {
+              equipment: {
+                equipmentId: equipment._id,
+                order: assignedSection.equipment.length + 1,
+                mtbf: equipment.mtbf,
+                mttr: equipment.mttr,
+                downTime: equipment.downtime,
+                workingTime: equipment.operatingTime,
+                TimeSinceInsertion: equipment.timeSinceAcquisition
+              }
+            }
+          });
+        }
       }
 
       console.log(`Equipment seeding completed. Created: ${createdEquipment.length}, Skipped: ${skippedCount}`);
@@ -420,38 +443,29 @@ class SeedService {
     try {
       console.log('Starting process areas seeding...');
 
-      const equipment = await Equipment.find();
-      if (equipment.length === 0) {
-        throw new Error('No equipment found. Please seed equipment first.');
-      }
-
       const linesData = [
         {
-          name: 'Line 1: Spinning',
-          description: 'Cotton spinning line from blowroom to winding',
+          name: 'Line 1',
+          description: 'Sewing Line 1',
           status: 'active',
-          sections: ['Blowroom', 'Carding', 'Drawing', 'Roving', 'Ring Spinning', 'Winding']
+          sections: ['Front', 'Back', 'Sleeve', 'Cuff']
         },
         {
-          name: 'Line 2: Weaving',
-          description: 'High-speed air jet weaving line',
+          name: 'Line 2',
+          description: 'Sewing Line 2',
           status: 'active',
-          sections: ['Warping', 'Sizing', 'Drawing-in', 'Weaving', 'Inspection']
+          sections: ['Front', 'Back', 'Sleeve', 'Cuff']
         },
         {
-          name: 'Line 3: Finishing',
-          description: 'Dyeing and finishing process',
-          status: 'maintenance',
-          sections: ['Pre-treatment', 'Dyeing', 'Printing', 'Finishing', 'Quality Control']
+          name: 'Line 3',
+          description: 'Sewing Line 3',
+          status: 'active',
+          sections: ['Front', 'Back', 'Sleeve', 'Cuff']
         }
       ];
 
       const createdLines = [];
       let skippedCount = 0;
-
-      // Shuffle equipment to distribute randomly
-      const shuffledEquipment = [...equipment].sort(() => 0.5 - Math.random());
-      let equipIndex = 0;
 
       for (const lineData of linesData) {
         const existingLine = await ProductionLine.findOne({ name: lineData.name });
@@ -481,40 +495,14 @@ class SeedService {
         // Create sections linked to the line
         const sectionObjects = [];
         for (const sectionName of lineData.sections) {
-          // Assign 2-4 random equipment to each section
-          const sectionEquipment = [];
-          const numEquip = Math.floor(Math.random() * 3) + 2;
-
-          for (let i = 0; i < numEquip; i++) {
-            if (equipIndex < shuffledEquipment.length) {
-              const eq = shuffledEquipment[equipIndex];
-              sectionEquipment.push({
-                equipmentId: eq._id,
-                assignedDate: new Date()
-              });
-
-              // Update equipment status to in_production and location
-              let newStatus = 'in_production';
-              const rand = Math.random();
-              if (rand > 0.9) newStatus = 'breakdown';
-              else if (rand > 0.8) newStatus = 'scheduled_maintenance';
-
-              await Equipment.findByIdAndUpdate(eq._id, {
-                status: newStatus,
-                location: `${lineData.name} - ${sectionName}`
-              });
-
-              equipIndex++;
-            }
-          }
-
-          const section = await ProductionSection.create({
+          const section = new ProductionSection({
             name: sectionName,
             description: `${sectionName} section for ${lineData.name}`,
             status: 'active',
             productionLine: line._id, // Link to the created line
-            equipment: sectionEquipment
+            equipment: []
           });
+          await section.save();
 
           sectionObjects.push({
             sectionId: section._id,
@@ -1205,7 +1193,79 @@ class SeedService {
           pendingQuantity: 0
         },
 
-        // CONSOMMABLES (44 pièces)
+        // IRONING / BUCKPRESS PARTS (Repassage)
+        {
+          name: 'Solenoid Valve Steam 24V',
+          partNumber: 'VLV-STM-24V',
+          category: 'Valves',
+          type: 'part',
+          currentStock: 10,
+          minStock: 4,
+          maxStock: 25,
+          unitPrice: 45.00,
+          supplier: 'Hashima Parts',
+          location: 'Shelf H-1',
+          pendingOrders: [],
+          pendingQuantity: 0
+        },
+        {
+          name: 'Teflon Shoe HP-450',
+          partNumber: 'SHOE-TEF-450',
+          category: 'Consumables',
+          type: 'consumable',
+          currentStock: 15,
+          minStock: 5,
+          maxStock: 40,
+          unitPrice: 22.00,
+          supplier: 'Ironing Supplies',
+          location: 'Cabinet I-2',
+          pendingOrders: [],
+          pendingQuantity: 0
+        },
+        {
+          name: 'Press Padding Upper (Felt)',
+          partNumber: 'PAD-UP-FELT',
+          category: 'Consumables',
+          type: 'consumable',
+          currentStock: 8,
+          minStock: 3,
+          maxStock: 20,
+          unitPrice: 35.00,
+          supplier: 'Macpi Genuine',
+          location: 'Rack J-3',
+          pendingOrders: [],
+          pendingQuantity: 0
+        },
+        {
+          name: 'Steam Hose High Temp 5m',
+          partNumber: 'HOSE-STM-HI-5M',
+          category: 'Hoses',
+          type: 'part',
+          currentStock: 12,
+          minStock: 5,
+          maxStock: 30,
+          unitPrice: 18.50,
+          supplier: 'Industrial Hoses',
+          location: 'Shelf K-1',
+          pendingOrders: [],
+          pendingQuantity: 0
+        },
+        {
+          name: 'Ironing Table Cover',
+          partNumber: 'CVR-TBL-STD',
+          category: 'Consumables',
+          type: 'consumable',
+          currentStock: 20,
+          minStock: 10,
+          maxStock: 60,
+          unitPrice: 12.00,
+          supplier: 'Ironing Supplies',
+          location: 'Rack J-4',
+          pendingOrders: [],
+          pendingQuantity: 0
+        },
+
+        // ELECTRICAL & SOLENOIDSOMMABLES (44 pièces)
         {
           name: 'Motor Oil SAE 30',
           partNumber: 'OIL-SAE30',
@@ -1856,6 +1916,23 @@ class SeedService {
         }
       ];
 
+      // Inject random low stock and pending orders for dashboard liveliness
+      partsData.forEach(p => {
+        const rand = Math.random();
+        if (rand < 0.15) { // 15% chance of low stock
+          p.currentStock = Math.max(0, Math.floor(p.minStock * 0.5));
+        }
+        if (rand < 0.15) { // 15% chance of pending orders
+          p.pendingOrders.push({
+            quantity: Math.floor(Math.random() * 20) + 5,
+            status: 'ordered',
+            orderDate: new Date(),
+            expectedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+          });
+          p.pendingQuantity = p.pendingOrders.reduce((acc, o) => acc + o.quantity, 0);
+        }
+      });
+
       const createdParts = [];
       let skippedCount = 0;
 
@@ -1957,26 +2034,30 @@ class SeedService {
       const startDate = new Date();
       startDate.setFullYear(startDate.getFullYear() - 1); // 1 year ago
 
-      // Generate 50 random interventions over the last year
-      for (let i = 0; i < 50; i++) {
+      // Generate 250 random interventions over the last year
+      for (let i = 0; i < 250; i++) {
         const randomEquipment = equipment[Math.floor(Math.random() * equipment.length)];
         const randomUser = users.length > 0 ? users[Math.floor(Math.random() * users.length)] : null;
-        const type = interventionTypes[Math.floor(Math.random() * interventionTypes.length)];
-        const priority = priorities[Math.floor(Math.random() * priorities.length)];
 
-        // Random date within the last year
-        const createdDate = new Date(startDate.getTime() + Math.random() * (Date.now() - startDate.getTime()));
+        const isRecent = Math.random() > 0.8; // 20% recent (Active)
 
-        // Determine status based on date (older ones likely completed)
+        let type = interventionTypes[Math.floor(Math.random() * interventionTypes.length)];
+        let priority = priorities[Math.floor(Math.random() * priorities.length)];
+        let createdDate;
         let status;
-        const daysOld = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
 
-        if (daysOld > 30) {
-          status = Math.random() > 0.1 ? 'Completed' : 'Cancelled';
-        } else if (daysOld > 7) {
-          status = Math.random() > 0.3 ? 'Completed' : 'In Progress';
+        if (isRecent) {
+          createdDate = new Date(Date.now() - Math.floor(Math.random() * 5 * 24 * 60 * 60 * 1000)); // Last 5 days
+          status = Math.random() > 0.3 ? 'Pending' : 'In Progress';
+          if (Math.random() > 0.7) priority = 'High';
         } else {
-          status = Math.random() > 0.5 ? 'In Progress' : 'Pending';
+          createdDate = new Date(startDate.getTime() + Math.random() * (Date.now() - startDate.getTime() - 5 * 24 * 60 * 60 * 1000));
+          const daysOld = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+          if (daysOld > 30) {
+            status = Math.random() > 0.1 ? 'Completed' : 'Cancelled';
+          } else {
+            status = Math.random() > 0.3 ? 'Completed' : 'In Progress';
+          }
         }
 
         interventionsData.push({
@@ -2193,14 +2274,69 @@ class SeedService {
       const createdEquipmentParts = [];
       let skippedCount = 0;
 
-      // For each equipment, assign some random parts
-      for (const eq of equipment) {
-        // Assign 1-3 random parts to each equipment
-        const numParts = Math.floor(Math.random() * 3) + 1;
-        const shuffledParts = parts.sort(() => 0.5 - Math.random());
-        const selectedParts = shuffledParts.slice(0, numParts);
+      // Helper to determine compatible parts
+      const getCompatibleParts = (equipmentModel, availableParts) => {
+        const model = equipmentModel.toUpperCase();
+        const compatible = [];
 
-        for (const part of selectedParts) {
+        // Universal parts (Oils, Grease, Fuses, Belts if generic)
+        const universalParts = availableParts.filter(p =>
+          ['Lubricants', 'Oils', 'Greases', 'Cleaning Agents', 'Electrical'].includes(p.category) ||
+          p.name.includes('V-Belt') // Generic V-Belts usually fit many
+        );
+
+        // Specific Logic
+        if (model.includes('DDL') || model.includes('DLM') || model.includes('DLN')) {
+          // Lockstitch machines
+          compatible.push(...availableParts.filter(p =>
+            p.partNumber.includes('DBX1') ||
+            p.name.includes('Rotary Hook') ||
+            p.name.includes('Bobbin Case DDL') ||
+            p.name.includes('Feed Dog B') ||
+            p.name.includes('Needle Plate E')
+          ));
+        } else if (model.includes('MO') || model.includes('OVERLOCK') || model.includes('PEGASUS') || model.includes('M832')) {
+          // Overlock machines
+          compatible.push(...availableParts.filter(p =>
+            p.partNumber.includes('DCX27') ||
+            p.name.includes('Looper') ||
+            p.name.includes('Knife')
+          ));
+        } else if (model.includes('HP') || model.includes('HASHIMA') || model.includes('MACPI') || model.includes('VEIT') || model.includes('BRISAY')) {
+          // Ironing / Buckpress
+          compatible.push(...availableParts.filter(p =>
+            p.name.includes('Valve Steam') ||
+            p.name.includes('Teflon Shoe') ||
+            p.name.includes('Padding') ||
+            p.name.includes('Steam Hose') ||
+            p.name.includes('Cover')
+          ));
+        } else if (model.includes('LBH')) {
+          // Buttonhole
+          compatible.push(...availableParts.filter(p =>
+            p.name.includes('Buttonhole Knife') ||
+            p.partNumber.includes('DPX17') // Heavy duty usually
+          ));
+        } else {
+          // Fallback for others - generic sewing supplies
+          compatible.push(...availableParts.filter(p => p.category === 'Sewing Supplies'));
+        }
+
+        // Add some universal parts randomly (not all oils to every machine)
+        const selectedUniversals = universalParts.sort(() => 0.5 - Math.random()).slice(0, 2);
+
+        return [...new Set([...compatible, ...selectedUniversals])]; // Dedupe
+      };
+
+      // For each equipment, assign COMPATIBLE parts
+      for (const eq of equipment) {
+        // Determine compatible parts based on model name
+        const compatibleParts = getCompatibleParts(eq.model, parts);
+
+        // If no specifically compatible found, fallback to just universals or random valid parts
+        const partsToAssign = compatibleParts.length > 0 ? compatibleParts : parts.slice(0, 3);
+
+        for (const part of partsToAssign) {
           // Check if association already exists
           const existing = await EquipmentPart.findOne({
             equipment: eq._id,
@@ -2208,7 +2344,6 @@ class SeedService {
           });
 
           if (existing) {
-            console.log(`Equipment-Part association already exists: ${eq.location} - ${part.name}`);
             skippedCount++;
             continue;
           }
@@ -2216,21 +2351,17 @@ class SeedService {
           const equipmentPartData = {
             equipment: eq._id,
             part: part._id,
-            quantity: Math.floor(Math.random() * 5) + 1, // 1-5 units
-            isStandardPart: Math.random() > 0.3, // 70% chance of being standard
-            changedBy: adminUser._id
+            quantity: Math.floor(Math.random() * 2) + 1, // 1-2 units usually installed
+            isStandardPart: true,
+            changedBy: adminUser._id,
+            // Add some lifecycle data
+            lastReplacementDate: new Date(Date.now() - Math.floor(Math.random() * 180 * 24 * 60 * 60 * 1000)),
+            replacementFrequency: part.category === 'Lubricants' ? 2000 : 500 // Hours
           };
-
-          // Add replacement info for some parts
-          if (Math.random() > 0.5) {
-            equipmentPartData.lastReplacementDate = new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000);
-            equipmentPartData.replacementFrequency = Math.floor(Math.random() * 200) + 50; // 50-250 hours
-          }
 
           const equipmentPart = new EquipmentPart(equipmentPartData);
           await equipmentPart.save();
           createdEquipmentParts.push(equipmentPart);
-          console.log(`Equipment-Part association created: ${eq.location} - ${part.name}`);
         }
       }
 

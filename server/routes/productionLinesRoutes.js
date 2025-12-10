@@ -12,49 +12,35 @@ const { Part } = require('../models/Part');
 const { EquipmentPart } = require('../models/EquipmentPart');
 
 // Helper to compute MTTR and MTBF from interventions
+// Helper to compute MTTR and MTBF from Equipment data (consistent with General Dashboard)
 const computeReliability = async (equipmentIds) => {
-  const query = {
-    type: { $in: ['Corrective', 'Emergency'] },
-    status: 'Completed'
-  };
-
-  if (equipmentIds) {
-    if (equipmentIds.length === 0) {
-      return { mttr: 0, mtbf: 0 };
-    }
-    query.equipment = { $in: equipmentIds };
-  }
-
-  const interventions = await Intervention.find(query).sort({ createdDate: 1 }).lean();
-
-  if (!interventions.length) {
+  if (!equipmentIds || equipmentIds.length === 0) {
     return { mttr: 0, mtbf: 0 };
   }
 
-  // Calculate MTBF
-  let mtbf = 0;
-  if (interventions.length > 1) {
-    const intervals = [];
-    for (let i = 1; i < interventions.length; i++) {
-      const interval = (interventions[i].createdDate - interventions[i - 1].createdDate) / (1000 * 60 * 60);
-      intervals.push(interval);
+  // Ensure IDs are in correct format for aggregation
+  // If they are strings, convert to ObjectId (though usually they are ObjectIds in Mongoose context)
+  // But since we use lean(), they might be strings or objects. Safe to let Mongoose handle $in or ensure they are consistent.
+
+  const aggregation = await Equipment.aggregate([
+    { $match: { _id: { $in: equipmentIds } } },
+    {
+      $group: {
+        _id: null,
+        avgMtbf: { $avg: '$mtbf' },
+        avgMttr: { $avg: '$mttr' }
+      }
     }
-    mtbf = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+  ]);
+
+  if (aggregation.length > 0) {
+    return {
+      mttr: Math.round((aggregation[0].avgMttr || 0) * 100) / 100,
+      mtbf: Math.round((aggregation[0].avgMtbf || 0) * 100) / 100
+    };
   }
 
-  // Calculate MTTR
-  const durations = interventions
-    .filter(i => i.dueDate && i.createdDate)
-    .map(i => (i.dueDate - i.createdDate) / (1000 * 60 * 60));
-
-  const mttr = durations.length > 0
-    ? durations.reduce((a, b) => a + b, 0) / durations.length
-    : 0;
-
-  return {
-    mttr: Math.round(mttr * 100) / 100,
-    mtbf: Math.round(mtbf * 100) / 100
-  };
+  return { mttr: 0, mtbf: 0 };
 };
 
 const productionLineSchema = z.object({
@@ -221,10 +207,17 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
     const { mttr, mtbf } = await computeReliability(equipmentIds);
 
     // Active Interventions
-    const activeInterventionsList = await Intervention.find({
-      equipment: { $in: equipmentIds },
+    // Use equipmentId (ObjectId ref) instead of legacy equipment (String)
+    const activeInterventionsListRaw = await Intervention.find({
+      equipmentId: { $in: equipmentIds },
       status: { $in: ['Pending', 'In Progress'] }
-    }).populate('equipment', 'name code').sort({ priority: 1, createdDate: -1 }).lean();
+    }).populate('equipmentId', 'name code').sort({ priority: 1, createdDate: -1 }).lean();
+
+    // Map equipmentId to equipment property for frontend compatibility
+    const activeInterventionsList = activeInterventionsListRaw.map(i => ({
+      ...i,
+      equipment: i.equipmentId // Ensure frontend gets the populated object at .equipment
+    }));
 
     const activeInterventions = activeInterventionsList.length;
 
@@ -254,7 +247,7 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
     }, 0);
 
     // 3. Recent Activities (Interventions, Parts, Equipment)
-    const recentInterventions = await Intervention.find({ equipment: { $in: equipmentIds } })
+    const recentInterventions = await Intervention.find({ equipmentId: { $in: equipmentIds } })
       .sort({ createdDate: -1 }).limit(5).lean();
 
     const recentParts = await Part.find({ _id: { $in: equipmentParts } })
@@ -293,6 +286,10 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
     res.json({
       productionLine,
       kpis: {
+        totalEquipment,
+        activeInterventions,
+        criticalParts,
+        pendingOrders,
         availability,
         performance,
         quality,
@@ -300,9 +297,12 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
         mttr,
         mtbf
       },
-      activeInterventions,
-      criticalParts,
-      pendingOrders,
+      details: {
+        activeInterventions: activeInterventionsList,
+        criticalParts: lineReorderAlerts,
+        equipment: equipmentList
+      },
+      reorderAlerts: lineReorderAlerts,
       recentActivities: activities.slice(0, 10)
     });
 
