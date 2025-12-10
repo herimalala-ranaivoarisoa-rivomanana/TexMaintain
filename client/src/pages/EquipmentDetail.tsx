@@ -3,9 +3,11 @@ import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getEquipmentById } from "@/api/equipment"
-import { MapPin, Calendar, ArrowLeft, QrCode } from "lucide-react"
+import { MapPin, Calendar, ArrowLeft, QrCode, History, Info } from "lucide-react"
 import { QRCodeGenerator } from "@/components/QRCodeGenerator"
+import { EquipmentTimeline } from "@/components/EquipmentTimeline"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 interface EquipmentDetailData {
@@ -113,7 +115,21 @@ export function EquipmentDetail() {
   return (
     <div className="space-y-6">
       <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <Tabs defaultValue="details" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="details" className="flex items-center gap-2">
+            <Info className="h-4 w-4" />
+            Details
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Complete History
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="details" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Information Card */}
         <div className="lg:col-span-2">
           <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
@@ -242,7 +258,13 @@ export function EquipmentDetail() {
           </Card>
         </div>
       </div>
-    </div>
+    </TabsContent>
+
+    <TabsContent value="history">
+      <EquipmentTimeline equipmentId={id || ''} limit={100} />
+    </TabsContent>
+  </Tabs>
+</div>
   )
 }
 

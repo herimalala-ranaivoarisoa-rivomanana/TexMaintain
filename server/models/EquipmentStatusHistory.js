@@ -220,6 +220,18 @@ const equipmentStatusHistorySchema = new mongoose.Schema({
     ref: 'MaintenanceWorker',
     required: false
   },
+  breakdownInfo: {
+    type: {
+      type: String,
+      enum: ['mechanical', 'electrical', 'hydraulic', 'pneumatic', 'electronic', 'software', 'structural', 'other'],
+      required: false
+    },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 1000
+    }
+  },
   duration: {
     type: Number, // Duration in minutes (calculated when status changes again)
     default: null

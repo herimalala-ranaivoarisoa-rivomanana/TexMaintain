@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const { Equipment } = require('../models/Equipment');
 const { EquipmentStatusHistory, STATUS_METADATA } = require('../models/EquipmentStatusHistory');
 const { Intervention } = require('../models/Intervention');
@@ -152,6 +153,10 @@ class EquipmentStatusService {
       mechanic: mechanicId || null,
       electrician: electricianId || null,
       maintenanceWorker: maintenanceWorkerId || null,
+      breakdownInfo: (newStatus === 'breakdown' && (breakdownType || breakdownDescription)) ? {
+        type: breakdownType,
+        description: breakdownDescription
+      } : undefined,
       metadata,
       timestamp: new Date()
     });
@@ -212,7 +217,16 @@ class EquipmentStatusService {
   static async getStatusHistory(equipmentId, options = {}) {
     const { limit = 50, skip = 0, startDate, endDate } = options;
 
+    // Validate and convert equipmentId to ObjectId
+    if (!equipmentId || !mongoose.Types.ObjectId.isValid(equipmentId)) {
+      throw new Error('Invalid equipment ID');
+    }
+
+    // Use direct comparison - Mongoose handles ObjectId conversion automatically
     const query = { equipment: equipmentId };
+
+    console.log(`[getStatusHistory] Fetching history for equipment: ${equipmentId}`);
+    console.log('[getStatusHistory] Query:', JSON.stringify(query));
 
     if (startDate || endDate) {
       query.timestamp = {};
@@ -227,9 +241,18 @@ class EquipmentStatusService {
         .limit(limit)
         .populate('changedBy', 'email role')
         .populate('intervention', 'title type status')
+        .populate('machinist', 'matricule firstName lastName fullName')
+        .populate('mechanic', 'matricule firstName lastName fullName')
+        .populate('electrician', 'matricule firstName lastName fullName')
+        .populate('maintenanceWorker', 'matricule firstName lastName fullName')
         .lean(),
       EquipmentStatusHistory.countDocuments(query)
     ]);
+
+    console.log(`[getStatusHistory] Found ${total} total entries, returning ${history.length} entries`);
+    if (history.length > 0) {
+      console.log('[getStatusHistory] Sample entry equipment ID:', history[0].equipment);
+    }
 
     // Add metadata to each entry
     const enrichedHistory = history.map(entry => ({

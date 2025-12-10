@@ -1,9 +1,11 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { requireUser, requireRole } = require('./middleware/auth');
 const { Equipment, EQUIPMENT_STATUSES } = require('../models/Equipment');
 const { Intervention } = require('../models/Intervention');
 const { STATUS_METADATA, EquipmentStatusHistory } = require('../models/EquipmentStatusHistory');
 const EquipmentStatusService = require('../services/equipmentStatusService');
+const EquipmentTimelineService = require('../services/equipmentTimelineService');
 const { z } = require('zod');
 const EquipmentPartsService = require('../services/equipmentPartsService');
 const { EquipmentPart } = require('../models/EquipmentPart');
@@ -152,7 +154,12 @@ router.get('/:id/interventions', requireUser, async (req, res) => {
       return res.status(404).json({ message: 'Equipment not found' });
     }
 
-    const query = { $or: [{ equipmentId: id }, { equipment: equipment.location }] };
+    // Query only interventions for this specific equipment
+    // Mongoose automatically handles ObjectId conversion
+    const query = { equipmentId: id };
+    
+    console.log(`[GET /:id/interventions] Fetching interventions for equipment: ${id}`);
+    console.log('[GET /:id/interventions] Query:', JSON.stringify(query));
     if (type) query.type = type;
     if (status) query.status = status;
     if (q) {
@@ -176,6 +183,11 @@ router.get('/:id/interventions', requireUser, async (req, res) => {
         .lean(),
       Intervention.countDocuments(query)
     ]);
+
+    console.log(`[GET /:id/interventions] Found ${total} total interventions, returning ${interventions.length}`);
+    if (interventions.length > 0) {
+      console.log('[GET /:id/interventions] Sample intervention equipmentId:', interventions[0].equipmentId);
+    }
 
     return res.status(200).json({
       equipment,
@@ -589,6 +601,55 @@ router.get('/:id/status-history', requireUser, async (req, res) => {
   } catch (error) {
     console.error('Get status history error:', error);
     return res.status(500).json({ message: error.message || 'Failed to get status history' });
+  }
+});
+
+// GET /api/equipment/:id/timeline
+// Get unified timeline for an equipment (status changes, interventions, parts usage)
+router.get('/:id/timeline', requireUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit, page = 1, startDate, endDate, eventTypes } = req.query;
+
+    const skip = (parseInt(page) - 1) * (parseInt(limit) || 50);
+
+    // Parse event types from query string
+    let types = ['all'];
+    if (eventTypes) {
+      types = typeof eventTypes === 'string' ? eventTypes.split(',') : eventTypes;
+    }
+
+    const result = await EquipmentTimelineService.getUnifiedTimeline(id, {
+      limit: parseInt(limit) || 50,
+      skip,
+      startDate,
+      endDate,
+      eventTypes: types
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Get equipment timeline error:', error);
+    return res.status(500).json({ message: error.message || 'Failed to get equipment timeline' });
+  }
+});
+
+// GET /api/equipment/:id/timeline/statistics
+// Get timeline statistics for an equipment
+router.get('/:id/timeline/statistics', requireUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate } = req.query;
+
+    const stats = await EquipmentTimelineService.getTimelineStatistics(id, {
+      startDate,
+      endDate
+    });
+
+    return res.status(200).json({ success: true, statistics: stats });
+  } catch (error) {
+    console.error('Get timeline statistics error:', error);
+    return res.status(500).json({ message: error.message || 'Failed to get timeline statistics' });
   }
 });
 
