@@ -28,6 +28,7 @@ import {
 } from "lucide-react"
 import { QRCodeScanner } from "@/components/QRCodeScanner"
 import { QRCodeGenerator } from "@/components/QRCodeGenerator"
+import { EquipmentStatusDialog } from "@/components/EquipmentStatusDialog"
 import { getEquipment, createEquipment, updateEquipment, deleteEquipment, changeEquipmentStatus } from "@/api/equipment"
 import { getBrands } from "@/api/brands"
 import { getMachinists } from "@/api/machinists"
@@ -139,6 +140,8 @@ export function Equipment() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [isScannerOpen, setIsScannerOpen] = useState(false)
   const [createdEquipmentId, setCreatedEquipmentId] = useState<string | null>(null)
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false)
+  const [selectedEquipmentForStatus, setSelectedEquipmentForStatus] = useState<Equipment | null>(null)
 
   // Personnel state
   const [machinists, setMachinists] = useState<any[]>([])
@@ -768,7 +771,14 @@ export function Equipment() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg"><Link className="hover:underline" to={`/equipment/${item._id}`}>{item.category?.name} - {item.type?.name}</Link></CardTitle>
-                <Badge className={`${getStatusColor(item.status as EquipmentStatus)} text-white flex items-center gap-1`}>
+                <Badge 
+                  className={`${getStatusColor(item.status as EquipmentStatus)} text-white flex items-center gap-1 cursor-pointer hover:scale-105 transition-transform`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setSelectedEquipmentForStatus(item)
+                    setStatusDialogOpen(true)
+                  }}
+                >
                   {getStatusIcon(item.status)}
                   {getStatusLabel(item.status as EquipmentStatus)}
                 </Badge>
@@ -925,6 +935,21 @@ export function Equipment() {
         <span className="text-sm">Page {page}</span>
         <Button variant="outline" disabled={loading || page * limit >= total} onClick={() => setPage(p => p + 1)}>{loading ? 'Loading…' : 'Next'}</Button>
       </div>
+
+      {/* Equipment Status Dialog */}
+      {selectedEquipmentForStatus && (
+        <EquipmentStatusDialog
+          open={statusDialogOpen}
+          onOpenChange={setStatusDialogOpen}
+          equipmentId={selectedEquipmentForStatus._id}
+          currentStatus={selectedEquipmentForStatus.status as EquipmentStatus}
+          equipmentName={`${selectedEquipmentForStatus.category?.name} - ${selectedEquipmentForStatus.type?.name}`}
+          onStatusChanged={() => {
+            setStatusDialogOpen(false)
+            fetchEquipment()
+          }}
+        />
+      )}
 
       {/* Add/Edit Equipment Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
