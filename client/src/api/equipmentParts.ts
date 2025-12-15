@@ -25,32 +25,32 @@ export interface EquipmentPart {
     unitPrice?: number
     supplier?: string
   }
-  
+
   // Paramètres de consommation
   quantityPerMachine: number
   replacementFrequencyPerYear: number
-  
+
   // Criticité et importance
   criticality: Criticality
   criticalityScore: number
   machineImportance: number
-  
+
   // Délais
   leadTimeDays: number
   safetyCoefficient: number
-  
+
   // Calculs automatiques
   annualConsumption: number
   dailyConsumption: number
   safetyStock: number
   reorderPoint: number
-  
+
   // Historique
   isStandardPart: boolean
   lastReplacementDate?: string
   nextReplacementDate?: string
   replacementHistory: ReplacementHistoryEntry[]
-  
+
   notes?: string
   changedBy: {
     _id: string
@@ -59,6 +59,13 @@ export interface EquipmentPart {
   }
   createdAt: string
   updatedAt: string
+}
+
+export interface RecordReplacementData {
+  quantityUsed: number
+  notes?: string
+  mediaBefore?: string[]
+  mediaAfter?: string[]
 }
 
 export interface ReplacementHistoryEntry {
@@ -238,7 +245,7 @@ export const deleteEquipmentPart = async (id: string) => {
 /**
  * Enregistre un remplacement de pièce (pour parts)
  */
-export const recordReplacement = async (id: string, data: { quantity: number; notes?: string }) => {
+export const recordReplacement = async (id: string, data: RecordReplacementData) => {
   const response = await api.post(`/api/equipment-parts/${id}/record-replacement`, data)
   return response.data
 }
@@ -246,7 +253,7 @@ export const recordReplacement = async (id: string, data: { quantity: number; no
 /**
  * Enregistre une utilisation de consommable (pour consumables)
  */
-export const recordUsage = async (id: string, data: { quantity: number; notes?: string }) => {
+export const recordUsage = async (id: string, data: RecordReplacementData) => {
   const response = await api.post(`/api/equipment-parts/${id}/record-usage`, data)
   return response.data
 }

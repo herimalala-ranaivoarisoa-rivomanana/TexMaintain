@@ -18,7 +18,7 @@ export const getEquipment = async (params?: {
   category?: string;
   q?: string;
   sort?: string;
-  order?: 'asc'|'desc'
+  order?: 'asc' | 'desc'
 }) => {
   const response = await api.get('/api/equipment', { params });
   return response.data;
@@ -38,6 +38,9 @@ export const createEquipment = async (data: {
   type: string;
   status: string;
   location: string;
+  breakdownType?: string;
+  breakdownDescription?: string;
+  media?: string[];
   [key: string]: any
 }) => {
   const response = await api.post('/api/equipment', data);
@@ -60,7 +63,7 @@ export const deleteEquipment = async (id: string) => {
 
 // Description: Get equipment interventions history
 // Endpoint: GET /api/equipment/:id/interventions
-export const getEquipmentInterventions = async (id: string, params?: { page?: number; limit?: number; type?: string; status?: string; q?: string; sort?: string; order?: 'asc'|'desc' }) => {
+export const getEquipmentInterventions = async (id: string, params?: { page?: number; limit?: number; type?: string; status?: string; q?: string; sort?: string; order?: 'asc' | 'desc' }) => {
   const response = await api.get(`/api/equipment/${id}/interventions`, { params });
   return response.data;
 };

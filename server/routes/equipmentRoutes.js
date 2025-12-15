@@ -157,7 +157,7 @@ router.get('/:id/interventions', requireUser, async (req, res) => {
     // Query only interventions for this specific equipment
     // Mongoose automatically handles ObjectId conversion
     const query = { equipmentId: id };
-    
+
     console.log(`[GET /:id/interventions] Fetching interventions for equipment: ${id}`);
     console.log('[GET /:id/interventions] Query:', JSON.stringify(query));
     if (type) query.type = type;
@@ -543,7 +543,7 @@ router.post('/:id/', requireUser, requireRole(['admin', 'maintenance_manager', '
 router.post('/:id/change-status', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager', 'foreman', 'mechanic', 'electrician', 'production_manager', 'line_manager']), async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription } = req.body;
+    const { status, reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media } = req.body;
 
     if (!status) {
       return res.status(400).json({ message: 'Status is required' });
@@ -568,7 +568,7 @@ router.post('/:id/change-status', requireUser, requireRole(['admin', 'maintenanc
       id,
       status,
       req.user._id,
-      { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription }
+      { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media }
     );
 
     return res.status(200).json({

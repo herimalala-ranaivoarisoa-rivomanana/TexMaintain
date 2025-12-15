@@ -6,11 +6,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  AlertCircle, 
-  CheckCircle, 
-  Wrench, 
-  Package, 
+import {
+  AlertCircle,
+  CheckCircle,
+  Wrench,
+  Package,
   Search,
   ClipboardCheck,
   Archive,
@@ -29,8 +29,9 @@ import { getMechanics } from '@/api/mechanics';
 import { getElectricians } from '@/api/electricians';
 import { getMaintenanceWorkers } from '@/api/maintenanceWorkers';
 import { useToast } from '@/hooks/useToast';
-import type { EquipmentStatus, StatusTransition } from '@/types/equipment';
-import { getStatusColor, getStatusLabel } from '@/types/equipment';
+import { MediaUpload } from './MediaUpload';
+import { BREAKDOWN_TYPES } from '@/types/equipment';
+import type { EquipmentStatus, StatusTransition, StatusMetadata } from '@/types/equipment';
 
 interface EquipmentStatusDialogProps {
   open: boolean;
@@ -39,9 +40,12 @@ interface EquipmentStatusDialogProps {
   currentStatus: EquipmentStatus;
   equipmentName: string;
   onStatusChanged?: () => void;
+  statusMetadata?: Record<string, StatusMetadata>;
+  currentMedia?: string[];
 }
 
 const statusIcons: Record<string, any> = {
+  // ... (keep existing icons map as fallback or if needed for transition icons which we already have in metadata but icons map is useful for mapping string name to component)
   in_production: Play,
   setup_adjustment: Settings,
   paused_by_operator: Pause,
@@ -56,7 +60,22 @@ const statusIcons: Record<string, any> = {
   pending_validation: ClipboardCheck,
   stored: Archive,
   offline: Power,
-  scrapped: Trash
+  scrapped: Trash,
+  play: Play,
+  settings: Settings,
+  pause: Pause,
+  refresh: RefreshCw,
+  calendar: Calendar,
+  'alert-triangle': AlertTriangle,
+  wrench: Wrench,
+  tool: Wrench,
+  package: Package,
+  'check-circle': CheckCircle,
+  'clipboard-check': ClipboardCheck,
+  search: Search,
+  archive: Archive,
+  power: Power,
+  trash: Trash
 };
 
 export function EquipmentStatusDialog({
@@ -65,7 +84,9 @@ export function EquipmentStatusDialog({
   equipmentId,
   currentStatus,
   equipmentName,
-  onStatusChanged
+  onStatusChanged,
+  statusMetadata = {}, // Default empty
+  currentMedia = [] // Default empty
 }: EquipmentStatusDialogProps) {
   const [allowedTransitions, setAllowedTransitions] = useState<StatusTransition[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<EquipmentStatus | ''>('');
@@ -73,11 +94,18 @@ export function EquipmentStatusDialog({
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingTransitions, setLoadingTransitions] = useState(false);
-  
+
+  // Breakdown state
+  const [breakdownType, setBreakdownType] = useState('');
+  const [breakdownDescription, setBreakdownDescription] = useState('');
+
+  // Media state
+  const [media, setMedia] = useState<string[]>([]);
+
   // Machinist for production
   const [machinists, setMachinists] = useState<any[]>([]);
   const [selectedMachinist, setSelectedMachinist] = useState('');
-  
+
   // Maintenance personnel
   const [mechanics, setMechanics] = useState<any[]>([]);
   const [electricians, setElectricians] = useState<any[]>([]);
@@ -85,7 +113,7 @@ export function EquipmentStatusDialog({
   const [selectedMechanic, setSelectedMechanic] = useState('');
   const [selectedElectrician, setSelectedElectrician] = useState('');
   const [selectedMaintenanceWorker, setSelectedMaintenanceWorker] = useState('');
-  
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -93,19 +121,56 @@ export function EquipmentStatusDialog({
       fetchAllowedTransitions();
       fetchMachinists();
       fetchMaintenancePersonnel();
+      // Reset form state on open
+      setBreakdownType('');
+      setBreakdownDescription('');
+      setBreakdownDescription('');
+      setMedia([]);
+      setReason('');
+      setNotes('');
+      setSelectedStatus('');
+      setSelectedMachinist('');
+      setSelectedMechanic('');
+      setSelectedElectrician('');
+      setSelectedMaintenanceWorker('');
     }
   }, [open, equipmentId]);
 
-  // Debug: Log when selectedStatus changes
-  useEffect(() => {
-    const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance'];
-    const isRequired = maintenanceStatuses.includes(selectedStatus);
-    console.log('Selected Status:', selectedStatus);
-    console.log('Is Maintenance Personnel Required:', isRequired);
-    console.log('Mechanics:', mechanics.length);
-    console.log('Electricians:', electricians.length);
-    console.log('Maintenance Workers:', maintenanceWorkers.length);
-  }, [selectedStatus, mechanics, electricians, maintenanceWorkers]);
+  // Helper to map backend generic colors to Tailwind classes
+
+  // Helper to map backend generic colors to Tailwind classes
+  const getTailwindColor = (color: string) => {
+    const map: Record<string, string> = {
+      'green': 'bg-green-500',
+      'blue': 'bg-blue-500',
+      'red': 'bg-red-500',
+      'orange': 'bg-orange-500',
+      'yellow': 'bg-yellow-500',
+      'gray': 'bg-gray-500',
+      'black': 'bg-black',
+      'purple': 'bg-purple-500',
+      'pink': 'bg-pink-500'
+    }
+    return map[color] || 'bg-gray-500'
+  }
+
+  const getStatusColorLocal = (status: string) => {
+    const meta = statusMetadata[status]
+    if (meta) return getTailwindColor(meta.color)
+    return 'bg-gray-500'
+  }
+
+  const getStatusLabelLocal = (status: string) => {
+    const meta = statusMetadata[status]
+    return meta ? meta.label : status
+  }
+
+  const getStatusIconLocal = (status: string) => {
+    const meta = statusMetadata[status]
+    const iconName = meta ? meta.icon : status
+    const Icon = statusIcons[iconName] || statusIcons[status] || AlertCircle;
+    return <Icon className="h-4 w-4" />;
+  };
 
   const fetchAllowedTransitions = async () => {
     try {
@@ -140,17 +205,10 @@ export function EquipmentStatusDialog({
         getElectricians({ isActive: true }),
         getMaintenanceWorkers({ isActive: true })
       ]);
-      console.log('Fetched Mechanics:', mechanicsRes);
-      console.log('Fetched Electricians:', electriciansRes);
-      console.log('Fetched Workers:', workersRes);
-      
+
       setMechanics(mechanicsRes.mechanics || []);
       setElectricians(electriciansRes.electricians || []);
       setMaintenanceWorkers(workersRes.workers || []);
-      
-      console.log('Set Mechanics:', mechanicsRes.mechanics?.length || 0);
-      console.log('Set Electricians:', electriciansRes.electricians?.length || 0);
-      console.log('Set Workers:', workersRes.workers?.length || 0);
     } catch (error) {
       console.error('Error fetching maintenance personnel:', error);
     }
@@ -158,31 +216,33 @@ export function EquipmentStatusDialog({
 
   const handleSubmit = async () => {
     if (!selectedStatus) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please select a new status',
-        variant: 'destructive'
-      });
+      toast({ title: 'Validation Error', description: 'Please select a new status', variant: 'destructive' });
       return;
     }
 
-    // Validate machinist for "In Production" status (same as ProductionLines)
     if (selectedStatus === 'in_production' && !selectedMachinist) {
-      toast({
-        title: 'Machinist Required',
-        description: 'Please select a machinist for production',
-        variant: 'destructive'
-      });
+      toast({ title: 'Machinist Required', description: 'Please select a machinist for production', variant: 'destructive' });
       return;
     }
 
-    // Validate maintenance personnel for maintenance statuses
+    // Breakdown validation
+    if (selectedStatus === 'breakdown') {
+      if (!breakdownType) {
+        toast({ title: 'Validation Error', description: 'Please select a breakdown type', variant: 'destructive' });
+        return;
+      }
+      if (!breakdownDescription) {
+        toast({ title: 'Validation Error', description: 'Please provide a description of the breakdown', variant: 'destructive' });
+        return;
+      }
+    }
+
     const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance'];
     if (maintenanceStatuses.includes(selectedStatus)) {
       if (!selectedMechanic && !selectedElectrician && !selectedMaintenanceWorker) {
         toast({
           title: 'Validation Error',
-          description: 'Please select at least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker)',
+          description: 'Please select at least one maintenance personnel',
           variant: 'destructive'
         });
         return;
@@ -198,28 +258,32 @@ export function EquipmentStatusDialog({
         machinistId: selectedMachinist || undefined,
         mechanicId: selectedMechanic || undefined,
         electricianId: selectedElectrician || undefined,
-        maintenanceWorkerId: selectedMaintenanceWorker || undefined
+        maintenanceWorkerId: selectedMaintenanceWorker || undefined,
+        breakdownType: breakdownType || undefined,
+        breakdownDescription: breakdownDescription || undefined,
+        media
       });
 
       toast({
         title: 'Success',
-        description: `Equipment status changed to ${getStatusLabel(selectedStatus as EquipmentStatus)}`
+        description: `Equipment status changed to ${getStatusLabelLocal(selectedStatus as string)}`
       });
 
-      // Reset form
+      // Reset form (already done by useEffect on close usually, but safe here)
       setSelectedStatus('');
       setReason('');
       setNotes('');
+      setBreakdownType('');
+      setBreakdownDescription('');
+      setBreakdownDescription('');
+      setMedia([]);
       setSelectedMachinist('');
       setSelectedMechanic('');
       setSelectedElectrician('');
       setSelectedMaintenanceWorker('');
-      
-      // Close dialog and notify parent
+
       onOpenChange(false);
-      if (onStatusChanged) {
-        onStatusChanged();
-      }
+      if (onStatusChanged) onStatusChanged();
     } catch (error: any) {
       console.error('Error changing status:', error);
       toast({
@@ -232,10 +296,8 @@ export function EquipmentStatusDialog({
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    const Icon = statusIcons[status] || AlertCircle;
-    return <Icon className="h-4 w-4" />;
-  };
+  // ... replace getStatusIcon with getStatusIconLocal in render ...
+
 
   const selectedTransition = allowedTransitions.find(t => t.status === selectedStatus);
 
@@ -243,7 +305,7 @@ export function EquipmentStatusDialog({
   const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance'];
   const requiresMaintenancePersonnel = maintenanceStatuses.includes(selectedStatus);
   const hasMaintenancePersonnel = !!(selectedMechanic || selectedElectrician || selectedMaintenanceWorker);
-  
+
   // Debug logs
   console.log('Selected Status:', selectedStatus);
   console.log('Requires Maintenance Personnel:', requiresMaintenancePersonnel);
@@ -251,12 +313,12 @@ export function EquipmentStatusDialog({
   console.log('Selected Electrician:', selectedElectrician);
   console.log('Selected Maintenance Worker:', selectedMaintenanceWorker);
   console.log('Has Maintenance Personnel:', hasMaintenancePersonnel);
-  
+
   // Disable button if: loading, no status selected, transitions loading, in_production without machinist, or maintenance status without personnel
-  const isSubmitDisabled = loading || !selectedStatus || loadingTransitions || 
+  const isSubmitDisabled = loading || !selectedStatus || loadingTransitions ||
     (selectedStatus === 'in_production' && !selectedMachinist) ||
     (requiresMaintenancePersonnel && !hasMaintenancePersonnel);
-  
+
   console.log('Is Submit Disabled:', isSubmitDisabled);
 
   return (
@@ -275,9 +337,9 @@ export function EquipmentStatusDialog({
 
           <div className="space-y-2">
             <Label>Current Status</Label>
-            <Badge className={`${getStatusColor(currentStatus)} text-white flex items-center gap-2 w-fit`}>
-              {getStatusIcon(currentStatus)}
-              {getStatusLabel(currentStatus)}
+            <Badge className={`${getStatusColorLocal(currentStatus)} text-white flex items-center gap-2 w-fit`}>
+              {getStatusIconLocal(currentStatus)}
+              {getStatusLabelLocal(currentStatus)}
             </Badge>
           </div>
 
@@ -305,7 +367,7 @@ export function EquipmentStatusDialog({
                   {allowedTransitions.map((transition) => (
                     <SelectItem key={transition.status} value={transition.status}>
                       <div className="flex items-center gap-2">
-                        {getStatusIcon(transition.status)}
+                        {getStatusIconLocal(transition.status)}
                         <span>{transition.metadata.label}</span>
                         <Badge variant="outline" className="ml-2 text-xs">
                           {transition.metadata.category}
@@ -328,21 +390,90 @@ export function EquipmentStatusDialog({
             </Alert>
           )}
 
-          {/* Reason */}
-          <div className="space-y-2">
-            <Label htmlFor="reason">Reason</Label>
-            <Textarea
-              id="reason"
-              placeholder="Enter reason for status change (optional)"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={2}
-              maxLength={500}
-            />
-            <div className="text-xs text-muted-foreground text-right">
-              {reason.length}/500
+          {/* Breakdown Form - Only show when status is "Breakdown" */}
+          {selectedStatus === 'breakdown' && (
+            <div className="space-y-4 p-4 border border-red-200 rounded-lg bg-red-50">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <Label className="text-base font-semibold text-red-900">
+                  Breakdown Information *
+                </Label>
+              </div>
+
+              {/* Breakdown Type */}
+              <div className="space-y-2">
+                <Label htmlFor="breakdownType">Breakdown Type *</Label>
+                <Select value={breakdownType} onValueChange={setBreakdownType}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Select breakdown type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BREAKDOWN_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Breakdown Description */}
+
+              {/* Breakdown Description */}
+              <div className="space-y-2">
+                <Label htmlFor="breakdownDescription">Description *</Label>
+                <Textarea
+                  id="breakdownDescription"
+                  placeholder="Describe the issue in detail"
+                  value={breakdownDescription}
+                  onChange={(e) => setBreakdownDescription(e.target.value)}
+                  rows={3}
+                  className="bg-white"
+                />
+              </div>
             </div>
+          )}
+
+          {/* Previous Media (Read-Only) */}
+          {currentMedia && currentMedia.length > 0 && (
+            <div className="space-y-2 pt-2 border-t">
+              <Label className="text-base font-semibold">Previous Status Media</Label>
+              <MediaUpload
+                media={currentMedia}
+                onChange={() => { }} // Read-only
+                readonly={true}
+                label="Media from previous status change"
+              />
+            </div>
+          )}
+
+          {/* Media Upload Section (Visible for all statuses) */}
+          <div className="space-y-2 pt-2 border-t">
+            <Label className="text-base font-semibold">Media</Label>
+            <MediaUpload
+              media={media}
+              onChange={setMedia}
+              label="Photos/Videos"
+            />
           </div>
+
+          {/* Reason */}
+          {selectedStatus !== 'breakdown' && (
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason</Label>
+              <Textarea
+                id="reason"
+                placeholder="Enter reason for status change (optional)"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={2}
+                maxLength={500}
+              />
+              <div className="text-xs text-muted-foreground text-right">
+                {reason.length}/500
+              </div>
+            </div>
+          )}
 
           {/* Notes */}
           <div className="space-y-2">
@@ -400,7 +531,7 @@ export function EquipmentStatusDialog({
               <p className={`text-sm ${!hasMaintenancePersonnel ? 'text-red-700 font-medium' : 'text-orange-700'}`}>
                 {!hasMaintenancePersonnel ? '⚠️ Please select at least one maintenance personnel to continue' : 'Select at least one maintenance personnel who will perform the maintenance work'}
               </p>
-              
+
               {/* Mechanic */}
               <div className="space-y-2">
                 <Label htmlFor="mechanic">Mechanic</Label>
@@ -459,14 +590,14 @@ export function EquipmentStatusDialog({
         </div>
 
         <DialogFooter>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={loading}
           >
             Cancel
           </Button>
-          <Button 
+          <Button
             onClick={handleSubmit}
             disabled={isSubmitDisabled}
             className="bg-gradient-to-r from-blue-600 to-indigo-600"
@@ -475,6 +606,6 @@ export function EquipmentStatusDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   );
 }

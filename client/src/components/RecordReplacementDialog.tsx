@@ -15,6 +15,8 @@ import { useToast } from '@/hooks/useToast'
 import { recordReplacement, type EquipmentPart } from '@/api/equipmentParts'
 import { AlertCircle } from 'lucide-react'
 
+import { BeforeAfterMediaUpload } from './BeforeAfterMediaUpload'
+
 interface RecordReplacementDialogProps {
   equipmentPart: EquipmentPart
   onClose: () => void
@@ -28,6 +30,8 @@ export function RecordReplacementDialog({
 }: RecordReplacementDialogProps) {
   const [quantityUsed, setQuantityUsed] = useState(equipmentPart.quantityPerMachine)
   const [notes, setNotes] = useState('')
+  const [mediaBefore, setMediaBefore] = useState<string[]>([])
+  const [mediaAfter, setMediaAfter] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
 
@@ -60,7 +64,9 @@ export function RecordReplacementDialog({
       setSaving(true)
       await recordReplacement(equipmentPart._id, {
         quantityUsed,
-        notes
+        notes,
+        mediaBefore,
+        mediaAfter
       })
 
       toast({
@@ -160,6 +166,17 @@ export function RecordReplacementDialog({
             <p>• La date du remplacement sera enregistrée automatiquement</p>
             <p>• La prochaine date de remplacement sera calculée</p>
             <p>• Le stock de la pièce sera décrémenté</p>
+          </div>
+
+          {/* Media Upload */}
+          <div className="pt-2 border-t">
+            <Label className="mb-2 block">Photos/Vidéos (Avant/Après)</Label>
+            <BeforeAfterMediaUpload
+              mediaBefore={mediaBefore}
+              mediaAfter={mediaAfter}
+              onMediaBeforeChange={setMediaBefore}
+              onMediaAfterChange={setMediaAfter}
+            />
           </div>
 
           <DialogFooter>

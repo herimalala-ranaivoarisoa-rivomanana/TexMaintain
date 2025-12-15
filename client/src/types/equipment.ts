@@ -23,6 +23,17 @@ export const EQUIPMENT_STATUSES = {
   SCRAPPED: 'scrapped'
 } as const;
 
+export const BREAKDOWN_TYPES = [
+  { value: 'mechanical', label: 'Panne Mécanique', suggestedPersonnel: 'mechanic' },
+  { value: 'electrical', label: 'Panne Électrique', suggestedPersonnel: 'electrician' },
+  { value: 'hydraulic', label: 'Panne Hydraulique', suggestedPersonnel: 'mechanic' },
+  { value: 'pneumatic', label: 'Panne Pneumatique', suggestedPersonnel: 'mechanic' },
+  { value: 'electronic', label: 'Panne Électronique', suggestedPersonnel: 'electrician' },
+  { value: 'software', label: 'Panne Logicielle', suggestedPersonnel: 'electrician' },
+  { value: 'structural', label: 'Panne Structurelle', suggestedPersonnel: 'worker' },
+  { value: 'other', label: 'Autre', suggestedPersonnel: null }
+] as const;
+
 export type EquipmentStatus = typeof EQUIPMENT_STATUSES[keyof typeof EQUIPMENT_STATUSES];
 
 export const EQUIPMENT_STATUS_CATEGORIES = {

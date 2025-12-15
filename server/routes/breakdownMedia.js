@@ -1,27 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const BreakdownMedia = require('../models/BreakdownMedia');
 const { requireUser } = require('./middleware/auth');
+const BreakdownMedia = require('../models/BreakdownMedia');
+const Media = require('../models/Media');
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, '../uploads/breakdown-media');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Configure multer for file upload
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
 
 // Secure upload configuration with validation
 const upload = multer({
@@ -42,37 +27,28 @@ const upload = multer({
       'video/mpeg',
       'video/quicktime'
     ];
-    
-    // Allowed extensions
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mpeg', '.mov'];
-    const fileExtension = path.extname(file.originalname).toLowerCase();
-    
+
     if (!allowedMimeTypes.includes(file.mimetype)) {
       return cb(new Error(`Invalid file type. Allowed types: images and videos only`), false);
     }
-    
-    if (!allowedExtensions.includes(fileExtension)) {
-      return cb(new Error(`Invalid file extension. Allowed: ${allowedExtensions.join(', ')}`), false);
-    }
-    
+
     cb(null, true);
   }
 });
 
-// POST /api/breakdown-media - Upload breakdown media
-// Error handling middleware for multer errors
+// Error handling middleware
 const handleUpload = (req, res, next) => {
   upload.array('files', 5)(req, res, (err) => {
     if (err) {
       console.error('Multer upload error:', err);
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ 
-          error: 'File too large. Maximum size is 10MB per file.' 
+        return res.status(400).json({
+          error: 'File too large. Maximum size is 10MB per file.'
         });
       }
       if (err.code === 'LIMIT_FILE_COUNT') {
-        return res.status(400).json({ 
-          error: 'Too many files. Maximum is 5 files per upload.' 
+        return res.status(400).json({
+          error: 'Too many files. Maximum is 5 files per upload.'
         });
       }
       if (err.message) {
@@ -87,35 +63,34 @@ const handleUpload = (req, res, next) => {
 router.post('/', requireUser, handleUpload, async (req, res) => {
   try {
     const { equipmentId, breakdownType, description } = req.body;
-    
-    console.log('📤 Breakdown media upload request:', {
-      equipmentId,
-      breakdownType,
-      description,
-      filesCount: req.files ? req.files.length : 0,
-      user: req.user.email
-    });
 
     if (!equipmentId || !breakdownType || !description) {
-      // Clean up uploaded files if validation fails
-      if (req.files) {
-        req.files.forEach(file => {
-          try {
-            fs.unlinkSync(file.path);
-          } catch (err) {
-            console.error('Error deleting file:', err);
-          }
-        });
-      }
       return res.status(400).json({ error: 'Equipment ID, breakdown type, and description are required' });
     }
 
-    const files = req.files.map(file => ({
-      filename: file.filename,
-      originalName: file.originalname,
-      mimetype: file.mimetype,
-      size: file.size,
-      path: `/uploads/breakdown-media/${file.filename}`
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    // Save files to Media collection
+    const mediaPromises = req.files.map(file => {
+      return Media.create({
+        filename: file.originalname,
+        contentType: file.mimetype,
+        data: file.buffer,
+        size: file.size,
+        uploadedBy: req.user._id
+      });
+    });
+
+    const savedMediaList = await Promise.all(mediaPromises);
+
+    const files = savedMediaList.map((media, index) => ({
+      filename: media.filename,
+      originalName: media.filename,
+      mimetype: media.contentType,
+      size: media.size,
+      path: `/api/media/${media._id}` // Use API URL instead of filesystem path
     }));
 
     const breakdownMedia = new BreakdownMedia({
@@ -127,8 +102,8 @@ router.post('/', requireUser, handleUpload, async (req, res) => {
     });
 
     await breakdownMedia.save();
-    
-    console.log('✅ Breakdown media uploaded successfully:', {
+
+    console.log('✅ Breakdown media uploaded successfully (DB):', {
       id: breakdownMedia._id,
       equipment: equipmentId,
       filesCount: files.length
@@ -140,21 +115,11 @@ router.post('/', requireUser, handleUpload, async (req, res) => {
     });
   } catch (error) {
     console.error('Error uploading breakdown media:', error);
-    // Clean up uploaded files on error
-    if (req.files) {
-      req.files.forEach(file => {
-        try {
-          fs.unlinkSync(file.path);
-        } catch (err) {
-          console.error('Error deleting file:', err);
-        }
-      });
-    }
     res.status(500).json({ error: 'Failed to upload breakdown media' });
   }
 });
 
-// GET /api/breakdown-media/equipment/:equipmentId - Get all breakdown media for an equipment
+// GET /api/breakdown-media/equipment/:equipmentId - Get all breakdown media
 router.get('/equipment/:equipmentId', requireUser, async (req, res) => {
   try {
     const breakdownMedia = await BreakdownMedia.find({ equipment: req.params.equipmentId })
@@ -195,17 +160,10 @@ router.delete('/:id', requireUser, async (req, res) => {
       return res.status(404).json({ error: 'Breakdown media not found' });
     }
 
-    // Delete files from filesystem
-    breakdownMedia.files.forEach(file => {
-      const filePath = path.join(__dirname, '..', file.path);
-      try {
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      } catch (err) {
-        console.error('Error deleting file:', err);
-      }
-    });
+    // Optionally delete the underlying Media documents?
+    // For now, we just delete the breakdown record. 
+    // The Media docs remain as orphans or we can clean them up. 
+    // Given scope, orphan cleanup is secondary optimization.
 
     await BreakdownMedia.findByIdAndDelete(req.params.id);
 

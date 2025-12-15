@@ -23,7 +23,7 @@ class EquipmentStatusService {
    * @returns {Promise<object>} Updated equipment and history entry
    */
   static async changeStatus(equipmentId, newStatus, userId, options = {}) {
-    const { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, metadata = {} } = options;
+    const { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media, metadata = {} } = options;
 
     // Validate equipment exists
     const equipment = await Equipment.findById(equipmentId);
@@ -157,6 +157,7 @@ class EquipmentStatusService {
         type: breakdownType,
         description: breakdownDescription
       } : undefined,
+      media: options.media || [],
       metadata,
       timestamp: new Date()
     });
@@ -172,6 +173,9 @@ class EquipmentStatusService {
       if (breakdownType) equipment.lastBreakdownType = breakdownType;
       if (breakdownDescription) equipment.lastBreakdownDescription = breakdownDescription;
     }
+
+    // Update status media
+    equipment.statusMedia = options.media || [];
 
     await equipment.save();
 

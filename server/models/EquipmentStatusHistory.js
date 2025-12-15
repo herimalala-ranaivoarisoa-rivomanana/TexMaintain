@@ -236,6 +236,10 @@ const equipmentStatusHistorySchema = new mongoose.Schema({
     type: Number, // Duration in minutes (calculated when status changes again)
     default: null
   },
+  media: [{
+    type: String,
+    trim: true
+  }],
   metadata: {
     type: mongoose.Schema.Types.Mixed,
     default: {}

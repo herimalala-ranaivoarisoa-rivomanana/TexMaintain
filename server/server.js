@@ -144,6 +144,7 @@ app.use('/api/electricians', electricianRoutes);
 app.use('/api/maintenance-workers', maintenanceWorkerRoutes);
 app.use('/api/breakdown-media', breakdownMediaRoutes);
 app.use('/api/equipment-parts', equipmentPartsRoutes);
+app.use('/api/media', require("./routes/mediaRoutes"));
 app.use('/api/reports', reportsRoutes);
 app.use('/api/procurement', procurementRoutes);
 app.use('/api/projects', projectRoutes);

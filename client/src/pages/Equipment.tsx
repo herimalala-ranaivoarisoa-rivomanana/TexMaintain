@@ -29,7 +29,7 @@ import {
 import { QRCodeScanner } from "@/components/QRCodeScanner"
 import { QRCodeGenerator } from "@/components/QRCodeGenerator"
 import { EquipmentStatusDialog } from "@/components/EquipmentStatusDialog"
-import { getEquipment, createEquipment, updateEquipment, deleteEquipment, changeEquipmentStatus } from "@/api/equipment"
+import { getEquipment, createEquipment, updateEquipment, deleteEquipment, changeEquipmentStatus, getStatusMetadata } from "@/api/equipment"
 import { getBrands } from "@/api/brands"
 import { getMachinists } from "@/api/machinists"
 import { getMechanics } from "@/api/mechanics"
@@ -40,7 +40,7 @@ import { getEquipmentCategories } from "@/api/equipmentCategories"
 import { getEquipmentTypes } from "@/api/equipmentTypes"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
-import { EQUIPMENT_STATUSES, EquipmentStatus, getStatusColor, getStatusLabel } from "@/types/equipment"
+import { EQUIPMENT_STATUSES, EquipmentStatus, StatusMetadata } from "@/types/equipment"
 
 
 
@@ -94,6 +94,7 @@ interface Equipment {
   nextMaintenance: string
   productionLine?: { _id: string; name: string }
   productionSection?: { _id: string; name: string }
+  statusMedia?: string[]
 }
 
 
@@ -192,17 +193,23 @@ export function Equipment() {
     fetchEquipment()
   }, [page, limit, sort, order, searchTerm, statusFilter, categoryFilter])
 
+  /* REMOVED: getStockStatus and helper functions - Now using backend provided stockStatus */
+  const [statusMetadata, setStatusMetadata] = useState<Record<string, StatusMetadata>>({})
+
+  // ... (previous state definitions)
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [categoriesData, typesData, brandsData, machinistsData, mechanicsData, electriciansData, workersData] = await Promise.all([
+        const [categoriesData, typesData, brandsData, machinistsData, mechanicsData, electriciansData, workersData, metadataRes] = await Promise.all([
           getEquipmentCategories(),
           getEquipmentTypes(),
           getBrands(),
           getMachinists(),
           getMechanics(),
           getElectricians(),
-          getMaintenanceWorkers()
+          getMaintenanceWorkers(),
+          getStatusMetadata()
         ])
         setCategories(categoriesData.categories || categoriesData)
         setTypes(typesData.types || typesData)
@@ -211,12 +218,78 @@ export function Equipment() {
         setMechanics(mechanicsData.mechanics || [])
         setElectricians(electriciansData.electricians || [])
         setMaintenanceWorkers(workersData.workers || [])
+
+        if (metadataRes && metadataRes.success) {
+          setStatusMetadata(metadataRes.statuses)
+        }
       } catch (error) {
         console.error("Error fetching initial data:", error)
       }
     }
     fetchData()
   }, [])
+
+  // Helper to map backend generic colors to Tailwind classes
+  const getTailwindColor = (color: string) => {
+    const map: Record<string, string> = {
+      'green': 'bg-green-500',
+      'blue': 'bg-blue-500',
+      'red': 'bg-red-500',
+      'orange': 'bg-orange-500',
+      'yellow': 'bg-yellow-500',
+      'gray': 'bg-gray-500',
+      'black': 'bg-black',
+      'purple': 'bg-purple-500',
+      'pink': 'bg-pink-500'
+    }
+    return map[color] || 'bg-gray-500'
+  }
+
+  const getStatusColor = (status: string) => {
+    const meta = statusMetadata[status]
+    if (meta) return getTailwindColor(meta.color)
+    return 'bg-gray-500' // Fallback
+  }
+
+  const getStatusLabel = (status: string) => {
+    const meta = statusMetadata[status]
+    return meta ? meta.label : status
+  }
+
+  const getStatusIcon = (status: string) => {
+    // If metadata has icon name, we could dynamically map it, 
+    // but for now let's keep the switch or map based on metadata 'icon' string
+    // The backend sends icon names like 'play', 'settings', etc.
+    const meta = statusMetadata[status]
+    const iconName = meta ? meta.icon : '' // e.g. 'play', 'settings'
+
+    // Map backend icon names to Lucide components
+    switch (iconName || status) { // Fallback to status if no icon name
+      case 'play': return <CheckCircle className="h-4 w-4" /> // 'play' -> Production
+      case 'settings': return <Settings className="h-4 w-4" />
+      case 'pause': return <Clock className="h-4 w-4" /> // Logic might vary
+      case 'refresh': return <History className="h-4 w-4" /> // Changeover
+      case 'calendar': return <Calendar className="h-4 w-4" />
+      case 'alert-triangle': return <AlertTriangle className="h-4 w-4" />
+      case 'wrench': return <Wrench className="h-4 w-4" />
+      case 'tool': return <Wrench className="h-4 w-4" />
+      case 'package': return <Package className="h-4 w-4" />
+      case 'check-circle': return <CheckCircle className="h-4 w-4" />
+      case 'clipboard-check': return <CheckCircle className="h-4 w-4" />
+      case 'search': return <Settings className="h-4 w-4" />
+      case 'archive': return <Package className="h-4 w-4" />
+      case 'power': return <Settings className="h-4 w-4" />
+      case 'trash': return <Trash className="h-4 w-4" />
+
+      // Keep legacy fallbacks for safety
+      case 'in_production': return <CheckCircle className="h-4 w-4" />
+      case 'scheduled_maintenance': return <Clock className="h-4 w-4" />
+      case 'breakdown': return <AlertTriangle className="h-4 w-4" />
+      case 'offline': return <Settings className="h-4 w-4" />
+      case 'scrapped': return <AlertTriangle className="h-4 w-4" />
+      default: return <Settings className="h-4 w-4" />
+    }
+  }
 
   const openAddDialog = () => {
     setEditingItem(null)
@@ -586,16 +659,7 @@ export function Equipment() {
     }
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'in_production': return <CheckCircle className="h-4 w-4" />
-      case 'scheduled_maintenance': return <Clock className="h-4 w-4" />
-      case 'breakdown': return <AlertTriangle className="h-4 w-4" />
-      case 'offline': return <Settings className="h-4 w-4" />
-      case 'scrapped': return <AlertTriangle className="h-4 w-4" />
-      default: return <Settings className="h-4 w-4" />
-    }
-  }
+
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Not set'
@@ -632,9 +696,7 @@ export function Equipment() {
     return formatTime(totalHours)
   }
 
-  const getEquipmentLocation = (equipmentId: string) => {
-    return 'Not assigned'
-  }
+
 
   const filteredEquipment = equipment
   const start = (page - 1) * limit + 1
@@ -771,7 +833,7 @@ export function Equipment() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg"><Link className="hover:underline" to={`/equipment/${item._id}`}>{item.category?.name} - {item.type?.name}</Link></CardTitle>
-                <Badge 
+                <Badge
                   className={`${getStatusColor(item.status as EquipmentStatus)} text-white flex items-center gap-1 cursor-pointer hover:scale-105 transition-transform`}
                   onClick={(e) => {
                     e.preventDefault()
@@ -948,6 +1010,7 @@ export function Equipment() {
             setStatusDialogOpen(false)
             fetchEquipment()
           }}
+          currentMedia={selectedEquipmentForStatus.statusMedia}
         />
       )}
 

@@ -96,6 +96,43 @@ class EquipmentMetricsService {
             // We'll store both if needed, but for now let's stick to the requested MTBF/MTTR persistence.
             // We will persist the calculated values.
 
+            // === FINANCIAL METRICS CALCULATION ===
+
+            // 1. Calculate Total Maintenance Cost from Interventions
+            // Assuming 'cost' field on Intervention model is populated.
+            // If we don't have cost on interventions yet, we might use the simulated logic (count * 150) temporarily 
+            // OR strictly sum the '21: cost: { type: Number, default: 0 }' if users have entered it.
+            // For this implementation, we will sum the actual cost field to be data-driven.
+
+            const allInterventions = await Intervention.find({
+                equipmentId: equipment._id,
+                status: 'Completed'
+            }, 'cost').lean();
+
+            const totalMaintenanceCost = allInterventions.reduce((sum, inv) => sum + (inv.cost || 0), 0);
+
+            // 2. Calculate Depreciation and Current Value (Straight-Line Method)
+            let currentValue = 0;
+            const purchasePrice = equipment.purchasePrice || 0;
+            const usefulLifeYears = equipment.usefulLifeYears || 10;
+            const salvageValue = equipment.salvageValue || 0;
+
+            if (purchasePrice > 0 && equipment.acquisitionDate) {
+                const ageInYears = timeSinceAcquisition / 365;
+
+                // Depreciation per year = (Cost - Salvage) / Useful Life
+                const depreciableAmount = purchasePrice - salvageValue;
+                const annualDepreciation = depreciableAmount / usefulLifeYears;
+                const totalDepreciation = annualDepreciation * ageInYears;
+
+                // Current Value = Purchase Price - Total Depreciation (min is Salvage Value)
+                currentValue = Math.max(salvageValue, purchasePrice - totalDepreciation);
+            }
+
+            // 3. Calculate TCO (Total Cost of Ownership)
+            // TCO = Purchase Price + Maintenance Costs + (Operating Costs - not modelled yet)
+            const tco = purchasePrice + totalMaintenanceCost;
+
             const updates = {
                 mtbf: Math.round(mtbf * 100) / 100,
                 mttr: Math.round(mttr * 100) / 100,
@@ -103,6 +140,12 @@ class EquipmentMetricsService {
                 downtime: Math.round(downtime * 100) / 100,
                 operatingTime: Math.round(operatingTime * 100) / 100,
                 timeSinceAcquisition: Math.round(timeSinceAcquisition * 100) / 100,
+
+                // Financial updates
+                currentValue: Math.round(currentValue * 100) / 100,
+                totalMaintenanceCost: Math.round(totalMaintenanceCost * 100) / 100,
+                tco: Math.round(tco * 100) / 100,
+
                 lastMetricsUpdate: new Date()
             };
 

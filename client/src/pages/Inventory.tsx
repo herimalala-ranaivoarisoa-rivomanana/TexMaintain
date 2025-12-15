@@ -175,33 +175,11 @@ export function Inventory() {
     localStorage.setItem('inv_limit', String(limit))
   }, [limit])
 
-  const getStockStatus = (item: InventoryItem) => {
-    // Prefer backend status if available (SSOT)
-    if (item.stockStatus?.status) return item.stockStatus.status
+  /* REMOVED: getStockStatus and helper functions - Now using backend provided stockStatus */
+  // The API returns a fully populated stockStatus object with:
+  // { status, label, color, icon, message }
+  // We will access these properties directly from item.stockStatus
 
-    // Fallback logic
-    if (item.currentStock <= item.minStock * 0.5) return 'critical'
-    if (item.currentStock <= item.minStock) return 'low'
-    return 'normal'
-  }
-
-  const getStockStatusColor = (status: string) => {
-    switch (status) {
-      case 'critical': return 'bg-red-500'
-      case 'low': return 'bg-yellow-500'
-      case 'normal': return 'bg-green-500'
-      default: return 'bg-gray-500'
-    }
-  }
-
-  const getStockStatusIcon = (status: string) => {
-    switch (status) {
-      case 'critical': return <AlertTriangle className="h-4 w-4" />
-      case 'low': return <TrendingDown className="h-4 w-4" />
-      case 'normal': return <TrendingUp className="h-4 w-4" />
-      default: return <Package className="h-4 w-4" />
-    }
-  }
 
   const exportCSV = () => {
     const headers = ['Name', 'PartNumber', 'Category', 'Current', 'Min', 'Max', 'UnitPrice', 'Supplier', 'Location']
@@ -537,15 +515,44 @@ export function Inventory() {
       {/* Inventory Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {items?.map((item) => {
-          const status = getStockStatus(item)
+          // Use backend provided status or fallback to safe defaults if missing (should not happen with updated backend)
+          const statusObj = item.stockStatus || {
+            status: 'normal',
+            label: 'Normal',
+            color: 'green',
+            icon: '🟢',
+            message: ''
+          }
+
+          // Map backend color names to Tailwind classes if needed, or use the object's color if it's already a class
+          // The backend returns simple names: 'red', 'orange', 'blue', 'green'
+          const getColorClass = (colorName: string) => {
+            switch (colorName) {
+              case 'red': return 'bg-red-500'
+              case 'orange': return 'bg-orange-500' // 'orange' usually maps to yellow/orange in TW
+              case 'yellow': return 'bg-yellow-500'
+              case 'blue': return 'bg-blue-500'
+              case 'green': return 'bg-green-500'
+              default: return 'bg-gray-500'
+            }
+          }
+
+          // Map icon string to Lucide component
+          const getIconComponent = (statusStr: string) => {
+            if (statusStr === 'critical') return <AlertTriangle className="h-4 w-4" />
+            if (statusStr === 'low') return <TrendingDown className="h-4 w-4" />
+            if (statusStr === 'high') return <TrendingUp className="h-4 w-4" />
+            return <Package className="h-4 w-4" />
+          }
+
           return (
             <Card key={item._id} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg"><Link className="hover:underline" to={`/inventory/${item._id}`}>{item.name}</Link></CardTitle>
-                  <Badge className={`${getStockStatusColor(status)} text-white flex items-center gap-1`}>
-                    {getStockStatusIcon(status)}
-                    {status}
+                  <Badge className={`${getColorClass(statusObj.color)} text-white flex items-center gap-1`} title={statusObj.message}>
+                    {getIconComponent(statusObj.status)}
+                    {statusObj.label}
                   </Badge>
                 </div>
                 <CardDescription className="flex items-center text-slate-600">

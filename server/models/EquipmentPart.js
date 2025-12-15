@@ -110,7 +110,9 @@ const schema = new mongoose.Schema({
     date: { type: Date, required: true },
     quantityUsed: { type: Number, required: true },
     performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    notes: String
+    notes: String,
+    mediaBefore: [{ type: String }],
+    mediaAfter: [{ type: String }]
   }],
 
   notes: {
@@ -196,12 +198,14 @@ schema.pre('save', function (next) {
 /**
  * Enregistre un remplacement de pièce
  */
-schema.methods.recordReplacement = function (quantityUsed, userId, notes = '') {
+schema.methods.recordReplacement = function (quantityUsed, userId, notes = '', mediaBefore = [], mediaAfter = []) {
   this.replacementHistory.push({
     date: new Date(),
     quantityUsed,
     performedBy: userId,
-    notes
+    notes,
+    mediaBefore,
+    mediaAfter
   });
 
   this.lastReplacementDate = new Date();

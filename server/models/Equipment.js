@@ -138,9 +138,43 @@ const schema = new mongoose.Schema({
   lastBreakdownDescription: {
     type: String,
   },
+  statusMedia: [{
+    type: String,
+    trim: true,
+  }],
   specifications: {
     type: mongoose.Schema.Types.Mixed,
     default: {},
+  },
+  // Financial Data
+  purchasePrice: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  usefulLifeYears: {
+    type: Number,
+    default: 10, // Standard approximation for industrial equipment
+    min: 1
+  },
+  salvageValue: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  // Calculated Financial Metrics
+  currentValue: {
+    type: Number,
+    default: 0
+  },
+  totalMaintenanceCost: {
+    type: Number,
+    default: 0
+  },
+  tco: {
+    type: Number,
+    default: 0,
+    description: 'Total Cost of Ownership = Purchase Price + Maintenance Costs'
   },
   createdAt: {
     type: Date,

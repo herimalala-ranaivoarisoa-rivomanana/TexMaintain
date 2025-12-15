@@ -8,6 +8,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/hooks/useToast'
 import { recordUsage, type EquipmentPart } from '@/api/equipmentParts'
 
+import { BeforeAfterMediaUpload } from './BeforeAfterMediaUpload'
+
 interface RecordUsageDialogProps {
   equipmentPart: EquipmentPart
   onClose: () => void
@@ -17,6 +19,8 @@ interface RecordUsageDialogProps {
 export function RecordUsageDialog({ equipmentPart, onClose, onSuccess }: RecordUsageDialogProps) {
   const [quantity, setQuantity] = useState(equipmentPart.quantityPerMachine)
   const [notes, setNotes] = useState('')
+  const [mediaBefore, setMediaBefore] = useState<string[]>([])
+  const [mediaAfter, setMediaAfter] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
 
@@ -47,8 +51,10 @@ export function RecordUsageDialog({ equipmentPart, onClose, onSuccess }: RecordU
     try {
       setIsSubmitting(true)
       await recordUsage(equipmentPart._id, {
-        quantity,
-        notes: notes.trim() || undefined
+        quantityUsed: quantity,
+        notes: notes.trim() || undefined,
+        mediaBefore,
+        mediaAfter
       })
 
       toast({
@@ -160,6 +166,17 @@ export function RecordUsageDialog({ equipmentPart, onClose, onSuccess }: RecordU
                 <p>• Le stock du consommable sera décrémenté</p>
               </AlertDescription>
             </Alert>
+
+            {/* Media Upload */}
+            <div className="pt-2 border-t">
+              <Label className="mb-2 block">Photos/Vidéos (Avant/Après)</Label>
+              <BeforeAfterMediaUpload
+                mediaBefore={mediaBefore}
+                mediaAfter={mediaAfter}
+                onMediaBeforeChange={setMediaBefore}
+                onMediaAfterChange={setMediaAfter}
+              />
+            </div>
           </div>
 
           <DialogFooter className="mt-6">
