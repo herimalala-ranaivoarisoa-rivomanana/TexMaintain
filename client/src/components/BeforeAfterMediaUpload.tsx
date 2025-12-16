@@ -1,6 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Upload, X, Image as ImageIcon, FileVideo } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { uploadMedia } from '@/api/media';
 import { useToast } from '@/hooks/useToast';

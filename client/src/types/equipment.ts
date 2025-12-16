@@ -240,6 +240,7 @@ export interface ChangeStatusRequest {
   maintenanceWorkerId?: string;
   breakdownType?: string;
   breakdownDescription?: string;
+  media?: string[];
 }
 
 export interface BulkChangeStatusRequest {

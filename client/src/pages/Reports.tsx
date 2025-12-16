@@ -2,30 +2,66 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BarChart3, Download, FileText, TrendingUp, Calendar, Activity, Settings, Package, Loader2 } from "lucide-react"
-import { getReportStats, getMaintenanceMetrics, getInventoryMetrics, ReportStats, MaintenanceMetrics, InventoryMetrics } from "@/api/reports"
+import { BarChart3, Download, Calendar, Activity, Package, Loader2, DollarSign } from "lucide-react"
+import {
+  getReportStats,
+  getMaintenanceMetrics,
+  getFinancialMetrics,
+  ReportStats,
+  MaintenanceMetrics,
+  FinancialMetrics
+} from "@/api/reports"
 import { toast } from "sonner"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart as RePieChart,
+  Pie,
+  Cell,
+  Legend
+} from 'recharts';
 
 export function Reports() {
   const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState<ReportStats | null>(null)
+  const [stats, setStats] = useState<(ReportStats & { totalTCO?: number, totalAssetValue?: number }) | null>(null)
   const [maintenanceMetrics, setMaintenanceMetrics] = useState<MaintenanceMetrics | null>(null)
-  const [inventoryMetrics, setInventoryMetrics] = useState<InventoryMetrics | null>(null)
+  const [financialMetrics, setFinancialMetrics] = useState<FinancialMetrics | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsData, maintenanceData, inventoryData] = await Promise.all([
+        console.log('Fetching report data...');
+        const results = await Promise.allSettled([
           getReportStats(),
           getMaintenanceMetrics(),
-          getInventoryMetrics()
-        ])
-        setStats(statsData)
-        setMaintenanceMetrics(maintenanceData)
-        setInventoryMetrics(inventoryData)
+          getFinancialMetrics()
+        ]);
+
+        // Helper to get value or log error
+        const getResult = (result: PromiseSettledResult<any>, name: string) => {
+          if (result.status === 'fulfilled') return result.value;
+          console.error(`Failed to fetch ${name}:`, result.reason);
+          toast.error(`Failed to load ${name}`);
+          return null;
+        };
+
+        const statsData = getResult(results[0], 'Stats');
+        const maintenanceData = getResult(results[1], 'Maintenance');
+        const financialData = getResult(results[2], 'Financials');
+
+        console.log('Report Data Processed:', { statsData, maintenanceData, financialData });
+
+        if (statsData) setStats(statsData);
+        if (maintenanceData) setMaintenanceMetrics(maintenanceData);
+        if (financialData) setFinancialMetrics(financialData);
+
       } catch (error) {
-        console.error("Error fetching reports:", error)
-        toast.error("Failed to load report data")
+        console.error("Critical error in fetchData:", error)
       } finally {
         setLoading(false)
       }
@@ -41,6 +77,13 @@ export function Reports() {
       </div>
     )
   }
+
+  // Data preparation for charts
+  const interventionStatusData = maintenanceMetrics?.byStatus
+    ? Object.entries(maintenanceMetrics.byStatus).map(([name, value]) => ({ name, value }))
+    : [];
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
   return (
     <div className="space-y-6">
@@ -68,262 +111,195 @@ export function Reports() {
           </Select>
           <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
             <Download className="mr-2 h-4 w-4" />
-            Export Report
+            Export
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200 cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BarChart3 className="mr-2 h-5 w-5 text-blue-600" />
-              Equipment Performance
+      {/* KPI Overview Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Equipment Health KPI */}
+        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 transition-all hover:shadow-md">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-slate-500 flex items-center">
+              <BarChart3 className="mr-2 h-4 w-4" /> Equipment Performance
             </CardTitle>
-            <CardDescription>
-              MTTR, MTBF, and availability metrics
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Average MTTR</span>
-                <span className="font-semibold">{maintenanceMetrics?.mttr ? Math.round(maintenanceMetrics.mttr) : 0} hours</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Average MTBF</span>
-                <span className="font-semibold">{maintenanceMetrics?.mtbf ? Math.round(maintenanceMetrics.mtbf) : 0} hours</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Total Equipment</span>
-                <span className="font-semibold text-blue-600">{stats?.equipmentCount || 0}</span>
-              </div>
+            <div className="text-2xl font-bold text-slate-900">{maintenanceMetrics?.mtbf ? Math.round(maintenanceMetrics.mtbf) : 0}h</div>
+            <p className="text-xs text-slate-500">Avg MTBF</p>
+            <div className="mt-2 flex items-center text-xs">
+              <span className="text-slate-900 font-semibold mr-1">{stats?.equipmentCount || 0}</span> Machines
             </div>
-            <Button variant="outline" size="sm" className="w-full mt-4">
-              View Full Report
-            </Button>
           </CardContent>
         </Card>
 
-        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200 cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Activity className="mr-2 h-5 w-5 text-orange-600" />
-              Maintenance Activities
+        {/* Maintenance Activity KPI */}
+        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 transition-all hover:shadow-md">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-slate-500 flex items-center">
+              <Activity className="mr-2 h-4 w-4" /> Active Interventions
             </CardTitle>
-            <CardDescription>
-              Intervention trends and completion rates
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Active Interventions</span>
-                <span className="font-semibold">{stats?.activeInterventions || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Completed (All Time)</span>
-                <span className="font-semibold">{maintenanceMetrics?.byStatus?.['Completed'] || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Preventive Ratio</span>
-                <span className="font-semibold text-green-600">
-                  {maintenanceMetrics?.byType?.['Preventive'] && maintenanceMetrics?.byType?.['Corrective']
-                    ? Math.round((maintenanceMetrics.byType['Preventive'] / (maintenanceMetrics.byType['Preventive'] + maintenanceMetrics.byType['Corrective'])) * 100)
-                    : 0}%
-                </span>
-              </div>
+            <div className="text-2xl font-bold text-orange-600">{stats?.activeInterventions || 0}</div>
+            <p className="text-xs text-slate-500">Currently in progress</p>
+            <div className="mt-2 text-xs text-green-600 font-medium">
+              {Math.round(maintenanceMetrics?.mttr || 0)}h Avg MTTR
             </div>
-            <Button variant="outline" size="sm" className="w-full mt-4">
-              View Full Report
-            </Button>
           </CardContent>
         </Card>
 
-        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200 cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Package className="mr-2 h-5 w-5 text-purple-600" />
-              Inventory Analysis
+        {/* Inventory Value KPI */}
+        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 transition-all hover:shadow-md">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-slate-500 flex items-center">
+              <Package className="mr-2 h-4 w-4" /> Inventory Value
             </CardTitle>
-            <CardDescription>
-              Stock levels and consumption patterns
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Total Stock Value</span>
-                <span className="font-semibold">${inventoryMetrics?.totalValue?.toLocaleString() || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Low Stock Items</span>
-                <span className="font-semibold text-yellow-600">{stats?.lowStockParts || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Categories</span>
-                <span className="font-semibold">{inventoryMetrics?.byCategory?.length || 0}</span>
-              </div>
+            <div className="text-2xl font-bold text-slate-900">Rs {stats?.totalStockValue?.toLocaleString() || 0}</div>
+            <p className="text-xs text-slate-500">Total Stock Value</p>
+            <div className="mt-2 text-xs text-red-500 font-medium">
+              {stats?.lowStockParts || 0} Low Stock Items
             </div>
-            <Button variant="outline" size="sm" className="w-full mt-4">
-              View Full Report
-            </Button>
           </CardContent>
         </Card>
 
-        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200 cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <TrendingUp className="mr-2 h-5 w-5 text-green-600" />
-              Cost Analysis
+        {/* Financial Health KPI */}
+        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 transition-all hover:shadow-md">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-slate-500 flex items-center">
+              <DollarSign className="mr-2 h-4 w-4" /> Total TCO
             </CardTitle>
-            <CardDescription>
-              Maintenance costs and budget tracking
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Monthly Budget</span>
-                <span className="font-semibold">$125,000</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Spent This Month</span>
-                <span className="font-semibold">
-                  ${maintenanceMetrics?.monthlyData?.length
-                    ? maintenanceMetrics.monthlyData[maintenanceMetrics.monthlyData.length - 1].cost.toLocaleString()
-                    : 0}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Budget Utilization</span>
-                <span className="font-semibold text-blue-600">
-                  {maintenanceMetrics?.monthlyData?.length
-                    ? Math.round((maintenanceMetrics.monthlyData[maintenanceMetrics.monthlyData.length - 1].cost / 125000) * 100)
-                    : 0}%
-                </span>
-              </div>
+            <div className="text-2xl font-bold text-blue-700">Rs {stats?.totalTCO?.toLocaleString() || 0}</div>
+            <p className="text-xs text-slate-500">Calculated TCO</p>
+            <div className="mt-2 text-xs text-slate-500">
+              Asset Value: <span className="font-semibold text-slate-900">Rs {stats?.totalAssetValue?.toLocaleString() || 0}</span>
             </div>
-            <Button variant="outline" size="sm" className="w-full mt-4">
-              View Full Report
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200 cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Settings className="mr-2 h-5 w-5 text-indigo-600" />
-              Compliance Report
-            </CardTitle>
-            <CardDescription>
-              Safety and regulatory compliance status
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Safety Inspections</span>
-                <span className="font-semibold text-green-600">100%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Overdue Certifications</span>
-                <span className="font-semibold text-red-600">0</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Compliance Score</span>
-                <span className="font-semibold text-green-600">98%</span>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="w-full mt-4">
-              View Full Report
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200 cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <FileText className="mr-2 h-5 w-5 text-slate-600" />
-              Custom Reports
-            </CardTitle>
-            <CardDescription>
-              Create and schedule custom reports
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Saved Reports</span>
-                <span className="font-semibold">12</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Scheduled Reports</span>
-                <span className="font-semibold">5</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Last Generated</span>
-                <span className="font-semibold">Today</span>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="w-full mt-4">
-              Create Report
-            </Button>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
-        <CardHeader>
-          <CardTitle>Quick Report Generator</CardTitle>
-          <CardDescription>
-            Generate reports for specific time periods and metrics
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <Select defaultValue="equipment">
-              <SelectTrigger>
-                <SelectValue placeholder="Select report type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="equipment">Equipment Performance</SelectItem>
-                <SelectItem value="maintenance">Maintenance Activities</SelectItem>
-                <SelectItem value="inventory">Inventory Analysis</SelectItem>
-                <SelectItem value="costs">Cost Analysis</SelectItem>
-              </SelectContent>
-            </Select>
+      {/* Main Analysis Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            <Select defaultValue="month">
-              <SelectTrigger>
-                <SelectValue placeholder="Select time period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">Last 7 days</SelectItem>
-                <SelectItem value="month">Last 30 days</SelectItem>
-                <SelectItem value="quarter">Last 3 months</SelectItem>
-                <SelectItem value="year">Last 12 months</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* Monthly Maintenance Costs Chart */}
+        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
+          <CardHeader>
+            <CardTitle>Monthly Maintenance Costs</CardTitle>
+            <CardDescription>Actual costs aggregated from interventions (Last 12 Months)</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={maintenanceMetrics?.monthlyData || []}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="name" fontSize={12} stroke="#64748b" tickLine={false} axisLine={false} />
+                <YAxis
+                  fontSize={12}
+                  stroke="#64748b"
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `Rs ${value}`}
+                />
+                <Tooltip
+                  cursor={{ fill: '#f1f5f9' }}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: any) => [`Rs ${value.toLocaleString()}`, 'Cost']}
+                />
+                <Bar dataKey="cost" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
-            <Select defaultValue="pdf">
-              <SelectTrigger>
-                <SelectValue placeholder="Select format" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pdf">PDF</SelectItem>
-                <SelectItem value="excel">Excel</SelectItem>
-                <SelectItem value="csv">CSV</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Intervention Breakdown Pie Chart */}
+        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
+          <CardHeader>
+            <CardTitle>Intervention Status</CardTitle>
+            <CardDescription>Breakdown of all interventions by current status</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <RePieChart>
+                <Pie
+                  data={interventionStatusData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {interventionStatusData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+              </RePieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
 
-          <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-            <Download className="mr-2 h-4 w-4" />
-            Generate Report
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Financial Deep Dive */}
+      <h2 className="text-xl font-bold text-slate-900 mt-8">Financial Analysis</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* TCO by Category Chart */}
+        <Card className="lg:col-span-2 bg-white/60 backdrop-blur-sm border-slate-200/60">
+          <CardHeader>
+            <CardTitle>TCO by Equipment Category</CardTitle>
+            <CardDescription>Which categories are costing the most?</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={financialMetrics?.tcoByCategory || []} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                <XAxis type="number" hide />
+                <YAxis type="category" dataKey="name" width={100} fontSize={12} stroke="#64748b" tickLine={false} axisLine={false} />
+                <Tooltip formatter={(value: any) => [`Rs ${value.toLocaleString()}`, 'Total TCO']} />
+                <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={20} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Top 5 Costly Machines Table/List */}
+        <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
+          <CardHeader>
+            <CardTitle>Top Costly Equipment</CardTitle>
+            <CardDescription>Highest TCO Machines</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {financialMetrics?.topCostlyEquipment?.map((eq, i) => (
+                <div key={eq._id} className="flex items-center justify-between border-b border-slate-100 pb-2 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-xs">
+                      {i + 1}
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm text-slate-900">{eq.name}</div>
+                      <div className="text-xs text-slate-500">Price: Rs {eq.purchasePrice?.toLocaleString()}</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-sm text-slate-900">Rs {eq.tco.toLocaleString()}</div>
+                    <div className="text-xs text-slate-500">TCO</div>
+                  </div>
+                </div>
+              ))}
+              {!financialMetrics?.topCostlyEquipment?.length && (
+                <p className="text-sm text-slate-500 text-center py-4">No data available</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
     </div>
   )
 }

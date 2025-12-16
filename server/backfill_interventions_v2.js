@@ -80,10 +80,14 @@ async function backfillInterventions() {
         }
         console.log(`✅ Backfilled ${matched} equipmentIds.`);
 
-        // --- PART 3: Recalculate Metrics for All Equipment ---
-        console.log('\n--- Starting Metrics Recalculation ---');
-        const count = await EquipmentMetricsService.recalculateAll();
-        console.log(`✅ Recalculated metrics for ${count} equipment.`);
+        // --- PART 3: Recalculate Metrics (Conditional) ---
+        if (updatedCount > 0 || matched > 0) {
+            console.log('\n--- Starting Metrics Recalculation (Triggered by backfill) ---');
+            const count = await EquipmentMetricsService.recalculateAll();
+            console.log(`✅ Recalculated metrics for ${count} equipment.`);
+        } else {
+            console.log('\n--- Skipping Metrics Recalculation (No backfill changes) ---');
+        }
 
         console.log('✨ Automated backfill completed successfully.');
         // Do not exit process, just return

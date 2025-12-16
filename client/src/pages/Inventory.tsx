@@ -493,7 +493,7 @@ export function Inventory() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">Total Value</p>
-                <p className="text-2xl font-bold text-green-600">${filteredTotalValue?.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-green-600">Rs {filteredTotalValue?.toFixed(2)}</p>
               </div>
               <DollarSign className="h-6 w-6 text-green-600" />
             </div>
@@ -504,7 +504,7 @@ export function Inventory() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">Average Value</p>
-                <p className="text-2xl font-bold text-blue-600">${filteredAverageValue?.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-blue-600">Rs {filteredAverageValue?.toFixed(2)}</p>
               </div>
               <TrendingUp className="h-6 w-6 text-blue-600" />
             </div>
@@ -592,7 +592,7 @@ export function Inventory() {
                       <DollarSign className="mr-1 h-3 w-3" />
                       Unit Price:
                     </span>
-                    <span className="font-semibold text-slate-900">${item.unitPrice}</span>
+                    <span className="font-semibold text-slate-900">Rs {item.unitPrice}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-500 flex items-center">

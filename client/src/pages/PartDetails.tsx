@@ -183,7 +183,7 @@ export default function PartDetails() {
             <div>
               <p className="text-sm text-slate-500 mb-1">Unit price</p>
               <p className="text-lg font-semibold text-green-600">
-                {part.unitPrice.toFixed(2)} €
+                Rs {part.unitPrice.toFixed(2)}
               </p>
             </div>
           </div>
@@ -247,8 +247,8 @@ export default function PartDetails() {
       </Card>
 
       {/* Statut du Stock et Commandes */}
-      <StockStatusCard 
-        partId={partId} 
+      <StockStatusCard
+        partId={partId}
         partName={part.name}
         defaultSupplier={part.supplier}
         onUpdate={fetchPart}

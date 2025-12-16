@@ -11,34 +11,45 @@ const { Part } = require('../models/Part');
 // GET /api/reports/stats - General Dashboard Stats
 router.get('/stats', async (req, res) => {
   try {
+    // KPI Logic Alignment with Dashboard
+    // Dashboard: activeInterventions = status in ['Pending', 'In Progress']
+    // Dashboard: criticalParts = $lte: ['$currentStock', '$minStock']
+
     const [
       equipmentCount,
       activeInterventions,
-      parts
+      lowStockPartsCount,
+      parts,
+      equipmentFinancials
     ] = await Promise.all([
       Equipment.countDocuments(),
-      Intervention.countDocuments({ status: { $nin: ['Completed', 'Cancelled'] } }),
-      Part.find({}, 'currentStock minStock maxStock unitPrice')
+      Intervention.countDocuments({ status: { $in: ['Pending', 'In Progress'] } }),
+      Part.countDocuments({ $expr: { $lte: ['$currentStock', '$minStock'] } }),
+      Part.find({}, 'currentStock unitPrice'), // Just needed for value calculation now
+      Equipment.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalTCO: { $sum: '$tco' },
+            totalAssetValue: { $sum: '$purchasePrice' }
+          }
+        }
+      ])
     ]);
 
-    let lowStockCount = 0;
     let totalStockValue = 0;
-
     parts.forEach(part => {
-      // Calculate stock value
       totalStockValue += (part.currentStock || 0) * (part.unitPrice || 0);
-
-      // Check low stock (logic from Part model)
-      if (part.currentStock <= part.minStock) {
-        lowStockCount++;
-      }
     });
 
     res.json({
       equipmentCount,
       activeInterventions,
-      lowStockParts: lowStockCount,
-      totalStockValue: Math.round(totalStockValue * 100) / 100
+
+      lowStockParts: lowStockPartsCount, // Using the DB count for consistency
+      totalStockValue: Math.round(totalStockValue * 100) / 100,
+      totalTCO: equipmentFinancials[0]?.totalTCO || 0,
+      totalAssetValue: equipmentFinancials[0]?.totalAssetValue || 0
     });
   } catch (error) {
     console.error('Error fetching report stats:', error);
@@ -80,10 +91,7 @@ router.get('/maintenance', async (req, res) => {
       }
     ]);
 
-    // Monthly intervention costs (Simulated based on intervention count * average cost factor for now, 
-    // as we don't have direct cost on Intervention yet. 
-    // In a real scenario, we would join with Parts used or Labor costs)
-    // For "Realistic Data" task, we can aggregate by month and simulate cost.
+    // Monthly intervention costs and count
     const last12Months = new Date();
     last12Months.setMonth(last12Months.getMonth() - 11);
     last12Months.setDate(1);
@@ -96,11 +104,12 @@ router.get('/maintenance', async (req, res) => {
       },
       {
         $group: {
-          _id: { 
+          _id: {
             month: { $month: '$createdDate' },
             year: { $year: '$createdDate' }
           },
-          count: { $sum: 1 }
+          count: { $sum: 1 },
+          totalCost: { $sum: '$cost' } // Actual cost aggregation
         }
       },
       { $sort: { '_id.year': 1, '_id.month': 1 } }
@@ -110,7 +119,7 @@ router.get('/maintenance', async (req, res) => {
     const monthlyData = monthlyInterventions.map(item => ({
       name: `${item._id.month}/${item._id.year}`,
       interventions: item.count,
-      cost: item.count * 150 // Simulated average cost per intervention
+      cost: item.totalCost || 0
     }));
 
     res.json({
@@ -130,7 +139,7 @@ router.get('/maintenance', async (req, res) => {
 router.get('/inventory', async (req, res) => {
   try {
     const parts = await Part.find({});
-    
+
     const categoryStats = {};
     let totalValue = 0;
     const lowStockItems = [];
@@ -167,9 +176,55 @@ router.get('/inventory', async (req, res) => {
       })),
       lowStockItems: lowStockItems.slice(0, 10) // Top 10 low stock items
     });
+
   } catch (error) {
     console.error('Error fetching inventory reports:', error);
     res.status(500).json({ message: 'Error fetching inventory reports' });
+  }
+});
+
+// GET /api/reports/financials - Financial Health Metrics
+router.get('/financials', async (req, res) => {
+  try {
+    // Top 5 costliest equipment by TCO
+    const topCostlyEquipment = await Equipment.find({ tco: { $gt: 0 } })
+      .sort({ tco: -1 })
+      .limit(5)
+      .select('name tco purchasePrice totalMaintenanceCost')
+      .lean();
+
+    // Aggregate TCO by Category
+    const tcoByCategory = await Equipment.aggregate([
+      {
+        $lookup: {
+          from: 'equipmentcategories',
+          localField: 'category',
+          foreignField: '_id',
+          as: 'categoryInfo'
+        }
+      },
+      { $unwind: '$categoryInfo' },
+      {
+        $group: {
+          _id: '$categoryInfo.name',
+          totalTCO: { $sum: '$tco' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { totalTCO: -1 } }
+    ]);
+
+    res.json({
+      topCostlyEquipment,
+      tcoByCategory: tcoByCategory.map(c => ({
+        name: c._id,
+        value: c.totalTCO
+      }))
+    });
+
+  } catch (error) {
+    console.error('Error fetching financial reports:', error);
+    res.status(500).json({ message: 'Error fetching financial reports' });
   }
 });
 

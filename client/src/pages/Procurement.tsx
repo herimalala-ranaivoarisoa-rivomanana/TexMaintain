@@ -255,7 +255,7 @@ export function Procurement() {
                   </div>
                   <div>
                     <Label className="text-xs text-slate-500">Total Price</Label>
-                    <p className="font-medium">${selectedOrder.totalPrice?.toLocaleString() || '0'}</p>
+                    <p className="font-medium">Rs {selectedOrder.totalPrice?.toLocaleString() || '0'}</p>
                   </div>
                 </div>
 

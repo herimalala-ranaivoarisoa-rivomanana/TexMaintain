@@ -266,24 +266,24 @@ export function EquipmentDetail() {
                       <div className="bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
                         <p className="text-sm text-slate-500">Purchase Price</p>
                         <p className="text-slate-900 text-lg font-semibold">
-                          {data.purchasePrice ? `$${data.purchasePrice.toLocaleString()}` : <span className="text-sm italic text-slate-400">Not set</span>}
+                          {data.purchasePrice ? `Rs ${data.purchasePrice.toLocaleString()}` : <span className="text-sm italic text-slate-400">Not set</span>}
                         </p>
                         <p className="text-xs text-slate-400 mt-1">Useful Life: {data.usefulLifeYears || 10} years</p>
                       </div>
                       <div className="bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
                         <p className="text-sm text-slate-500">Current Value</p>
                         <p className="text-emerald-700 text-lg font-bold">
-                          {typeof data.currentValue === 'number' ? `$${data.currentValue.toLocaleString()}` : 'Calculating...'}
+                          {typeof data.currentValue === 'number' ? `Rs ${data.currentValue.toLocaleString()}` : 'Calculating...'}
                         </p>
                         <p className="text-xs text-slate-400 mt-1">Depreciated Value</p>
                       </div>
                       <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
                         <p className="text-sm text-slate-500">Total Cost of Ownership</p>
                         <p className="text-blue-700 text-lg font-bold">
-                          {typeof data.tco === 'number' ? `$${data.tco.toLocaleString()}` : 'Calculating...'}
+                          {typeof data.tco === 'number' ? `Rs ${data.tco.toLocaleString()}` : 'Calculating...'}
                         </p>
                         <p className="text-xs text-blue-400 mt-1">
-                          Maint. Cost: ${data.totalMaintenanceCost ? data.totalMaintenanceCost.toLocaleString() : '0'}
+                          Maint. Cost: Rs {data.totalMaintenanceCost ? data.totalMaintenanceCost.toLocaleString() : '0'}
                         </p>
                       </div>
                     </div>

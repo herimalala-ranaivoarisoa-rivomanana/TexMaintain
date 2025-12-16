@@ -35,17 +35,36 @@ export interface InventoryMetrics {
     }>;
 }
 
-export const getReportStats = async (): Promise<ReportStats> => {
-    const response = await api.get('/reports/stats');
+export interface FinancialMetrics {
+    topCostlyEquipment: Array<{
+        _id: string;
+        name: string;
+        tco: number;
+        purchasePrice: number;
+        totalMaintenanceCost: number;
+    }>;
+    tcoByCategory: Array<{
+        name: string;
+        value: number;
+    }>;
+}
+
+export const getReportStats = async (): Promise<ReportStats & { totalTCO?: number, totalAssetValue?: number }> => {
+    const response = await api.get('/api/reports/stats');
     return response.data;
 };
 
 export const getMaintenanceMetrics = async (): Promise<MaintenanceMetrics> => {
-    const response = await api.get('/reports/maintenance');
+    const response = await api.get('/api/reports/maintenance');
     return response.data;
 };
 
 export const getInventoryMetrics = async (): Promise<InventoryMetrics> => {
-    const response = await api.get('/reports/inventory');
+    const response = await api.get('/api/reports/inventory');
+    return response.data;
+};
+
+export const getFinancialMetrics = async (): Promise<FinancialMetrics> => {
+    const response = await api.get('/api/reports/financials');
     return response.data;
 };
