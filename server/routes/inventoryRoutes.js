@@ -23,6 +23,14 @@ router.get('/', requireUser, async (req, res) => {
       { supplier: { $regex: q, $options: 'i' } }
     ]
   });
+
+  // Stock Status Filter
+  const { stockStatus } = req.query;
+  if (stockStatus === 'low' || stockStatus === 'critical') {
+    // Matches dashboard logic: current <= min
+    and.push({ $expr: { $lte: ['$currentStock', '$minStock'] } });
+  }
+
   const query = and.length ? { $and: and } : {};
   const sortSpec = { [String(sort)]: String(order).toLowerCase() === 'asc' ? 1 : -1, _id: 1 };
   const lmt = Math.max(1, Number(limit));

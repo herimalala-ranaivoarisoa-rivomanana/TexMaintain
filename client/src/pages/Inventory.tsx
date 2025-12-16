@@ -60,6 +60,7 @@ export function Inventory() {
   const [searchTerm, setSearchTerm] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [searchParams, setSearchParams] = useSearchParams()
+  const [stockFilter, setStockFilter] = useState(searchParams.get('filter') || "all")
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get('category') || "all")
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10) || 1)
   const [limit, setLimit] = useState<number>(() => parseInt(localStorage.getItem('inv_limit') || '12', 10) || 12)
@@ -99,6 +100,7 @@ export function Inventory() {
     const fetchInventory = async () => {
       try {
         const params: any = { page, limit, sort, order }
+        if (stockFilter !== 'all') params.stockStatus = stockFilter
         if (categoryFilter !== 'all') params.category = categoryFilter
         if (debouncedSearch) params.q = debouncedSearch
         const typeFromTab = activeTab === 'parts' ? 'part' : activeTab === 'consumables' ? 'consumable' : ''
@@ -131,7 +133,7 @@ export function Inventory() {
     }
 
     fetchInventory()
-  }, [toast, page, categoryFilter, limit, sort, order, activeTab, debouncedSearch])
+  }, [toast, page, categoryFilter, stockFilter, limit, sort, order, activeTab, debouncedSearch])
 
   // Debounce search term
   useEffect(() => {
@@ -143,6 +145,7 @@ export function Inventory() {
   useEffect(() => {
     const next = new URLSearchParams()
     if (page && page !== 1) next.set('page', String(page))
+    if (stockFilter && stockFilter !== 'all') next.set('filter', stockFilter)
     if (categoryFilter && categoryFilter !== 'all') next.set('category', categoryFilter)
     if (searchTerm) next.set('q', searchTerm)
     if (sort && sort !== 'updatedAt') next.set('sort', sort)
@@ -152,7 +155,7 @@ export function Inventory() {
     const finalT = tFromTab || (tFromUrl === 'part' || tFromUrl === 'consumable' ? tFromUrl : '')
     if (finalT) next.set('type', finalT)
     setSearchParams(next, { replace: true })
-  }, [page, categoryFilter, searchTerm, sort, order, activeTab, searchParams, setSearchParams])
+  }, [page, categoryFilter, stockFilter, searchTerm, sort, order, activeTab, searchParams, setSearchParams])
 
   // Keep activeTab in sync with URL changes (direct navigation)
   useEffect(() => {
@@ -167,6 +170,7 @@ export function Inventory() {
   useEffect(() => {
     setPage(1)
     setCategoryFilter('all')
+    setStockFilter('all')
     setSearchTerm("")
   }, [activeTab])
 
@@ -415,6 +419,18 @@ export function Inventory() {
                 {getCategoryOptions().map(category => (
                   <SelectItem key={category} value={category}>{category}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={stockFilter} onValueChange={(v) => { setPage(1); setStockFilter(v) }}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Stock Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any Status</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="high">High</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sort} onValueChange={(v) => { setPage(1); setSort(v) }}>

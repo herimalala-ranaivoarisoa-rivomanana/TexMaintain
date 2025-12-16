@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Search,
@@ -71,15 +70,15 @@ export function Interventions() {
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || "all")
   const [typeFilter, setTypeFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
-  const [equipmentFilter, setEquipmentFilter] = useState("all")
-  const [personnelFilter, setPersonnelFilter] = useState("all")
+  const [equipmentFilter] = useState("all")
+  const [personnelFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState<'all' | 'overdue' | 'today' | 'week' | 'month'>('all')
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [quickViewOpen, setQuickViewOpen] = useState(false)
   const [quickViewIntervention, setQuickViewIntervention] = useState<Intervention | null>(null)
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10) || 1)
   const [total, setTotal] = useState(0)
-  const [limit, setLimit] = useState<number>(() => parseInt(localStorage.getItem('int_limit') || '12', 10) || 12)
+  const [limit] = useState<number>(() => parseInt(localStorage.getItem('int_limit') || '12', 10) || 12)
   const [sort, setSort] = useState<string>(searchParams.get('sort') || 'createdDate')
   const [order, setOrder] = useState<'asc' | 'desc'>((searchParams.get('order') as any) || 'desc')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -563,22 +562,22 @@ export function Interventions() {
     return filteredInterventions.filter(intervention => {
       // Type filter
       if (typeFilter !== 'all' && intervention.type !== typeFilter) return false
-      
+
       // Priority filter
       if (priorityFilter !== 'all' && intervention.priority !== priorityFilter) return false
-      
+
       // Equipment filter
       if (equipmentFilter !== 'all' && intervention.equipmentId?._id !== equipmentFilter) return false
-      
+
       // Personnel filter
       if (personnelFilter !== 'all' && !intervention.assignedTo?.includes(personnelFilter)) return false
-      
+
       // Date filter
       if (dateFilter !== 'all') {
         const dueDate = new Date(intervention.dueDate)
         const today = new Date()
         today.setHours(0, 0, 0, 0)
-        
+
         switch (dateFilter) {
           case 'overdue':
             if (dueDate >= today || intervention.status === 'Completed') return false
@@ -600,7 +599,7 @@ export function Interventions() {
             break
         }
       }
-      
+
       return true
     })
   }, [filteredInterventions, typeFilter, priorityFilter, equipmentFilter, personnelFilter, dateFilter])
@@ -1049,6 +1048,7 @@ export function Interventions() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active (Pending/In Progress)</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
                   <SelectItem value="In Progress">In Progress</SelectItem>
                   <SelectItem value="Completed">Completed</SelectItem>
@@ -1146,9 +1146,8 @@ export function Interventions() {
       {viewMode === 'cards' && (
         <div className="space-y-4">
           {advancedFilteredInterventions.map((intervention) => (
-            <Card key={intervention._id} className={`bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200 ${
-              isOverdue(intervention) ? 'border-l-4 border-l-red-500' : ''
-            }`}>
+            <Card key={intervention._id} className={`bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200 ${isOverdue(intervention) ? 'border-l-4 border-l-red-500' : ''
+              }`}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
@@ -1209,18 +1208,17 @@ export function Interventions() {
                   </div>
                   <div>
                     <p className="text-sm text-slate-500">Due Date</p>
-                    <p className={`font-medium flex items-center ${
-                      isOverdue(intervention) ? 'text-red-600 font-bold' : 'text-slate-900'
-                    }`}>
+                    <p className={`font-medium flex items-center ${isOverdue(intervention) ? 'text-red-600 font-bold' : 'text-slate-900'
+                      }`}>
                       <Calendar className="mr-1 h-3 w-3" />
                       {new Date(intervention.dueDate).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => {
                       setQuickViewIntervention(intervention)
                       setQuickViewOpen(true)
@@ -1302,8 +1300,8 @@ export function Interventions() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => {
                             setQuickViewIntervention(intervention)
@@ -1313,9 +1311,9 @@ export function Interventions() {
                           <Eye className="h-4 w-4" />
                         </Button>
                         {intervention.status === 'Pending' && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleStartIntervention(intervention)}
                             disabled={updatingId === intervention._id}
                           >
@@ -1323,9 +1321,9 @@ export function Interventions() {
                           </Button>
                         )}
                         {intervention.status === 'In Progress' && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => openUpdateDialog(intervention)}
                           >
                             <TrendingUp className="h-4 w-4" />
@@ -1392,9 +1390,8 @@ export function Interventions() {
                 </div>
                 <div>
                   <p className="text-sm text-slate-500 mb-1">Due Date</p>
-                  <p className={`font-medium ${
-                    isOverdue(quickViewIntervention) ? 'text-red-600' : ''
-                  }`}>
+                  <p className={`font-medium ${isOverdue(quickViewIntervention) ? 'text-red-600' : ''
+                    }`}>
                     {new Date(quickViewIntervention.dueDate).toLocaleDateString()}
                   </p>
                 </div>
@@ -1418,8 +1415,8 @@ export function Interventions() {
 
               {/* Actions */}
               <div className="flex gap-2 pt-4 border-t">
-                <Button 
-                  variant="default" 
+                <Button
+                  variant="default"
                   className="flex-1"
                   onClick={() => {
                     setQuickViewOpen(false)
@@ -1430,8 +1427,8 @@ export function Interventions() {
                   View Full Details
                 </Button>
                 {quickViewIntervention.status === 'Pending' && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       setQuickViewOpen(false)
                       handleStartIntervention(quickViewIntervention)
@@ -1441,8 +1438,8 @@ export function Interventions() {
                   </Button>
                 )}
                 {quickViewIntervention.status === 'In Progress' && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       setQuickViewOpen(false)
                       openUpdateDialog(quickViewIntervention)

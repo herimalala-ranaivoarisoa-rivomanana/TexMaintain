@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,8 @@ export function Procurement() {
   const [loading, setLoading] = useState(true)
   const [orders, setOrders] = useState<ProcurementOrder[]>([])
   const [stats, setStats] = useState<ProcurementStats | null>(null)
+  const [searchParams] = useSearchParams()
+  const activeFilter = searchParams.get('filter')
 
   // New Request State
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false)
@@ -134,6 +137,10 @@ export function Procurement() {
       </div>
     )
   }
+
+  const filteredOrders = activeFilter === 'active'
+    ? orders.filter(o => ['pending', 'ordered', 'in_transit'].includes(o.status))
+    : orders
 
   return (
     <div className="space-y-6">
@@ -372,15 +379,24 @@ export function Procurement() {
 
       <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
         <CardHeader>
-          <CardTitle>Recent Purchase Requests</CardTitle>
-          <CardDescription>Latest procurement activities</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Recent Purchase Requests</CardTitle>
+              <CardDescription>Latest procurement activities</CardDescription>
+            </div>
+            {activeFilter === 'active' && (
+              <Badge variant="secondary" className="text-sm">
+                Filtered: Active Orders
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {!orders || orders.length === 0 ? (
-              <p className="text-center text-slate-500 py-4">No purchase orders found.</p>
+            {!filteredOrders || filteredOrders.length === 0 ? (
+              <p className="text-center text-slate-500 py-4">No {activeFilter === 'active' ? 'active ' : ''}purchase orders found.</p>
             ) : (
-              orders.map((order) => (
+              filteredOrders.map((order) => (
                 <div key={order._id} className="flex items-center justify-between p-4 rounded-lg bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
                   <div>
                     <h4 className="font-medium">{order.partName} ({order.quantity} units)</h4>

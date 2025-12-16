@@ -4,7 +4,7 @@ import api from './api';
 // Endpoint: GET /api/inventory
 // Request: {}
 // Response: { parts: Array<{ _id: string, name: string, partNumber: string, category: string, currentStock: number, minStock: number, maxStock: number, unitPrice: number, supplier: string, location: string }> }
-export const getInventory = async (params?: { page?: number; limit?: number; category?: string; q?: string; sort?: string; order?: 'asc'|'desc' }) => {
+export const getInventory = async (params?: { page?: number; limit?: number; category?: string; q?: string; sort?: string; order?: 'asc' | 'desc'; stockStatus?: string }) => {
   const response = await api.get('/api/inventory', { params });
   return response.data;
 };
@@ -28,7 +28,7 @@ export const updateStock = async (id: string, data: { quantity: number; type: 'i
 
 // Description: Create new part (admin)
 // Endpoint: POST /api/inventory
-export const createPart = async (data: { name: string; partNumber: string; category: string; [key: string]: any }) => {
+export const createPart = async (data: { name: string; partNumber: string; category: string;[key: string]: any }) => {
   const response = await api.post('/api/inventory', data);
   return response.data;
 };

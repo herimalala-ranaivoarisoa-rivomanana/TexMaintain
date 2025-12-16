@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -42,6 +43,7 @@ export function GeneralDashboard() {
     const [activities, setActivities] = useState<Activity[]>([])
     const [loading, setLoading] = useState(true)
     const { toast } = useToast()
+    const navigate = useNavigate()
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -176,7 +178,10 @@ export function GeneralDashboard() {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-orange-50 to-red-50 border-orange-200/60">
+                <Card
+                    className="bg-gradient-to-br from-orange-50 to-red-50 border-orange-200/60 cursor-pointer hover:shadow-md transition-all"
+                    onClick={() => navigate('/interventions?status=active')}
+                >
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
@@ -188,7 +193,10 @@ export function GeneralDashboard() {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-red-50 to-pink-50 border-red-200/60">
+                <Card
+                    className="bg-gradient-to-br from-red-50 to-pink-50 border-red-200/60 cursor-pointer hover:shadow-md transition-all"
+                    onClick={() => navigate('/inventory?filter=critical')}
+                >
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
@@ -200,7 +208,10 @@ export function GeneralDashboard() {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200/60">
+                <Card
+                    className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200/60 cursor-pointer hover:shadow-md transition-all"
+                    onClick={() => navigate('/procurement?filter=active')}
+                >
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                             <div>

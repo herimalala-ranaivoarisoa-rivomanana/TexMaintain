@@ -17,6 +17,7 @@ export interface ProcurementOrder {
 export interface ProcurementStats {
     pendingRequests: number;
     activeOrders: number;
+    overdueOrders: number;
     completedOrders: number;
     totalSuppliers: number;
 }

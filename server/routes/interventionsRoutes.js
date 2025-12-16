@@ -10,7 +10,13 @@ const router = express.Router();
 router.get('/', requireUser, async (req, res) => {
   const { page = 1, limit = 50, status, type, priority, q, sort = 'createdDate', order = 'desc' } = req.query || {};
   const query = {};
-  if (status) query.status = status;
+  if (status) {
+    if (status === 'active') {
+      query.status = { $in: ['Pending', 'In Progress'] };
+    } else {
+      query.status = status;
+    }
+  }
   if (type) query.type = type;
   if (priority) query.priority = priority;
   if (q) query.$or = [
