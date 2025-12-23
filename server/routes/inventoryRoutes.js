@@ -232,7 +232,7 @@ router.post('/:id/order', requireUser, requireRole(['admin', 'procurement_manage
 router.patch('/:id/order/:orderId', requireUser, requireRole(['admin', 'procurement_manager', 'maintenance_manager']), async (req, res) => {
   try {
     const { id, orderId } = req.params;
-    const { status } = req.body;
+    const { status, quantity, reference, references } = req.body;
 
     if (!status) {
       return res.status(400).json({ message: 'Status is required' });
@@ -246,7 +246,11 @@ router.patch('/:id/order/:orderId', requireUser, requireRole(['admin', 'procurem
     const part = await Part.findById(id);
     if (!part) return res.status(404).json({ message: 'Part not found' });
 
-    await part.updateOrderStatus(orderId, status);
+    await part.updateOrderStatus(orderId, status, {
+      quantity: quantity !== undefined ? Number(quantity) : undefined,
+      reference,
+      references
+    });
 
     return res.status(200).json({
       success: true,

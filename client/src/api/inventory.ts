@@ -67,6 +67,8 @@ export interface PendingOrder {
   expectedDate?: string;
   supplier?: string;
   orderNumber?: string;
+  reference?: string;
+  references?: string[];
   notes?: string;
 }
 
@@ -85,8 +87,8 @@ export const createOrder = async (id: string, data: {
 
 // Description: Update order status
 // Endpoint: PATCH /api/inventory/:id/order/:orderId
-export const updateOrderStatus = async (id: string, orderId: string, status: string) => {
-  const response = await api.patch(`/api/inventory/${id}/order/${orderId}`, { status });
+export const updateOrderStatus = async (id: string, orderId: string, status: string, options?: { quantity?: number, reference?: string, references?: string[] }) => {
+  const response = await api.patch(`/api/inventory/${id}/order/${orderId}`, { status, ...options });
   return response.data;
 };
 

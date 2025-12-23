@@ -34,6 +34,8 @@ export function Procurement() {
   // View Order State
   const [selectedOrder, setSelectedOrder] = useState<ProcurementOrder | null>(null)
   const [isViewOrderOpen, setIsViewOrderOpen] = useState(false)
+  const [splitQuantity, setSplitQuantity] = useState<number>(0)
+  const [reference, setReference] = useState("")
 
   const fetchData = async () => {
     try {
@@ -87,8 +89,11 @@ export function Procurement() {
   const handleUpdateStatus = async (newStatus: string) => {
     if (!selectedOrder) return
     try {
-      await updateOrderStatus(selectedOrder._id, selectedOrder.partId, newStatus)
-      toast.success(`Order status updated to ${newStatus}`)
+      await updateOrderStatus(selectedOrder._id, selectedOrder.partId, newStatus, {
+        quantity: splitQuantity,
+        reference: reference
+      })
+      toast.success(`Order updated successfully`)
       setIsViewOrderOpen(false)
       setSelectedOrder(null)
       fetchData()
@@ -108,6 +113,8 @@ export function Procurement() {
 
   const handleViewOrder = (order: ProcurementOrder) => {
     setSelectedOrder(order)
+    setSplitQuantity(order.quantity)
+    setReference(order.reference || "")
     setIsViewOrderOpen(true)
   }
 
@@ -285,10 +292,36 @@ export function Procurement() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-slate-500">Document Reference</Label>
+                    <Input
+                      value={reference}
+                      onChange={(e) => setReference(e.target.value)}
+                      placeholder="e.g. BL-123, Invoice #456"
+                      className="mt-1 h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">Move Quantity</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max={selectedOrder.quantity}
+                      value={splitQuantity}
+                      onChange={(e) => setSplitQuantity(Number(e.target.value))}
+                      className="mt-1 h-8"
+                    />
+                    {splitQuantity < selectedOrder.quantity && (
+                      <span className="text-[10px] text-orange-600 font-medium">Splitting order (Remaining: {selectedOrder.quantity - splitQuantity})</span>
+                    )}
+                  </div>
+                </div>
+
                 <div className="grid gap-2">
                   <Label htmlFor="status">Update Status</Label>
                   <Select
-                    defaultValue={selectedOrder.status}
+                    value={selectedOrder.status} // Don't use defaultValue to ensure controlled update
                     onValueChange={handleUpdateStatus}
                   >
                     <SelectTrigger>

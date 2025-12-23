@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
-import { Package, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, Truck, ShoppingCart, Calculator } from 'lucide-react'
+import { Package, AlertTriangle, CheckCircle, Clock, Truck, ShoppingCart, Calculator, Plus, X, FileText } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
 import { getStockStatus, calculateMinMax, updateOrderStatus, type StockStatus, type PendingOrder } from '@/api/inventory'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { CreateOrderDialog } from './CreateOrderDialog'
 
 interface StockStatusCardProps {
@@ -40,6 +43,17 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
   const [associatedEquipmentCount, setAssociatedEquipmentCount] = useState(0)
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false)
   const [calculatingMinMax, setCalculatingMinMax] = useState(false)
+
+  // Partial Update State
+  const [selectedOrderForUpdate, setSelectedOrderForUpdate] = useState<PendingOrder | null>(null)
+  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false)
+  const [newStatus, setNewStatus] = useState<string>('')
+  const [splitQuantity, setSplitQuantity] = useState<number>(0)
+
+  // Multiple References State
+  const [references, setReferences] = useState<string[]>([])
+  const [newReferenceInput, setNewReferenceInput] = useState("")
+
   const { toast } = useToast()
 
   const fetchStockStatus = async () => {
@@ -73,7 +87,7 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
     try {
       setCalculatingMinMax(true)
       const response = await calculateMinMax(partId)
-      
+
       if (response.calculated) {
         toast({
           title: 'Calcul effectué',
@@ -107,6 +121,66 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
         title: 'Statut mis à jour',
         description: `Commande mise à jour: ${orderStatusLabels[newStatus as keyof typeof orderStatusLabels].label}`
       })
+      fetchStockStatus()
+      onUpdate?.()
+    } catch (error: any) {
+      console.error('Error updating order status:', error)
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.message || 'Impossible de mettre à jour le statut',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const openUpdateDialog = (order: PendingOrder, status: string) => {
+    setSelectedOrderForUpdate(order)
+    setNewStatus(status)
+    setSplitQuantity(order.quantity)
+
+    // Initialize references from existing data
+    let initialRefs: string[] = []
+    if (order.references && order.references.length > 0) {
+      initialRefs = [...order.references]
+    } else if (order.reference) {
+      initialRefs = [order.reference]
+    } else if ((order as any).references) { // Fallback just in case
+      initialRefs = [...(order as any).references]
+    }
+
+    setReferences(initialRefs)
+    setNewReferenceInput("")
+    setIsUpdateDialogOpen(true)
+  }
+
+  const addReference = () => {
+    if (newReferenceInput.trim()) {
+      if (!references.includes(newReferenceInput.trim())) {
+        setReferences([...references, newReferenceInput.trim()])
+      }
+      setNewReferenceInput("")
+    }
+  }
+
+  const removeReference = (refToRemove: string) => {
+    setReferences(references.filter(r => r !== refToRemove))
+  }
+
+  const handleUpdateConfirm = async () => {
+    if (!selectedOrderForUpdate || !newStatus) return
+
+    try {
+      await updateOrderStatus(partId, selectedOrderForUpdate._id, newStatus, {
+        quantity: splitQuantity,
+        references: references
+      })
+
+      toast({
+        title: 'Statut mis à jour',
+        description: `Commande mise à jour: ${orderStatusLabels[newStatus as keyof typeof orderStatusLabels].label}`
+      })
+      setIsUpdateDialogOpen(false)
+      setSelectedOrderForUpdate(null)
       fetchStockStatus()
       onUpdate?.()
     } catch (error: any) {
@@ -203,6 +277,11 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
               <div className="space-y-3">
                 {pendingOrders.filter(order => !['received', 'cancelled'].includes(order.status)).map((order) => {
                   const statusInfo = orderStatusLabels[order.status]
+                  // Display references: prioritize array, fallback to single string
+                  const displayRefs = order.references && order.references.length > 0
+                    ? order.references
+                    : (order.reference ? [order.reference] : []);
+
                   return (
                     <div
                       key={order._id}
@@ -227,6 +306,18 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
                               Supplier: {order.supplier}
                             </p>
                           )}
+
+                          {/* Display References */}
+                          {displayRefs.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {displayRefs.map((ref, idx) => (
+                                <Badge key={idx} variant="outline" className="text-[10px] h-5 bg-white">
+                                  <FileText className="w-3 h-3 mr-1 text-slate-400" />
+                                  {ref}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="text-right text-xs text-slate-500">
                           <p>Ordered on {new Date(order.orderDate).toLocaleDateString('en-US')}</p>
@@ -249,7 +340,7 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleUpdateOrderStatus(order._id, 'ordered')}
+                              onClick={() => openUpdateDialog(order, 'ordered')}
                             >
                               Mark as ordered
                             </Button>
@@ -258,7 +349,7 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleUpdateOrderStatus(order._id, 'in_transit')}
+                              onClick={() => openUpdateDialog(order, 'in_transit')}
                             >
                               In transit
                             </Button>
@@ -267,7 +358,7 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
                             <Button
                               size="sm"
                               variant="default"
-                              onClick={() => handleUpdateOrderStatus(order._id, 'received')}
+                              onClick={() => openUpdateDialog(order, 'received')}
                             >
                               Mark as received
                             </Button>
@@ -314,6 +405,95 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
           onUpdate?.()
         }}
       />
+
+      {/* Update Order Status Dialog */}
+      <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Order Status</DialogTitle>
+            <DialogDescription>
+              Update to: <strong>{newStatus && orderStatusLabels[newStatus as keyof typeof orderStatusLabels]?.label}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrderForUpdate && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                {/* Quantity Input */}
+                <div>
+                  <Label className="text-xs text-slate-500">Move Quantity</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={selectedOrderForUpdate.quantity}
+                    value={splitQuantity}
+                    onChange={(e) => setSplitQuantity(Number(e.target.value))}
+                    className="mt-1 h-8"
+                  />
+                  {splitQuantity < selectedOrderForUpdate.quantity && (
+                    <span className="text-[10px] text-orange-600 font-medium block mt-1">
+                      Splitting (Remaining: {selectedOrderForUpdate.quantity - splitQuantity})
+                    </span>
+                  )}
+                </div>
+
+                {/* Reference List Input */}
+                <div className="col-span-2">
+                  <Label className="text-xs text-slate-500">Document References</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      value={newReferenceInput}
+                      onChange={(e) => setNewReferenceInput(e.target.value)}
+                      placeholder="e.g. BL-123, Invoice #456"
+                      className="h-8 flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addReference()
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={addReference}
+                      type="button"
+                      className="h-8 px-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* References List */}
+                  {references.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2 p-2 bg-slate-50 rounded-md border border-slate-100">
+                      {references.map((ref, idx) => (
+                        <div key={idx} className="flex items-center bg-white border rounded px-2 py-1 text-xs shadow-sm">
+                          <span className="mr-2">{ref}</span>
+                          <button
+                            onClick={() => removeReference(ref)}
+                            className="text-slate-400 hover:text-red-500 transition-colors"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {references.length === 0 && (
+                    <p className="text-[10px] text-slate-400 mt-1 italic">No references added yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsUpdateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateConfirm}>Confirm Update</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

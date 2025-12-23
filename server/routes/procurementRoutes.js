@@ -111,14 +111,14 @@ router.post('/orders', requireUser, async (req, res) => {
 router.patch('/orders/:id/status', requireUser, async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, partId } = req.body;
+        const { status, partId, quantity, reference } = req.body;
 
         const part = await Part.findById(partId);
         if (!part) {
             return res.status(404).json({ message: 'Part not found' });
         }
 
-        await part.updateOrderStatus(id, status);
+        await part.updateOrderStatus(id, status, { quantity, reference });
 
         res.json({ message: 'Order status updated successfully' });
     } catch (error) {

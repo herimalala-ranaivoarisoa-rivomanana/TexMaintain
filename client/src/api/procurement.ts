@@ -11,6 +11,7 @@ export interface ProcurementOrder {
     expectedDate?: string;
     supplier: string;
     orderNumber?: string;
+    reference?: string;
     totalPrice: number;
 }
 
@@ -43,7 +44,7 @@ export const createProcurementOrder = async (data: {
     return response.data;
 };
 
-export const updateOrderStatus = async (id: string, partId: string, status: string) => {
-    const response = await api.patch(`/api/procurement/orders/${id}/status`, { status, partId });
+export const updateOrderStatus = async (id: string, partId: string, status: string, options?: { quantity?: number, reference?: string }) => {
+    const response = await api.patch(`/api/procurement/orders/${id}/status`, { status, partId, ...options });
     return response.data;
 };
