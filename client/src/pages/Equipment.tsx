@@ -541,7 +541,9 @@ export function Equipment() {
           downtime: 0,
           availability: 0,
           lastMaintenance: new Date().toISOString(),
-          nextMaintenance: new Date().toISOString()
+          nextMaintenance: new Date().toISOString(),
+          assetCategory: 'production', // Default
+          criticality: 'C' // Default
         }
         setEquipment([tempItem, ...equipment])
         try {
