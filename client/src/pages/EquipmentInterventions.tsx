@@ -18,8 +18,8 @@ interface Equipment {
   type: { name: string }
   model: string
   location: string
-  productionLine?: { name: string }
-  productionSection?: { name: string }
+  processArea?: { name: string }
+  processDepartment?: { name: string }
 }
 
 interface InterventionStats {
@@ -40,7 +40,7 @@ export function EquipmentInterventions() {
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return
-      
+
       try {
         // Fetch equipment info
         const equipResponse = await api.get(`/api/equipment/${id}`)
@@ -49,7 +49,7 @@ export function EquipmentInterventions() {
         // Fetch intervention statistics
         const statsResponse = await api.get(`/api/equipment/${id}/interventions`, { params: { limit: 1000 } })
         const interventions = statsResponse.data.interventions || []
-        
+
         setStats({
           total: statsResponse.data.total || 0,
           completed: interventions.filter((i: any) => i.status === 'Completed').length,
@@ -113,12 +113,12 @@ export function EquipmentInterventions() {
                 <p className="text-blue-900">{equipment.location}</p>
               </div>
               <div>
-                <p className="text-blue-600 font-medium">Production Line</p>
-                <p className="text-blue-900">{equipment.productionLine?.name || 'Not assigned'}</p>
+                <p className="text-blue-600 font-medium">Process Area</p>
+                <p className="text-blue-900">{equipment.processArea?.name || 'Not assigned'}</p>
               </div>
               <div>
-                <p className="text-blue-600 font-medium">Section</p>
-                <p className="text-blue-900">{equipment.productionSection?.name || 'Not assigned'}</p>
+                <p className="text-blue-600 font-medium">Department</p>
+                <p className="text-blue-900">{equipment.processDepartment?.name || 'Not assigned'}</p>
               </div>
             </div>
           </CardContent>

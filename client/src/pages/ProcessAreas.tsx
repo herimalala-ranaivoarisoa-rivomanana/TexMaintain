@@ -1,0 +1,592 @@
+import { useEffect, useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Plus,
+  ArrowLeft,
+  GripVertical,
+  Factory,
+  Wrench,
+  Trash
+} from "lucide-react"
+import { useToast } from "@/hooks/useToast"
+import { useAuth } from "@/contexts/AuthContext"
+import { getProcessAreas, createProcessArea, updateProcessArea, deleteProcessArea } from "@/api/processAreas"
+import { getProcessDepartments, createProcessDepartment, updateProcessDepartment, updateProcessDepartmentEquipment } from "@/api/processDepartments"
+import { getEquipment, updateEquipment } from "@/api/equipment"
+
+import { EQUIPMENT_STATUSES, getStatusColor as getEquipmentStatusColor, getStatusLabel, StatusMetadata } from "@/types/equipment"
+import type { EquipmentStatus } from "@/types/equipment"
+import { getStatusMetadata } from "@/api/equipment"
+import { EquipmentStatusDialog } from "@/components/EquipmentStatusDialog"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+interface ProcessArea {
+  _id: string
+  name: string
+  description?: string
+  status: string
+  departments: Array<{
+    departmentId: {
+      _id: string
+      name: string
+      description?: string
+      equipment: Array<{
+        equipmentId: {
+          _id: string
+          category: { name: string }
+          type: { name: string }
+          status: string
+          location: string
+          model?: string
+          brand?: string | { _id: string, name: string }
+        }
+        order: number
+      }>
+    }
+    order: number
+  }>
+  createdAt: string
+  updatedAt: string
+}
+
+interface ProcessDepartment {
+  _id: string
+  name: string
+  description?: string
+  processArea: string
+  equipment: Array<{
+    equipmentId: any
+    order: number
+  }>
+  order: number
+}
+
+interface Equipment {
+  _id: string
+  name?: string
+  category: { name: string }
+  type: { name: string }
+  status: string
+  location: string
+  model?: string
+  brand?: string | { _id: string, name: string }
+  lastBreakdownType?: string
+  lastBreakdownDescription?: string
+  statusMedia?: string[]
+}
+
+interface SortableEquipmentProps {
+  id: string
+  equipment: Equipment
+  onStatusClick: () => void
+}
+
+const SortableEquipment = ({ id, equipment, onStatusClick }: SortableEquipmentProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  const statusColor = getEquipmentStatusColor(equipment.status as EquipmentStatus)
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 p-3 bg-card border rounded-lg hover:border-primary/50 transition-colors group"
+    >
+      <div {...attributes} {...listeners} className="cursor-grab opacity-0 group-hover:opacity-100 transition-opacity">
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className={`h-2 w-2 rounded-full ${statusColor}`} />
+      <div className="flex-1 min-w-0">
+        <div className="font-medium truncate">{equipment.name || 'Unnamed Equipment'}</div>
+        <div className="text-xs text-muted-foreground flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px] h-5 px-1">{equipment.category?.name}</Badge>
+          <span>•</span>
+          <span className="truncate">{equipment.type?.name}</span>
+        </div>
+      </div>
+      <Badge
+        className={`${statusColor} text-white hover:opacity-90 text-[10px] whitespace-nowrap cursor-pointer border-0`}
+        onClick={(e) => {
+          e.stopPropagation(); // Avoid dragging if clicked while dragging logic exists
+          onStatusClick();
+        }}
+      >
+        {getStatusLabel(equipment.status as EquipmentStatus)}
+      </Badge>
+    </div>
+  )
+}
+
+function ProcessAreas() {
+  const { token, user } = useAuth()
+  const { toast } = useToast()
+  const [processAreas, setProcessAreas] = useState<ProcessArea[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Dialogs state
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isCreateDepartmentDialogOpen, setIsCreateDepartmentDialogOpen] = useState(false)
+  const [selectedArea, setSelectedArea] = useState<ProcessArea | null>(null)
+  const [isAddEquipmentDialogOpen, setIsAddEquipmentDialogOpen] = useState(false)
+  const [selectedDepartment, setSelectedDepartment] = useState<any | null>(null) // Department details for adding equipment
+
+  // Form states
+  const [newAreaName, setNewAreaName] = useState("")
+  const [newAreaDescription, setNewAreaDescription] = useState("")
+  const [newDepartmentName, setNewDepartmentName] = useState("")
+  const [newDepartmentDescription, setNewDepartmentDescription] = useState("")
+
+  // Equipment selection state
+  const [availableEquipment, setAvailableEquipment] = useState<Equipment[]>([])
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>("")
+
+  // Status update state
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
+  const [selectedEquipmentForStatus, setSelectedEquipmentForStatus] = useState<Equipment | null>(null)
+
+  const handleStatusClick = (equipment: Equipment) => {
+    setSelectedEquipmentForStatus(equipment)
+    setIsStatusDialogOpen(true)
+  }
+
+  // Drag and Drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: closestCenter,
+    })
+  )
+
+  useEffect(() => {
+    fetchData()
+  }, [token])
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const data = await getProcessAreas()
+      setProcessAreas(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error(error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch process areas",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCreateArea = async () => {
+    try {
+      if (!newAreaName.trim()) return
+
+      await createProcessArea({
+        name: newAreaName,
+        description: newAreaDescription,
+        status: 'active'
+      })
+
+      toast({
+        title: "Success",
+        description: "Process area created successfully"
+      })
+
+      setIsCreateDialogOpen(false)
+      setNewAreaName("")
+      setNewAreaDescription("")
+      fetchData()
+    } catch (error) {
+      console.error(error)
+      toast({
+        title: "Error",
+        description: "Failed to create process area",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleCreateDepartment = async () => {
+    try {
+      if (!selectedArea || !newDepartmentName.trim()) return
+
+      await createProcessDepartment({
+        name: newDepartmentName,
+        description: newDepartmentDescription,
+        processArea: selectedArea._id,
+        order: selectedArea.departments.length
+      })
+
+      toast({
+        title: "Success",
+        description: "Department created successfully"
+      })
+
+      setIsCreateDepartmentDialogOpen(false)
+      setNewDepartmentName("")
+      setNewDepartmentDescription("")
+      fetchData()
+    } catch (error) {
+      console.error(error)
+      toast({
+        title: "Error",
+        description: "Failed to create department",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const loadAvailableEquipment = async () => {
+    try {
+      // Get all equipment (we could filter for unassigned later if we want strict assignment)
+      // For now, let's just show all active equipment not 'out_of_service' maybe?
+      // Or just all equipment.
+      const response = await getEquipment({ limit: 1000 })
+      setAvailableEquipment(response.equipment)
+    } catch (error) {
+      console.error(error)
+      toast({
+        title: "Error",
+        description: "Failed to load equipment",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleAddEquipment = async () => {
+    if (!selectedDepartment || !selectedEquipmentId) return
+
+    try {
+      // 1. Add to department list logic
+      const currentEquipment = selectedDepartment.equipment || [];
+      const newEquipmentList = [
+        ...currentEquipment.map((e: any) => ({ equipmentId: e.equipmentId._id, order: e.order })),
+        { equipmentId: selectedEquipmentId, order: currentEquipment.length }
+      ]
+
+      await updateProcessDepartmentEquipment(selectedDepartment._id, newEquipmentList)
+
+      // 2. Update equipment's processArea and processDepartment fields
+      // Find the parent area for this department
+      const parentArea = processAreas.find(area => area.departments.some(d => d.departmentId._id === selectedDepartment._id))
+
+      if (parentArea) {
+        await updateEquipment(selectedEquipmentId, {
+          processArea: parentArea._id,
+          processDepartment: selectedDepartment._id
+        })
+      }
+
+      toast({ title: "Success", description: "Equipment added to department" })
+      setIsAddEquipmentDialogOpen(false)
+      setSelectedEquipmentId("")
+      fetchData()
+    } catch (error) {
+      console.error(error)
+      toast({ title: "Error", description: "Failed to add equipment", variant: "destructive" })
+    }
+  }
+
+
+  const handleDragEnd = async (event: DragEndEvent, departmentId: string) => {
+    const { active, over } = event
+
+    if (active.id !== over?.id) {
+      const areaIndex = processAreas.findIndex(area =>
+        area.departments.some(d => d.departmentId._id === departmentId)
+      )
+      if (areaIndex === -1) return
+
+      const departmentEntry = processAreas[areaIndex].departments.find(d => d.departmentId._id === departmentId)
+      if (!departmentEntry) return
+
+      const department = departmentEntry.departmentId
+      const oldIndex = department.equipment.findIndex((e) => e.equipmentId._id === active.id)
+      const newIndex = department.equipment.findIndex((e) => e.equipmentId._id === over?.id)
+
+      // Optimist update locally
+      // Deep clone to avoid mutating state directly
+      const newProcessAreas = JSON.parse(JSON.stringify(processAreas))
+      const targetDepartment = newProcessAreas[areaIndex].departments.find((d: any) => d.departmentId._id === departmentId).departmentId
+
+      targetDepartment.equipment = arrayMove(targetDepartment.equipment, oldIndex, newIndex)
+      setProcessAreas(newProcessAreas)
+
+      // Send to server
+      try {
+        const equipmentList = targetDepartment.equipment.map((e: any, index: number) => ({
+          equipmentId: e.equipmentId._id,
+          order: index
+        }))
+        await updateProcessDepartmentEquipment(departmentId, equipmentList)
+      } catch (error) {
+        console.error(error)
+        toast({ title: "Error", description: "Failed to reorder equipment", variant: "destructive" })
+        fetchData() // Revert
+      }
+    }
+  }
+
+  if (loading) {
+    return <div className="p-8 flex justify-center">Loading...</div>
+  }
+
+
+
+  return (
+    <div className="space-y-6 p-6 pb-20">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Process Areas</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage your factory's process areas and departments structure.
+          </p>
+        </div>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Process Area
+        </Button>
+      </div>
+
+      <div className="grid gap-6">
+        {Array.isArray(processAreas) && processAreas.map((area) => (
+          <Card key={area._id} className="relative overflow-hidden">
+            <CardHeader className="bg-muted/30 pb-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Factory className="h-5 w-5 text-primary" />
+                    {area.name}
+                  </CardTitle>
+                  <CardDescription className="mt-1">{area.description}</CardDescription>
+                </div>
+                <Badge variant={area.status === 'active' ? 'default' : 'secondary'}>
+                  {area.status}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  Departments
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedArea(area)
+                    setIsCreateDepartmentDialogOpen(true)
+                  }}
+                >
+                  <Plus className="mr-2 h-3 w-3" />
+                  Add Department
+                </Button>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {area.departments.map(({ departmentId: department }) => (
+                  <div key={department._id} className="border rounded-lg p-4 bg-card shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="font-semibold">{department.name}</div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => {
+                          setSelectedDepartment(department)
+                          loadAvailableEquipment()
+                          setIsAddEquipmentDialogOpen(true)
+                        }}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(e) => handleDragEnd(e, department._id)}
+                    >
+                      <SortableContext
+                        items={department.equipment.map(e => e.equipmentId._id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-2 min-h-[50px]">
+                          {department.equipment.length === 0 && (
+                            <div className="text-xs text-muted-foreground text-center py-4 border-2 border-dashed rounded bg-muted/20">
+                              No equipment
+                            </div>
+                          )}
+                          {department.equipment.map(({ equipmentId }) => (
+                            <SortableEquipment
+                              key={equipmentId._id}
+                              id={equipmentId._id}
+                              equipment={equipmentId}
+                              onStatusClick={() => handleStatusClick(equipmentId)}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Equipment Status Dialog */}
+      {selectedEquipmentForStatus && (
+        <EquipmentStatusDialog
+          open={isStatusDialogOpen}
+          onOpenChange={(open) => {
+            setIsStatusDialogOpen(open)
+            if (!open) setSelectedEquipmentForStatus(null)
+          }}
+          equipmentId={selectedEquipmentForStatus._id}
+          currentStatus={selectedEquipmentForStatus.status as EquipmentStatus}
+          equipmentName={selectedEquipmentForStatus.name || 'Equipment'}
+          onStatusChanged={() => {
+            fetchData()
+            setIsStatusDialogOpen(false)
+            setSelectedEquipmentForStatus(null)
+          }}
+        />
+      )}
+
+      {/* Create Process Area Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Process Area</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="area-name">Name</Label>
+              <Input
+                id="area-name"
+                value={newAreaName}
+                onChange={(e) => setNewAreaName(e.target.value)}
+                placeholder="e.g., Cutting Floor"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="area-desc">Description</Label>
+              <Textarea
+                id="area-desc"
+                value={newAreaDescription}
+                onChange={(e) => setNewAreaDescription(e.target.value)}
+                placeholder="Area description..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateArea}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Department Dialog */}
+      <Dialog open={isCreateDepartmentDialogOpen} onOpenChange={setIsCreateDepartmentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Department to {selectedArea?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="dept-name">Name</Label>
+              <Input
+                id="dept-name"
+                value={newDepartmentName}
+                onChange={(e) => setNewDepartmentName(e.target.value)}
+                placeholder="e.g., Line 1"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="dept-desc">Description</Label>
+              <Textarea
+                id="dept-desc"
+                value={newDepartmentDescription}
+                onChange={(e) => setNewDepartmentDescription(e.target.value)}
+                placeholder="Department description..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateDepartmentDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateDepartment}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Equipment Dialog */}
+      <Dialog open={isAddEquipmentDialogOpen} onOpenChange={setIsAddEquipmentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Equipment to {selectedDepartment?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Select Equipment</Label>
+              <Select value={selectedEquipmentId} onValueChange={setSelectedEquipmentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select equipment..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableEquipment.map(eq => (
+                    <SelectItem key={eq._id} value={eq._id}>
+                      {eq.name || 'Unnamed'} ({eq.category?.name} - {eq.type?.name})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddEquipmentDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddEquipment}>Add</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+    </div>
+  )
+}
+
+export default ProcessAreas

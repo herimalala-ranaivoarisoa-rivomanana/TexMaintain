@@ -1,31 +1,32 @@
 import { useEffect, useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { GeneralDashboard } from "@/components/dashboard/GeneralDashboard"
-import { ProductionLineDashboardView } from "@/components/dashboard/ProductionLineDashboardView"
+import { ProcessAreaDashboardView } from "@/components/dashboard/ProcessAreaDashboardView"
 import { ProjectsDashboard } from "@/components/dashboard/ProjectsDashboard"
 import { LayoutDashboard, Factory, Briefcase } from "lucide-react"
-import { getProductionLines } from "@/api/productionLines"
+import { getProcessAreas } from "@/api/processAreas"
 import { useToast } from "@/hooks/useToast"
 
-interface ProductionLine {
+interface ProcessArea {
   _id: string
   name: string
   createdAt: string
+  description?: string
 }
 
 export function Dashboard() {
-  const [productionLines, setProductionLines] = useState<ProductionLine[]>([])
+  const [processAreas, setProcessAreas] = useState<ProcessArea[]>([])
   const { toast } = useToast()
 
   useEffect(() => {
-    const fetchLines = async () => {
+    const fetchAreas = async () => {
       try {
-        const response = await getProductionLines()
+        const data = await getProcessAreas()
         // Sort by creation date (Oldest first)
-        const sortedLines = [...response.productionLines].sort((a, b) =>
+        const sortedAreas = [...data].sort((a, b) =>
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         )
-        setProductionLines(sortedLines)
+        setProcessAreas(sortedAreas)
       } catch (error) {
         console.error('Error fetching process areas:', error)
         toast({
@@ -36,7 +37,7 @@ export function Dashboard() {
       }
     }
 
-    fetchLines()
+    fetchAreas()
   }, [toast])
 
   return (
@@ -46,7 +47,7 @@ export function Dashboard() {
           Dashboard
         </h1>
         <p className="text-slate-600 dark:text-slate-400 mt-1">
-          Welcome back! Here's what's happening in your textile factory.
+          Welcome back! Here's what's happening in your facility.
         </p>
       </div>
 
@@ -60,14 +61,14 @@ export function Dashboard() {
             General
           </TabsTrigger>
 
-          {productionLines.map(line => (
+          {processAreas.map(area => (
             <TabsTrigger
-              key={line._id}
-              value={`line-${line._id}`}
+              key={area._id}
+              value={`area-${area._id}`}
               className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-slate-200"
             >
               <Factory className="h-4 w-4" />
-              {line.name.replace(/^Line \d+:\s*/, '')}
+              {area.name}
             </TabsTrigger>
           ))}
 
@@ -84,9 +85,9 @@ export function Dashboard() {
           <GeneralDashboard />
         </TabsContent>
 
-        {productionLines.map(line => (
-          <TabsContent key={line._id} value={`line-${line._id}`} className="space-y-6">
-            <ProductionLineDashboardView productionLineId={line._id} />
+        {processAreas.map(area => (
+          <TabsContent key={area._id} value={`area-${area._id}`} className="space-y-6">
+            <ProcessAreaDashboardView processAreaId={area._id} />
           </TabsContent>
         ))}
 

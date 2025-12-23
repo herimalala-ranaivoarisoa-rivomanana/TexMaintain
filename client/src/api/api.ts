@@ -26,20 +26,18 @@ const localApi = axios.create({
 
 let accessToken: string | null = null;
 
-const getApiInstance = (url: string) => {
+const getApiInstance = (_url: string) => {
   return localApi;
 };
 
-const isAuthEndpoint = (url: string): boolean => {
-  return url.includes("/api/auth");
-};
+
 
 // Check if the URL is for the refresh token endpoint to avoid infinite loops
 const isRefreshTokenEndpoint = (url: string): boolean => {
   return url.includes("/api/auth/refresh");
 };
 
-const setupInterceptors = (apiInstance: typeof axios) => {
+const setupInterceptors = (apiInstance: AxiosInstance) => {
   apiInstance.interceptors.request.use(
     (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
       // Skip attaching Authorization for refresh endpoint to avoid stale header issues
@@ -65,8 +63,8 @@ const setupInterceptors = (apiInstance: typeof axios) => {
 
       // Only refresh token when we get a 401/403 error (token is invalid/expired)
       if (error.response?.status && [401, 403].includes(error.response.status) &&
-          !originalRequest._retry &&
-          originalRequest.url && !isRefreshTokenEndpoint(originalRequest.url)) {
+        !originalRequest._retry &&
+        originalRequest.url && !isRefreshTokenEndpoint(originalRequest.url)) {
         originalRequest._retry = true;
 
         try {

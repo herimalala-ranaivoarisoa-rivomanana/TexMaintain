@@ -40,7 +40,7 @@ import { getEquipmentCategories } from "@/api/equipmentCategories"
 import { getEquipmentTypes } from "@/api/equipmentTypes"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
-import { EQUIPMENT_STATUSES, EquipmentStatus, StatusMetadata } from "@/types/equipment"
+import { EQUIPMENT_STATUSES, EquipmentStatus, StatusMetadata, getStatusColor, getStatusLabel } from "@/types/equipment"
 
 
 
@@ -92,8 +92,10 @@ interface Equipment {
   availability: number
   lastMaintenance: string
   nextMaintenance: string
-  productionLine?: { _id: string; name: string }
-  productionSection?: { _id: string; name: string }
+  processArea?: { _id: string; name: string }
+  processDepartment?: { _id: string; name: string }
+  assetCategory: 'production' | 'utility' | 'facility' | 'tool' | 'it' | 'other'
+  criticality: 'A' | 'B' | 'C'
   statusMedia?: string[]
 }
 
@@ -229,32 +231,7 @@ export function Equipment() {
     fetchData()
   }, [])
 
-  // Helper to map backend generic colors to Tailwind classes
-  const getTailwindColor = (color: string) => {
-    const map: Record<string, string> = {
-      'green': 'bg-green-500',
-      'blue': 'bg-blue-500',
-      'red': 'bg-red-500',
-      'orange': 'bg-orange-500',
-      'yellow': 'bg-yellow-500',
-      'gray': 'bg-gray-500',
-      'black': 'bg-black',
-      'purple': 'bg-purple-500',
-      'pink': 'bg-pink-500'
-    }
-    return map[color] || 'bg-gray-500'
-  }
 
-  const getStatusColor = (status: string) => {
-    const meta = statusMetadata[status]
-    if (meta) return getTailwindColor(meta.color)
-    return 'bg-gray-500' // Fallback
-  }
-
-  const getStatusLabel = (status: string) => {
-    const meta = statusMetadata[status]
-    return meta ? meta.label : status
-  }
 
   const getStatusIcon = (status: string) => {
     // If metadata has icon name, we could dynamically map it, 
@@ -834,7 +811,7 @@ export function Equipment() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg"><Link className="hover:underline" to={`/equipment/${item._id}`}>{item.category?.name} - {item.type?.name}</Link></CardTitle>
                 <Badge
-                  className={`${getStatusColor(item.status as EquipmentStatus)} text-white flex items-center gap-1 cursor-pointer hover:scale-105 transition-transform`}
+                  className={`${getStatusColor(item.status as EquipmentStatus)} text-white flex items-center gap-1 hover:opacity-90 text-[10px] whitespace-nowrap cursor-pointer border-0 w-fit`}
                   onClick={(e) => {
                     e.preventDefault()
                     setSelectedEquipmentForStatus(item)
@@ -858,13 +835,13 @@ export function Equipment() {
                 <div>
                   <p className="text-slate-500">Assigned to</p>
                   <div className="text-slate-900 text-xs mt-1">
-                    {item.productionLine ? (
-                      <span className="block font-medium text-blue-700">{item.productionLine.name}</span>
+                    {item.processArea ? (
+                      <span className="block font-medium text-blue-700">{item.processArea.name}</span>
                     ) : null}
-                    {item.productionSection ? (
-                      <span className="block text-slate-600">{item.productionSection.name}</span>
+                    {item.processDepartment ? (
+                      <span className="block text-slate-600">{item.processDepartment.name}</span>
                     ) : null}
-                    {!item.productionLine && !item.productionSection && <span className="text-slate-400 italic">Not assigned</span>}
+                    {!item.processArea && !item.processDepartment && <span className="text-slate-400 italic">Not assigned</span>}
                   </div>
                 </div>
                 <div>

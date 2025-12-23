@@ -22,8 +22,8 @@ import PartDetailWrapper from "./pages/PartDetail"
 import EquipmentCategoriesPageWrapper from "./pages/EquipmentCategories"
 import EquipmentTypesPageWrapper from "./pages/EquipmentTypes"
 import BrandsPageWrapper from "./pages/Brands"
-import ProductionLinesPageWrapper from "./pages/ProductionLines"
-import { ProductionLineDetail } from "./pages/ProductionLineDetail"
+import ProcessAreasPageWrapper from "./pages/ProcessAreas"
+import { ProcessAreaDetail } from "./pages/ProcessAreaDetail"
 import Machinists from "./pages/Machinists"
 import Mechanics from "./pages/Mechanics"
 import Electricians from "./pages/Electricians"
@@ -52,8 +52,8 @@ function App() {
               <Route path="equipment-categories" element={<EquipmentCategoriesPageWrapper />} />
               <Route path="equipment-types" element={<EquipmentTypesPageWrapper />} />
               <Route path="brands" element={<BrandsPageWrapper />} />
-              <Route path="process-area" element={<ProductionLinesPageWrapper />} />
-              <Route path="process-area/:id" element={<ProductionLineDetail />} />
+              <Route path="process-areas" element={<ProcessAreasPageWrapper />} />
+              <Route path="process-areas/:id" element={<ProcessAreaDetail />} />
               <Route path="machinists" element={<Machinists />} />
               <Route path="mechanics" element={<Mechanics />} />
               <Route path="electricians" element={<Electricians />} />

@@ -58,11 +58,21 @@ const schema = new mongoose.Schema({
   productionLine: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'ProductionLine',
-    required: false // Optional initially, but recommended
+    required: false
   },
   productionSection: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'ProductionSection',
+    required: false
+  },
+  processArea: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ProcessArea',
+    required: false // Optional initially, but recommended
+  },
+  processDepartment: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ProcessDepartment',
     required: false
   },
   location: {

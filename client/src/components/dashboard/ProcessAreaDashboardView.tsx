@@ -14,13 +14,13 @@ import {
     Package,
     ShoppingCart
 } from "lucide-react"
-import { getProductionLineDashboardStats } from "@/api/productionLines"
+import { getProcessAreaDashboardStats } from "@/api/processAreas"
 import { useToast } from "@/hooks/useToast"
 import { ReorderAlertsWidget } from "@/components/ReorderAlertsWidget"
-import { UpdateStatsDialog } from "@/components/production/UpdateStatsDialog"
+import { UpdateProcessAreaStatsDialog } from "@/components/production/UpdateProcessAreaStatsDialog"
 
-interface ProductionLineDashboardViewProps {
-    productionLineId: string
+interface ProcessAreaDashboardViewProps {
+    processAreaId: string
 }
 
 interface DashboardData {
@@ -44,7 +44,7 @@ interface DashboardData {
     recentActivities: any[]
 }
 
-export function ProductionLineDashboardView({ productionLineId }: ProductionLineDashboardViewProps) {
+export function ProcessAreaDashboardView({ processAreaId }: ProcessAreaDashboardViewProps) {
     const [data, setData] = useState<DashboardData | null>(null)
     const [loading, setLoading] = useState(true)
     const [showUpdateStats, setShowUpdateStats] = useState(false)
@@ -53,10 +53,10 @@ export function ProductionLineDashboardView({ productionLineId }: ProductionLine
     const fetchData = async () => {
         try {
             setLoading(true)
-            const response = await getProductionLineDashboardStats(productionLineId)
+            const response = await getProcessAreaDashboardStats(processAreaId)
             setData(response)
         } catch (error) {
-            console.error('Error fetching production line dashboard:', error)
+            console.error('Error fetching process area dashboard:', error)
             toast({
                 title: "Error",
                 description: "Failed to load dashboard data",
@@ -69,7 +69,7 @@ export function ProductionLineDashboardView({ productionLineId }: ProductionLine
 
     useEffect(() => {
         fetchData()
-    }, [productionLineId, toast])
+    }, [processAreaId, toast])
 
     if (loading) {
         return (
@@ -116,7 +116,7 @@ export function ProductionLineDashboardView({ productionLineId }: ProductionLine
                         className="bg-blue-600 hover:bg-blue-700"
                     >
                         <Activity className="mr-2 h-4 w-4" />
-                        Update Production Stats
+                        Update Process Stats
                     </Button>
                     <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
                         <AlertTriangle className="mr-2 h-4 w-4" />
@@ -264,17 +264,16 @@ export function ProductionLineDashboardView({ productionLineId }: ProductionLine
                             </div>
                         ))}
                         {(recentActivities || []).length === 0 && (
-                            <p className="text-center text-slate-500 py-4">No recent activities found for this line.</p>
+                            <p className="text-center text-slate-500 py-4">No recent activities found for this area.</p>
                         )}
                     </div>
                 </CardContent>
             </Card>
 
-            <UpdateStatsDialog
+            <UpdateProcessAreaStatsDialog
                 open={showUpdateStats}
                 onOpenChange={setShowUpdateStats}
-                lineId={productionLineId}
-                currentStats={stats}
+                processArea={data && stats ? { _id: processAreaId, stats } : { _id: processAreaId }}
                 onSuccess={() => {
                     fetchData()
                 }}

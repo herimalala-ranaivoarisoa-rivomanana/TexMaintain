@@ -30,7 +30,7 @@ const navigation = [
   { name: "Equipment", href: "/equipment", icon: Settings },
   { name: "Equipment Categories", href: "/equipment-categories", icon: Tags },
   { name: "Equipment Types", href: "/equipment-types", icon: Layers },
-  { name: "Process areas", href: "/process-area", icon: Workflow },
+  { name: "Process areas", href: "/process-areas", icon: Workflow },
   { name: "Machinists", href: "/machinists", icon: UserCog },
   { name: "Mechanics", href: "/mechanics", icon: Wrench },
   { name: "Electricians", href: "/electricians", icon: Zap },

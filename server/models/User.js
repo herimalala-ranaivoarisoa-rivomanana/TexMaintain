@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const { validatePassword, isPasswordHash } = require('../utils/password.js');
-const {randomUUID} = require("crypto");
+const { randomUUID } = require("crypto");
 
 const VALID_ROLES = ['admin', 'maintenance_manager', 'mechanic', 'electrician', 'general_maintenance_agent', 'dockworker', 'assistant_maintenance_manager', 'factory_manager', 'production_manager', 'line_manager', 'foreman', 'procurement_manager', 'project_manager'];
 
@@ -16,7 +16,6 @@ const schema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    validate: { validator: isPasswordHash, message: 'Invalid password hash' },
   },
   role: {
     type: String,
