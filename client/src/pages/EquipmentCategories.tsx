@@ -120,10 +120,10 @@ export function EquipmentCategories() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Equipment Categories
+            Categories
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Manage equipment categories for your factory
+            Manage categories for your factory
           </p>
         </div>
         {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
@@ -173,7 +173,7 @@ export function EquipmentCategories() {
           <CardContent className="p-12 text-center">
             <Settings className="mx-auto h-12 w-12 text-slate-400 mb-4" />
             <h3 className="text-lg font-medium text-slate-900 mb-2">No categories found</h3>
-            <p className="text-slate-600">Start by adding your first equipment category.</p>
+            <p className="text-slate-600">Start by adding your first category.</p>
           </CardContent>
         </Card>
       )}

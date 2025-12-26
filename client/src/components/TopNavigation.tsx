@@ -1,4 +1,4 @@
-import { Search, Bell, User, LogOut } from "lucide-react"
+import { Search, Bell, User, LogOut, Factory, ChevronDown } from "lucide-react"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import {
@@ -12,11 +12,13 @@ import {
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { Badge } from "./ui/badge"
 import { useAuth } from "@/contexts/AuthContext"
+import { useSite } from "@/contexts/SiteContext"
 import { useNavigate } from "react-router-dom"
 import { FactorySelector } from "./FactorySelector"
 
 export function TopNavigation() {
   const { user, logout } = useAuth()
+  const { currentSite, sites, setCurrentSite } = useSite()
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -75,10 +77,42 @@ export function TopNavigation() {
           </div>
         </div>
 
+        {/* Site Selector */}
+        <div className="mr-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Factory className="h-4 w-4 text-blue-600" />
+                <span className="max-w-[150px] truncate">
+                  {currentSite ? currentSite.name : "All Sites"}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuLabel>Select Site</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setCurrentSite(null)}>
+                <span className={!currentSite ? "font-bold" : ""}>All Sites / Global</span>
+              </DropdownMenuItem>
+              {sites.map(site => (
+                <DropdownMenuItem key={site._id} onClick={() => setCurrentSite(site)}>
+                  <span className={currentSite?._id === site._id ? "font-bold" : ""}>
+                    {site.name}
+                  </span>
+                  {site.code && <span className="ml-2 text-xs text-slate-500">({site.code})</span>}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
         <div className="flex items-center gap-4">
           <FactorySelector />
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
+            <Badge
+              variant="destructive"
             <Badge
               variant="destructive"
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
@@ -86,6 +120,7 @@ export function TopNavigation() {
               3
             </Badge>
           </Button>
+
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

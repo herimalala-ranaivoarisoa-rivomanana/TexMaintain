@@ -18,7 +18,8 @@ export const getEquipment = async (params?: {
   category?: string;
   q?: string;
   sort?: string;
-  order?: 'asc' | 'desc'
+  order?: 'asc' | 'desc';
+  site?: string
 }) => {
   const response = await api.get('/api/equipment', { params });
   return response.data;

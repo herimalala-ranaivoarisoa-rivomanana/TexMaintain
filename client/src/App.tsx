@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import { ThemeProvider } from "./components/ui/theme-provider"
 import { Toaster } from "./components/ui/toaster"
 import { AuthProvider } from "./contexts/AuthContext"
-import { FactoryProvider } from "./contexts/FactoryContext"
+import { SiteProvider } from "./contexts/SiteContext"
 import { Login } from "./pages/Login"
 import { Register } from "./pages/Register"
 import { ProtectedRoute } from "./components/ProtectedRoute"
@@ -32,13 +32,15 @@ import MaintenanceWorkers from "./pages/MaintenanceWorkers"
 import { EquipmentParts } from "./pages/EquipmentParts"
 import { EquipmentInterventions } from "./pages/EquipmentInterventions"
 import { EquipmentConsumables } from "./pages/EquipmentConsumables"
-import PartDetails from "./pages/PartDetails"
 import ReorderAlerts from "./pages/ReorderAlerts"
+import BusinessUnitsPage from "./pages/BusinessUnits"
+import SitesPage from "./pages/Sites"
+import AssetClassesPage from "./pages/AssetClasses"
 
 function App() {
   return (
     <AuthProvider>
-      <FactoryProvider>
+      <SiteProvider>
         <ThemeProvider defaultTheme="light" storageKey="ui-theme">
           <Router>
             <Routes>
@@ -54,6 +56,9 @@ function App() {
                 <Route path="equipment-categories" element={<EquipmentCategoriesPageWrapper />} />
                 <Route path="equipment-types" element={<EquipmentTypesPageWrapper />} />
                 <Route path="brands" element={<BrandsPageWrapper />} />
+                <Route path="business-units" element={<BusinessUnitsPage />} />
+                <Route path="sites" element={<SitesPage />} />
+                <Route path="asset-classes" element={<AssetClassesPage />} />
                 <Route path="process-areas" element={<ProcessAreasPageWrapper />} />
                 <Route path="process-areas/:id" element={<ProcessAreaDetail />} />
                 <Route path="machinists" element={<Machinists />} />
@@ -76,7 +81,7 @@ function App() {
           </Router>
           <Toaster />
         </ThemeProvider>
-      </FactoryProvider>
+      </SiteProvider>
     </AuthProvider>
   )
 }

@@ -18,6 +18,28 @@ router.post('/admin', requireUser, requireRole('admin'), async (req, res) => {
         ...(result.credentials && { credentials: result.credentials })
       }
     });
+
+// Seed asset classes (PRD, UTL, FAC, INF, SAF, MHE)
+router.post('/asset-classes', requireUser, requireRole('admin'), async (req, res) => {
+  try {
+    const result = await SeedService.seedAssetClasses();
+    res.status(200).json({ success: true, message: result.message, data: { created: result.created, skipped: result.skipped } });
+  } catch (error) {
+    console.error('Error in seed asset classes route:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to seed asset classes' });
+  }
+});
+
+// Seed sites/factories
+router.post('/sites', requireUser, requireRole('admin'), async (req, res) => {
+  try {
+    const result = await SeedService.seedSites();
+    res.status(200).json({ success: true, message: result.message, data: { created: result.created, skipped: result.skipped } });
+  } catch (error) {
+    console.error('Error in seed sites route:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to seed sites' });
+  }
+});
   } catch (error) {
     console.error('Error in seed admin route:', error);
     res.status(500).json({

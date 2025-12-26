@@ -38,6 +38,40 @@ class EquipmentStatusService {
 
     const previousStatus = equipment.status;
 
+    const inProductionSection = !!equipment.productionSection;
+
+    if (newStatus === 'offline' && !inProductionSection) {
+      throw new Error('Offline status is only allowed for equipment assigned to a production section');
+    }
+
+    const maintenanceTargets = ['scheduled_maintenance', 'under_repair', 'in_workshop', 'waiting_spare_parts', 'testing_after_repair', 'under_inspection', 'pending_validation'];
+    if (maintenanceTargets.includes(newStatus) || newStatus === 'scrapped') {
+      if (previousStatus !== 'offline') {
+        throw new Error('Equipment must be offline before setting maintenance or scrapped status');
+      }
+      if (inProductionSection) {
+        throw new Error('Maintenance or scrapped status is only allowed for equipment not assigned to a production section');
+      }
+    }
+
+    const prevMeta = STATUS_METADATA[previousStatus];
+    if (prevMeta && prevMeta.category === 'maintenance' && !['offline', 'scrapped'].includes(newStatus)) {
+      throw new Error('From maintenance, only transitions to offline or scrapped are allowed');
+    }
+
+    if (prevMeta && prevMeta.category === 'maintenance') {
+      const hasReport = (metadata && (metadata.servicingReportId || metadata.servicingReport || metadata.report)) || options.servicingReportText;
+      if (!hasReport) {
+        throw new Error('Servicing report is required when leaving maintenance status');
+      }
+    }
+
+    if (newStatus === 'scrapped') {
+      if (!reason || String(reason).trim() === '') {
+        throw new Error('Scrapped status requires a reason');
+      }
+    }
+
     // Validate required personnel for specific statuses
     if (newStatus === 'in_production' && !machinistId) {
       throw new Error('Machinist is required when setting equipment to In Production');
@@ -176,6 +210,33 @@ class EquipmentStatusService {
 
     // Update status media
     equipment.statusMedia = options.media || [];
+
+    // Downtime tracking and accumulation
+    const isDowntime = (status) => status !== 'in_production';
+    if (isDowntime(previousStatus) && !isDowntime(newStatus)) {
+      if (equipment.lastDowntimeStart) {
+        const hours = (Date.now() - new Date(equipment.lastDowntimeStart).getTime()) / (1000 * 60 * 60);
+        equipment.downtime = Math.max(0, (equipment.downtime || 0) + hours);
+        equipment.lastDowntimeStart = null;
+      }
+    } else if (!isDowntime(previousStatus) && isDowntime(newStatus)) {
+      equipment.lastDowntimeStart = new Date();
+    }
+
+    // Persist scrapped reason when scrapped
+    if (newStatus === 'scrapped') {
+      if (reason && String(reason).trim() !== '') {
+        equipment.scrappedReason = String(reason).trim();
+      }
+    }
+
+    // Capture servicing report when leaving maintenance category
+    if (prevMeta && prevMeta.category === 'maintenance' && ['offline', 'scrapped'].includes(newStatus)) {
+      const reportPayload = metadata?.servicingReportId || metadata?.servicingReport || metadata?.report || options.servicingReportText;
+      if (reportPayload) {
+        equipment.lastServicingReport = reportPayload;
+      }
+    }
 
     await equipment.save();
 

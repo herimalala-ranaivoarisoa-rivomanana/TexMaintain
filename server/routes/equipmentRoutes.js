@@ -4,6 +4,8 @@ const { requireUser, requireRole } = require('./middleware/auth');
 const { Equipment, EQUIPMENT_STATUSES } = require('../models/Equipment');
 const { Intervention } = require('../models/Intervention');
 const { STATUS_METADATA, EquipmentStatusHistory } = require('../models/EquipmentStatusHistory');
+const { Site } = require('../models/Site');
+const { AssetClass } = require('../models/AssetClass');
 const EquipmentStatusService = require('../services/equipmentStatusService');
 const EquipmentTimelineService = require('../services/equipmentTimelineService');
 const { z } = require('zod');
@@ -24,9 +26,11 @@ router.get('/', requireUser, async (req, res) => {
   if (req.activeFactoryId) query.factory = req.activeFactoryId; // Filter by Factory
   if (status) query.status = status;
   if (category) query.category = category;
+  if (req.query.site && req.query.site !== 'all') query.site = req.query.site;
   if (q) query.$or = [
     { name: { $regex: q, $options: 'i' } },
-    { location: { $regex: q, $options: 'i' } }
+    { location: { $regex: q, $options: 'i' } },
+    { chipNumber: { $regex: q, $options: 'i' } }
   ];
   const skip = (Number(page) - 1) * Number(limit);
   const sortSpec = { [String(sort)]: String(order).toLowerCase() === 'asc' ? 1 : -1 };
@@ -35,6 +39,8 @@ router.get('/', requireUser, async (req, res) => {
       .populate('category')
       .populate('type')
       .populate('brand')
+      .populate('site', 'name code')
+      .populate('assetClass', 'name code')
       .populate('productionLine', 'name')
       .populate('productionSection', 'name')
       .lean(),
@@ -77,6 +83,8 @@ router.get('/:id', requireUser, async (req, res) => {
     .populate('category')
     .populate('type')
     .populate('brand')
+    .populate('site', 'name code')
+    .populate('assetClass', 'name code')
     .populate('productionLine', 'name')
     .populate('productionSection', 'name')
     .lean();
@@ -290,15 +298,20 @@ const equipmentSchema = z.object({
   category: z.string().min(1), // ObjectId as string
   type: z.string().min(1), // ObjectId as string
   status: z.enum(Object.values(EQUIPMENT_STATUSES)),
-  location: z.string().min(1),
+  location: z.string().optional(),
   manufacturer: z.string().optional(),
   model: z.string().optional(),
   serialNumber: z.string().optional(),
-  chipNumber: z.string().optional(),
+  chipNumber: z.string().min(1),
   brand: z.string().optional(),
   acquisitionDate: z.coerce.date().optional(),
   lastMaintenance: z.coerce.date().optional(),
   nextMaintenance: z.coerce.date().optional(),
+  // New taxonomy fields
+  site: z.string().optional(), // ObjectId as string
+  assetClass: z.string().optional(), // ObjectId as string
+  criticality: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  criticalityScore: z.number().int().min(1).max(5).optional(),
 });
 
 router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
@@ -314,6 +327,20 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
       lastStatusChange: new Date(),
       factory: req.activeFactoryId // Assign to current factory
     };
+
+    // Validate referenced IDs if provided and prepare for asset code generation
+    let siteDoc = null;
+    let assetClassDoc = null;
+    if (equipmentData.site) {
+      siteDoc = await Site.findById(equipmentData.site).lean();
+      if (!siteDoc) return res.status(400).json({ message: 'Invalid site' });
+    }
+    if (equipmentData.assetClass) {
+      assetClassDoc = await AssetClass.findById(equipmentData.assetClass).lean();
+      if (!assetClassDoc) return res.status(400).json({ message: 'Invalid assetClass' });
+    }
+
+    // No more assetCode generation; chipNumber is the unique traceable code
 
     const created = await Equipment.create(equipmentData);
 
@@ -429,6 +456,20 @@ router.patch('/:id', requireUser, requireRole(['admin', 'maintenance_manager', '
       }
     }
 
+    // Validate criticality fields if provided
+    if (updates.criticality !== undefined) {
+      const allowed = ['low', 'medium', 'high', 'critical'];
+      if (!allowed.includes(String(updates.criticality))) {
+        return res.status(400).json({ message: 'Invalid criticality' });
+      }
+    }
+    if (updates.criticalityScore !== undefined) {
+      const n = Number(updates.criticalityScore);
+      if (!Number.isInteger(n) || n < 1 || n > 5) {
+        return res.status(400).json({ message: 'Invalid criticalityScore (must be integer 1..5)' });
+      }
+    }
+
     // If status is being changed, use the status service
     if (updates.status) {
       const equipment = await Equipment.findById(id);
@@ -482,7 +523,48 @@ router.patch('/:id', requireUser, requireRole(['admin', 'maintenance_manager', '
       return res.status(200).json({ success: true, equipment: result.equipment });
     }
 
-    // Regular update without status change
+    // Enforce site change justification when site is modified
+    if (Object.prototype.hasOwnProperty.call(updates, 'site')) {
+      const current = await Equipment.findById(id).select('site').lean();
+      if (!current) return res.status(404).json({ message: 'Equipment not found' });
+
+      const newSite = updates.site;
+      const oldSite = current.site ? String(current.site) : undefined;
+      const changed = (!oldSite && newSite) || (oldSite && String(newSite) !== String(oldSite));
+      if (changed) {
+        const just = updates.siteChangeJustification || {};
+        const reason = typeof just.reason === 'string' ? just.reason.trim() : '';
+        const documents = Array.isArray(just.documents) ? just.documents.filter(d => typeof d === 'string' && d.trim() !== '') : [];
+        if (!reason || documents.length === 0) {
+          return res.status(400).json({ message: 'Site change requires a non-empty reason and at least one document reference' });
+        }
+
+        // Remove justification from payload to avoid persisting it as a field
+        delete updates.siteChangeJustification;
+
+        // Push audit entry
+        await Equipment.findByIdAndUpdate(id, {
+          $set: { site: newSite },
+          $push: {
+            siteChangeHistory: {
+              fromSite: oldSite,
+              toSite: newSite,
+              reason,
+              documents,
+              changedBy: req.user._id,
+              changedAt: new Date()
+            }
+          }
+        });
+        // Remove site from remaining updates to avoid double-setting
+        delete updates.site;
+      } else {
+        // If no effective change, just drop site from updates to avoid no-op audit
+        delete updates.siteChangeJustification;
+      }
+    }
+
+    // Regular update without status change (and after site justification handling)
     const updated = await Equipment.findByIdAndUpdate(id, updates, { new: true })
       .populate('category')
       .populate('type')
@@ -511,7 +593,7 @@ router.delete('/:id', requireUser, requireRole('admin'), async (req, res) => {
 router.post('/:id/', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager', 'mechanic', 'electrician']), async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, reason, notes, interventionId, machinistId } = req.body;
+    const { status, reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media, servicingReportText, servicingReportId, servicingReport, report } = req.body;
 
     if (!status) {
       return res.status(400).json({ message: 'Status is required' });
@@ -526,7 +608,7 @@ router.post('/:id/', requireUser, requireRole(['admin', 'maintenance_manager', '
       id,
       status,
       req.user._id,
-      { reason, notes, interventionId, machinistId }
+      { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media, servicingReportText, metadata: { servicingReportId, servicingReport, report } }
     );
 
     return res.status(200).json({
@@ -545,7 +627,7 @@ router.post('/:id/', requireUser, requireRole(['admin', 'maintenance_manager', '
 router.post('/:id/change-status', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager', 'foreman', 'mechanic', 'electrician', 'production_manager', 'line_manager']), async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media } = req.body;
+    const { status, reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media, servicingReportText, servicingReportId, servicingReport, report } = req.body;
 
     if (!status) {
       return res.status(400).json({ message: 'Status is required' });
@@ -570,7 +652,7 @@ router.post('/:id/change-status', requireUser, requireRole(['admin', 'maintenanc
       id,
       status,
       req.user._id,
-      { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media }
+      { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media, servicingReportText, metadata: { servicingReportId, servicingReport, report } }
     );
 
     return res.status(200).json({
