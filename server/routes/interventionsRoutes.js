@@ -9,7 +9,13 @@ const router = express.Router();
 // GET /api/interventions (with basic pagination & filters)
 router.get('/', requireUser, async (req, res) => {
   const { page = 1, limit = 50, status, type, priority, q, sort = 'createdDate', order = 'desc' } = req.query || {};
+  const factoryId = req.headers['x-factory-id'];
   const query = {};
+
+  if (factoryId) {
+    query.factory = factoryId;
+  }
+
   if (status) {
     if (status === 'active') {
       query.status = { $in: ['Pending', 'In Progress'] };
@@ -80,10 +86,16 @@ const interventionSchema = z.object({
 });
 
 router.post('/', requireUser, async (req, res) => {
+  if (!req.headers['x-factory-id']) {
+    return res.status(400).json({ message: 'Factory context required (x-factory-id header missing)' });
+  }
   const parse = interventionSchema.safeParse(req.body || {});
   if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
 
-  const data = { ...parse.data };
+  const data = {
+    ...parse.data,
+    factory: req.headers['x-factory-id']
+  };
   try {
     // If equipmentId provided, validate and backfill equipment string
     if (data.equipmentId) {

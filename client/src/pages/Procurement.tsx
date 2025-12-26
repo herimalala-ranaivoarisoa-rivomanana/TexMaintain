@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { format, isPast } from "date-fns"
+import { useFactory } from "@/contexts/FactoryContext"
 
 export function Procurement() {
   const [loading, setLoading] = useState(true)
@@ -19,6 +20,7 @@ export function Procurement() {
   const [stats, setStats] = useState<ProcurementStats | null>(null)
   const [searchParams] = useSearchParams()
   const activeFilter = searchParams.get('filter')
+  const { currentFactory } = useFactory()
 
   // New Request State
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false)
@@ -59,7 +61,7 @@ export function Procurement() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [currentFactory])
 
   const handleCreateRequest = async () => {
     try {

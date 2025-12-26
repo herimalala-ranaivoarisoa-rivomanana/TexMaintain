@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getInterventionById } from "@/api/interventions"
 import { Wrench, User, Calendar, ArrowLeft } from "lucide-react"
+import { useFactory } from "@/contexts/FactoryContext"
 
 interface InterventionData {
   _id: string
@@ -24,6 +25,7 @@ export function InterventionDetail() {
   const navigate = useNavigate()
   const [data, setData] = useState<InterventionData | null>(null)
   const [loading, setLoading] = useState(true)
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -37,7 +39,7 @@ export function InterventionDetail() {
       }
     }
     if (id) fetchDetail()
-  }, [id])
+  }, [id, currentFactory])
 
   if (loading) {
     return (
@@ -50,7 +52,7 @@ export function InterventionDetail() {
   if (!data) {
     return (
       <div className="space-y-4">
-        <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4"/>Back</Button>
+        <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
         <Card>
           <CardContent className="p-6">Intervention not found.</CardContent>
         </Card>
@@ -79,7 +81,7 @@ export function InterventionDetail() {
 
   return (
     <div className="space-y-6">
-      <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4"/>Back</Button>
+      <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
       <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -94,11 +96,11 @@ export function InterventionDetail() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-slate-500">Type</p>
-              <p className="text-slate-900 flex items-center"><Wrench className="mr-1 h-3 w-3"/>{data.type}</p>
+              <p className="text-slate-900 flex items-center"><Wrench className="mr-1 h-3 w-3" />{data.type}</p>
             </div>
             <div>
               <p className="text-sm text-slate-500">Assigned To</p>
-              <p className="text-slate-900 flex items-center"><User className="mr-1 h-3 w-3"/>{data.assignedTo || '-'}</p>
+              <p className="text-slate-900 flex items-center"><User className="mr-1 h-3 w-3" />{data.assignedTo || '-'}</p>
             </div>
             <div>
               <p className="text-sm text-slate-500">Equipment</p>
@@ -106,11 +108,11 @@ export function InterventionDetail() {
             </div>
             <div>
               <p className="text-sm text-slate-500">Created</p>
-              <p className="text-slate-900 flex items-center"><Calendar className="mr-1 h-3 w-3"/>{data.createdDate ? new Date(data.createdDate).toLocaleDateString() : '-'}</p>
+              <p className="text-slate-900 flex items-center"><Calendar className="mr-1 h-3 w-3" />{data.createdDate ? new Date(data.createdDate).toLocaleDateString() : '-'}</p>
             </div>
             <div>
               <p className="text-sm text-slate-500">Due Date</p>
-              <p className="text-slate-900 flex items-center"><Calendar className="mr-1 h-3 w-3"/>{data.dueDate ? new Date(data.dueDate).toLocaleDateString() : '-'}</p>
+              <p className="text-slate-900 flex items-center"><Calendar className="mr-1 h-3 w-3" />{data.dueDate ? new Date(data.dueDate).toLocaleDateString() : '-'}</p>
             </div>
           </div>
           {data.description && (

@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Pencil, Trash2, Search, Wrench, X } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
+import { useFactory } from "@/contexts/FactoryContext"
 import { getMechanics, createMechanic, updateMechanic, deleteMechanic } from "@/api/mechanics"
 import type { Mechanic, MechanicFormData } from "@/api/mechanics"
 
@@ -58,10 +59,11 @@ export default function Mechanics() {
   })
   const [newCertification, setNewCertification] = useState("")
   const { toast } = useToast()
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     fetchMechanics()
-  }, [searchQuery])
+  }, [searchQuery, currentFactory])
 
   const fetchMechanics = async () => {
     try {

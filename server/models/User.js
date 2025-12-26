@@ -43,6 +43,18 @@ const schema = new mongoose.Schema({
     sparse: true,
     default: () => randomUUID(),
   },
+  factories: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Factory'
+  }],
+  activeFactory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Factory'
+  },
+  defaultFactory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Factory'
+  }
 }, {
   versionKey: false,
 });

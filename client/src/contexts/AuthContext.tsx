@@ -8,6 +8,9 @@ type User = {
   createdAt: string;
   lastLoginAt: string;
   isActive: boolean;
+  factories?: any[];
+  defaultFactory?: string;
+  activeFactory?: string;
 };
 
 type AuthContextType = {
@@ -29,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUserData = async () => {
     if (!localStorage.getItem("accessToken")) return;
-    
+
     try {
       const userData = await getCurrentUser();
       setUser(userData);
@@ -59,6 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           createdAt: response.createdAt,
           lastLoginAt: response.lastLoginAt,
           isActive: response.isActive,
+          factories: response.factories,
+          defaultFactory: response.defaultFactory,
+          activeFactory: response.activeFactory,
         });
         setIsAuthenticated(true);
       } else {

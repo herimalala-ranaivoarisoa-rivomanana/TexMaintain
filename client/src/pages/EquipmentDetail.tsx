@@ -11,6 +11,7 @@ import type { StatusMetadata } from "@/types/equipment"
 import { QRCodeGenerator } from "@/components/QRCodeGenerator"
 import { EquipmentTimeline } from "@/components/EquipmentTimeline"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useFactory } from "@/contexts/FactoryContext"
 
 interface EquipmentDetailData {
   _id: string
@@ -54,6 +55,7 @@ export function EquipmentDetail() {
   const [data, setData] = useState<EquipmentDetailData | null>(null)
   const [loading, setLoading] = useState(true)
   const [statusMetadata, setStatusMetadata] = useState<Record<string, StatusMetadata>>({})
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,7 +76,7 @@ export function EquipmentDetail() {
       }
     }
     if (id) fetchData()
-  }, [id])
+  }, [id, currentFactory])
 
   if (loading) {
     return (

@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import { ThemeProvider } from "./components/ui/theme-provider"
 import { Toaster } from "./components/ui/toaster"
 import { AuthProvider } from "./contexts/AuthContext"
+import { FactoryProvider } from "./contexts/FactoryContext"
 import { Login } from "./pages/Login"
 import { Register } from "./pages/Register"
 import { ProtectedRoute } from "./components/ProtectedRoute"
@@ -37,43 +38,45 @@ import ReorderAlerts from "./pages/ReorderAlerts"
 function App() {
   return (
     <AuthProvider>
-      <ThemeProvider defaultTheme="light" storageKey="ui-theme">
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-              <Route index element={<Dashboard />} />
-              <Route path="equipment" element={<Equipment />} />
-              <Route path="equipment/:id" element={<EquipmentDetailWrapper />} />
-              <Route path="equipment/:id/interventions" element={<EquipmentInterventions />} />
-              <Route path="equipment/:id/parts" element={<EquipmentParts />} />
-              <Route path="equipment/:id/consumable" element={<EquipmentConsumables />} />
-              <Route path="equipment-categories" element={<EquipmentCategoriesPageWrapper />} />
-              <Route path="equipment-types" element={<EquipmentTypesPageWrapper />} />
-              <Route path="brands" element={<BrandsPageWrapper />} />
-              <Route path="process-areas" element={<ProcessAreasPageWrapper />} />
-              <Route path="process-areas/:id" element={<ProcessAreaDetail />} />
-              <Route path="machinists" element={<Machinists />} />
-              <Route path="mechanics" element={<Mechanics />} />
-              <Route path="electricians" element={<Electricians />} />
-              <Route path="maintenance-workers" element={<MaintenanceWorkers />} />
-              <Route path="interventions" element={<Interventions />} />
-              <Route path="interventions/:id" element={<InterventionDetailWrapper />} />
-              <Route path="inventory" element={<Inventory />} />
-              <Route path="inventory/:id" element={<PartDetailWrapper />} />
-              <Route path="reorder-alerts" element={<ReorderAlerts />} />
-              <Route path="procurement" element={<Procurement />} />
-              <Route path="projects" element={<Projects />} />
-              <Route path="projects/:id" element={<ProjectDetailsPage />} />
-              <Route path="reports" element={<Reports />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
-            <Route path="*" element={<BlankPage />} />
-          </Routes>
-        </Router>
-        <Toaster />
-      </ThemeProvider>
+      <FactoryProvider>
+        <ThemeProvider defaultTheme="light" storageKey="ui-theme">
+          <Router>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+                <Route index element={<Dashboard />} />
+                <Route path="equipment" element={<Equipment />} />
+                <Route path="equipment/:id" element={<EquipmentDetailWrapper />} />
+                <Route path="equipment/:id/interventions" element={<EquipmentInterventions />} />
+                <Route path="equipment/:id/parts" element={<EquipmentParts />} />
+                <Route path="equipment/:id/consumable" element={<EquipmentConsumables />} />
+                <Route path="equipment-categories" element={<EquipmentCategoriesPageWrapper />} />
+                <Route path="equipment-types" element={<EquipmentTypesPageWrapper />} />
+                <Route path="brands" element={<BrandsPageWrapper />} />
+                <Route path="process-areas" element={<ProcessAreasPageWrapper />} />
+                <Route path="process-areas/:id" element={<ProcessAreaDetail />} />
+                <Route path="machinists" element={<Machinists />} />
+                <Route path="mechanics" element={<Mechanics />} />
+                <Route path="electricians" element={<Electricians />} />
+                <Route path="maintenance-workers" element={<MaintenanceWorkers />} />
+                <Route path="interventions" element={<Interventions />} />
+                <Route path="interventions/:id" element={<InterventionDetailWrapper />} />
+                <Route path="inventory" element={<Inventory />} />
+                <Route path="inventory/:id" element={<PartDetailWrapper />} />
+                <Route path="reorder-alerts" element={<ReorderAlerts />} />
+                <Route path="procurement" element={<Procurement />} />
+                <Route path="projects" element={<Projects />} />
+                <Route path="projects/:id" element={<ProjectDetailsPage />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+              <Route path="*" element={<BlankPage />} />
+            </Routes>
+          </Router>
+          <Toaster />
+        </ThemeProvider>
+      </FactoryProvider>
     </AuthProvider>
   )
 }

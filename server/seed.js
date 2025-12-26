@@ -22,6 +22,15 @@ async function runSeeder() {
 
     const results = {};
 
+    // Seed Factories
+    console.log('🏭 Seeding factories...');
+    try {
+      results.factories = await SeedService.seedFactories();
+      console.log(`✅ Factories seeded: ${results.factories.created.length} found/created\n`);
+    } catch (error) {
+      console.error('❌ Error seeding factories:', error.message + '\n');
+    }
+
     // Seed admin user
     console.log('👤 Seeding admin user...');
     try {
@@ -65,10 +74,10 @@ async function runSeeder() {
     }
 
     // Seed process areas and sections (moved before equipment)
-    console.log('🏭 Seeding process areas and sections...');
+    console.log('🏭 Seeding process areas (ProcessArea/Department)...');
     try {
-      results.productionLines = await SeedService.seedProductionLines();
-      console.log(`✅ Process areas seeded: ${results.productionLines.created} created, ${results.productionLines.skipped} skipped\n`);
+      results.processAreas = await SeedService.seedProcessAreas();
+      console.log(`✅ Process areas seeded: ${results.processAreas.created.length} found/created\n`);
     } catch (error) {
       console.error('❌ Error seeding process areas:', error.message + '\n');
     }

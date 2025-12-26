@@ -9,6 +9,7 @@ const router = express.Router();
 router.get('/', requireUser, async (req, res) => {
   const { page = 1, limit = 50, category, q, sort = 'updatedAt', order = 'desc', type } = req.query || {};
   const and = [];
+  if (req.activeFactoryId) and.push({ factory: req.activeFactoryId }); // Filter by Factory
   if (category) and.push({ category });
   let tFilter = null;
   if (typeof type === 'string') {
@@ -165,7 +166,8 @@ const partSchema = z.object({
 router.post('/', requireUser, requireRole('admin'), async (req, res) => {
   const parse = partSchema.safeParse(req.body || {});
   if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
-  const created = await Part.create(parse.data);
+  const partData = { ...parse.data, factory: req.activeFactoryId };
+  const created = await Part.create(partData);
   return res.status(201).json({ success: true, part: created });
 });
 

@@ -14,11 +14,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { getProjects, getProjectStats, createProject, updateProject, deleteProject, Project, ProjectStats, CreateProjectData } from "@/api/projects"
 import { toast } from "sonner"
 import { format } from "date-fns"
+import { useFactory } from "@/contexts/FactoryContext"
 
 export function Projects() {
   const [loading, setLoading] = useState(true)
   const [projects, setProjects] = useState<Project[]>([])
   const [stats, setStats] = useState<ProjectStats | null>(null)
+  const { currentFactory } = useFactory()
 
   // Dialog states
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -55,7 +57,7 @@ export function Projects() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [currentFactory])
 
   const resetForm = () => {
     setFormData({

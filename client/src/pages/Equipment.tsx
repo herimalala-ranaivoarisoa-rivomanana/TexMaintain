@@ -39,6 +39,7 @@ import { uploadBreakdownMedia } from "@/api/breakdownMedia"
 import { getEquipmentCategories } from "@/api/equipmentCategories"
 import { getEquipmentTypes } from "@/api/equipmentTypes"
 import { useToast } from "@/hooks/useToast"
+import { useFactory } from "@/contexts/FactoryContext"
 import { useAuth } from "@/contexts/AuthContext"
 import { EQUIPMENT_STATUSES, EquipmentStatus, StatusMetadata, getStatusColor, getStatusLabel } from "@/types/equipment"
 
@@ -191,9 +192,11 @@ export function Equipment() {
     }
   }
 
+  const { currentFactory } = useFactory()
+
   useEffect(() => {
     fetchEquipment()
-  }, [page, limit, sort, order, searchTerm, statusFilter, categoryFilter])
+  }, [page, limit, sort, order, searchTerm, statusFilter, categoryFilter, currentFactory])
 
   /* REMOVED: getStockStatus and helper functions - Now using backend provided stockStatus */
   const [statusMetadata, setStatusMetadata] = useState<Record<string, StatusMetadata>>({})
@@ -229,7 +232,7 @@ export function Equipment() {
       }
     }
     fetchData()
-  }, [])
+  }, [currentFactory])
 
 
 

@@ -54,7 +54,9 @@ const processAreaSchema = z.object({
 
 // GET /api/process-areas
 router.get('/', requireUser, async (req, res) => {
-  const processAreas = await ProcessArea.find().populate({
+  const query = {};
+  if (req.activeFactoryId) query.factory = req.activeFactoryId; // Filter by Factory
+  const processAreas = await ProcessArea.find(query).populate({
     path: 'departments.departmentId',
     populate: {
       path: 'equipment.equipmentId',
@@ -278,7 +280,8 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
 router.post('/', requireUser, async (req, res) => {
   const parse = processAreaSchema.safeParse(req.body || {});
   if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
-  const created = await ProcessArea.create(parse.data);
+  const paData = { ...parse.data, factory: req.activeFactoryId };
+  const created = await ProcessArea.create(paData);
   return res.status(201).json({ success: true, processArea: created });
 });
 

@@ -51,6 +51,16 @@ const setupInterceptors = (apiInstance: AxiosInstance) => {
         config.headers.Authorization = `Bearer ${accessToken}`;
       }
 
+      // Add Factory context
+      const activeFactoryId = localStorage.getItem('activeFactoryId');
+
+      // Do not send factory ID when fetching user details (deadlock prevention) or during auth
+      const isAuthRequest = config.url && (config.url.includes('/auth/me') || config.url.includes('/auth/login'));
+
+      if (activeFactoryId && config.headers && !isAuthRequest) {
+        config.headers['x-factory-id'] = activeFactoryId;
+      }
+
       return config;
     },
     (error: AxiosError): Promise<AxiosError> => Promise.reject(error)

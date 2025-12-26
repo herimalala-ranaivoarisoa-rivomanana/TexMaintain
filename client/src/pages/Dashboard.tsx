@@ -6,6 +6,7 @@ import { ProjectsDashboard } from "@/components/dashboard/ProjectsDashboard"
 import { LayoutDashboard, Factory, Briefcase } from "lucide-react"
 import { getProcessAreas } from "@/api/processAreas"
 import { useToast } from "@/hooks/useToast"
+import { useFactory } from "@/contexts/FactoryContext"
 
 interface ProcessArea {
   _id: string
@@ -17,6 +18,7 @@ interface ProcessArea {
 export function Dashboard() {
   const [processAreas, setProcessAreas] = useState<ProcessArea[]>([])
   const { toast } = useToast()
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     const fetchAreas = async () => {
@@ -38,7 +40,7 @@ export function Dashboard() {
     }
 
     fetchAreas()
-  }, [toast])
+  }, [toast, currentFactory])
 
   return (
     <div className="space-y-6">

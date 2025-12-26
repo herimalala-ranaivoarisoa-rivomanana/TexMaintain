@@ -11,6 +11,7 @@ const schema = new mongoose.Schema({
   status: { type: String, enum: STATUS_VALUES, default: 'Pending', required: true },
   equipment: { type: String, required: false, trim: true }, // Legacy field (deprecated) - use equipmentId
   equipmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Equipment', required: false, index: true }, // Strong reference
+  factory: { type: mongoose.Schema.Types.ObjectId, ref: 'Factory', required: true, index: true },
   assignedTo: { type: String, trim: true },
   description: { type: String, trim: true },
   createdDate: { type: Date, default: Date.now },

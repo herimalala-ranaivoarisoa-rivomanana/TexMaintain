@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Pencil, Trash2, Search, UserCog } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
+import { useFactory } from "@/contexts/FactoryContext"
 import { getMachinists, createMachinist, updateMachinist, deleteMachinist } from "@/api/machinists"
 import type { Machinist, MachinistFormData } from "@/api/machinists"
 
@@ -39,10 +40,11 @@ export default function Machinists() {
     isActive: true
   })
   const { toast } = useToast()
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     fetchMachinists()
-  }, [searchQuery])
+  }, [searchQuery, currentFactory])
 
   const fetchMachinists = async () => {
     try {

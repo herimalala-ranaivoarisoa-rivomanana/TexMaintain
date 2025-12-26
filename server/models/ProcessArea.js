@@ -6,6 +6,12 @@ const processAreaSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    factory: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Factory',
+        required: false, // Will be required after migration
+        index: true
+    },
     description: {
         type: String,
         trim: true

@@ -14,7 +14,7 @@ class UserService {
 
   static async get(id) {
     try {
-      return User.findOne({ _id: id }).exec();
+      return User.findOne({ _id: id }).populate('factories').exec();
     } catch (err) {
       throw new Error(`Database error while getting the user by their ID: ${err}`);
     }
@@ -22,7 +22,7 @@ class UserService {
 
   static async getByEmail(email) {
     try {
-      return User.findOne({ email }).exec();
+      return User.findOne({ email }).populate('factories').exec();
     } catch (err) {
       throw new Error(`Database error while getting the user by their email: ${err}`);
     }
@@ -51,7 +51,7 @@ class UserService {
 
     try {
       console.log(`Attempting to authenticate user: ${email}`);
-      const user = await User.findOne({email}).exec();
+      const user = await User.findOne({ email }).populate('factories').exec();
       if (!user) {
         console.log(`User not found: ${email}`);
         return null;
@@ -76,7 +76,7 @@ class UserService {
   static async create({ email, password, role = 'general_maintenance_agent', name = '' }) {
     if (!email) throw new Error('Email is required');
     if (!password) throw new Error('Password is required');
-    
+
     if (role && !VALID_ROLES.includes(role)) {
       throw new Error(`Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`);
     }

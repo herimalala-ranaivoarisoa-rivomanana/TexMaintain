@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
+import { useFactory } from "@/contexts/FactoryContext"
 import { getProcessAreas, createProcessArea, updateProcessArea, deleteProcessArea } from "@/api/processAreas"
 import { getProcessDepartments, createProcessDepartment, updateProcessDepartment, updateProcessDepartmentEquipment } from "@/api/processDepartments"
 import { getEquipment, updateEquipment } from "@/api/equipment"
@@ -152,6 +153,7 @@ const SortableEquipment = ({ id, equipment, onStatusClick }: SortableEquipmentPr
 
 function ProcessAreas() {
   const { token, user } = useAuth()
+  const { currentFactory } = useFactory()
   const { toast } = useToast()
   const [processAreas, setProcessAreas] = useState<ProcessArea[]>([])
   const [loading, setLoading] = useState(true)
@@ -192,7 +194,7 @@ function ProcessAreas() {
 
   useEffect(() => {
     fetchData()
-  }, [token])
+  }, [token, currentFactory])
 
   const fetchData = async () => {
     try {

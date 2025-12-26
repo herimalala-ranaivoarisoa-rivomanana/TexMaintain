@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { requireUser, requireRole } = require('./middleware/auth');
 const { MaintenanceWorker } = require('../models/MaintenanceWorker');
 
@@ -7,20 +8,25 @@ const router = express.Router();
 // GET /api/maintenance-workers - Get all maintenance workers with pagination and filters
 router.get('/', requireUser, async (req, res) => {
   try {
+    const factoryId = req.header('x-factory-id');
+    if (!factoryId) {
+      return res.status(400).json({ message: 'Factory Header Missing' });
+    }
+
     const { page = 1, limit = 50, q, isActive, specialization } = req.query;
 
-    const query = {};
-    
+    const query = { factory: new mongoose.Types.ObjectId(factoryId) };
+
     // Filter by active status
     if (isActive !== undefined) {
       query.isActive = isActive === 'true';
     }
-    
+
     // Filter by specialization
     if (specialization) {
       query.specialization = specialization;
     }
-    
+
     // Search by name or matricule
     if (q) {
       query.$or = [
@@ -57,12 +63,17 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/maintenance-workers/:id - Get single maintenance worker
 router.get('/:id', requireUser, async (req, res) => {
   try {
-    const worker = await MaintenanceWorker.findById(req.params.id).lean();
-    
+    const factoryId = req.header('x-factory-id');
+    const query = { _id: req.params.id };
+    if (factoryId) {
+      query.factory = new mongoose.Types.ObjectId(factoryId);
+    }
+    const worker = await MaintenanceWorker.findOne(query).lean();
+
     if (!worker) {
       return res.status(404).json({ message: 'Maintenance worker not found' });
     }
-    
+
     return res.status(200).json(worker);
   } catch (error) {
     console.error('Get maintenance worker error:', error);
@@ -73,6 +84,11 @@ router.get('/:id', requireUser, async (req, res) => {
 // POST /api/maintenance-workers - Create new maintenance worker
 router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager']), async (req, res) => {
   try {
+    const factoryId = req.header('x-factory-id');
+    if (!factoryId) {
+      return res.status(400).json({ message: 'Factory Header Missing' });
+    }
+
     const { matricule, firstName, lastName, specialization, certifications, isActive } = req.body;
 
     // Validate required fields
@@ -81,9 +97,12 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
     }
 
     // Check if matricule already exists
-    const existing = await MaintenanceWorker.findOne({ matricule });
+    const existing = await MaintenanceWorker.findOne({
+      matricule,
+      factory: new mongoose.Types.ObjectId(factoryId)
+    });
     if (existing) {
-      return res.status(400).json({ message: 'A maintenance worker with this matricule already exists' });
+      return res.status(400).json({ message: 'A maintenance worker with this matricule already exists in this factory' });
     }
 
     const worker = new MaintenanceWorker({
@@ -92,7 +111,8 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
       lastName,
       specialization,
       certifications,
-      isActive: isActive !== undefined ? isActive : true
+      isActive: isActive !== undefined ? isActive : true,
+      factory: factoryId
     });
 
     await worker.save();
@@ -107,16 +127,29 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
 // PUT /api/maintenance-workers/:id - Update maintenance worker
 router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager']), async (req, res) => {
   try {
+    const factoryId = req.header('x-factory-id');
+
+    // Ensure worker belongs to factory on update
+    const existingWorker = await MaintenanceWorker.findOne({
+      _id: req.params.id,
+      ...(factoryId && { factory: new mongoose.Types.ObjectId(factoryId) })
+    });
+
+    if (!existingWorker) {
+      return res.status(404).json({ message: 'Maintenance worker not found' });
+    }
+
     const { matricule, firstName, lastName, specialization, certifications, isActive } = req.body;
 
     // Check if matricule is being changed and if it already exists
     if (matricule) {
-      const existing = await MaintenanceWorker.findOne({ 
-        matricule, 
-        _id: { $ne: req.params.id } 
+      const existing = await MaintenanceWorker.findOne({
+        matricule,
+        _id: { $ne: req.params.id },
+        factory: existingWorker.factory
       });
       if (existing) {
-        return res.status(400).json({ message: 'A maintenance worker with this matricule already exists' });
+        return res.status(400).json({ message: 'A maintenance worker with this matricule already exists in this factory' });
       }
     }
 
@@ -134,10 +167,6 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
       { new: true, runValidators: true }
     );
 
-    if (!worker) {
-      return res.status(404).json({ message: 'Maintenance worker not found' });
-    }
-
     return res.status(200).json(worker);
   } catch (error) {
     console.error('Update maintenance worker error:', error);
@@ -148,8 +177,14 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
 // DELETE /api/maintenance-workers/:id - Delete maintenance worker (soft delete by setting isActive to false)
 router.delete('/:id', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   try {
-    const worker = await MaintenanceWorker.findByIdAndUpdate(
-      req.params.id,
+    const factoryId = req.header('x-factory-id');
+    const query = { _id: req.params.id };
+    if (factoryId) {
+      query.factory = new mongoose.Types.ObjectId(factoryId);
+    }
+
+    const worker = await MaintenanceWorker.findOneAndUpdate(
+      query,
       { isActive: false },
       { new: true }
     );

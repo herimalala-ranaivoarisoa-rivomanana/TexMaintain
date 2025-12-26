@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { requireUser, requireRole } = require('./middleware/auth');
 const { Mechanic } = require('../models/Mechanic');
 
@@ -7,20 +8,25 @@ const router = express.Router();
 // GET /api/mechanics - Get all mechanics with pagination and filters
 router.get('/', requireUser, async (req, res) => {
   try {
+    const factoryId = req.header('x-factory-id');
+    if (!factoryId) {
+      return res.status(400).json({ message: 'Factory Header Missing' });
+    }
+
     const { page = 1, limit = 50, q, isActive, specialization } = req.query;
 
-    const query = {};
-    
+    const query = { factory: new mongoose.Types.ObjectId(factoryId) };
+
     // Filter by active status
     if (isActive !== undefined) {
       query.isActive = isActive === 'true';
     }
-    
+
     // Filter by specialization
     if (specialization) {
       query.specialization = specialization;
     }
-    
+
     // Search by name or matricule
     if (q) {
       query.$or = [
@@ -57,12 +63,18 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/mechanics/:id - Get single mechanic
 router.get('/:id', requireUser, async (req, res) => {
   try {
-    const mechanic = await Mechanic.findById(req.params.id).lean();
-    
+    const factoryId = req.header('x-factory-id');
+    const query = { _id: req.params.id };
+    if (factoryId) {
+      query.factory = new mongoose.Types.ObjectId(factoryId);
+    }
+
+    const mechanic = await Mechanic.findOne(query).lean();
+
     if (!mechanic) {
       return res.status(404).json({ message: 'Mechanic not found' });
     }
-    
+
     return res.status(200).json(mechanic);
   } catch (error) {
     console.error('Get mechanic error:', error);
@@ -73,6 +85,11 @@ router.get('/:id', requireUser, async (req, res) => {
 // POST /api/mechanics - Create new mechanic
 router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager']), async (req, res) => {
   try {
+    const factoryId = req.header('x-factory-id');
+    if (!factoryId) {
+      return res.status(400).json({ message: 'Factory Header Missing' });
+    }
+
     const { matricule, firstName, lastName, specialization, certifications, isActive } = req.body;
 
     // Validate required fields
@@ -80,10 +97,13 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
       return res.status(400).json({ message: 'Matricule, first name, and last name are required' });
     }
 
-    // Check if matricule already exists
-    const existing = await Mechanic.findOne({ matricule });
+    // Check if matricule already exists IN THE SAME FACTORY
+    const existing = await Mechanic.findOne({
+      matricule,
+      factory: new mongoose.Types.ObjectId(factoryId)
+    });
     if (existing) {
-      return res.status(400).json({ message: 'A mechanic with this matricule already exists' });
+      return res.status(400).json({ message: 'A mechanic with this matricule already exists in this factory' });
     }
 
     const mechanic = new Mechanic({
@@ -92,7 +112,8 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
       lastName,
       specialization,
       certifications,
-      isActive: isActive !== undefined ? isActive : true
+      isActive: isActive !== undefined ? isActive : true,
+      factory: factoryId
     });
 
     await mechanic.save();
@@ -107,16 +128,29 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
 // PUT /api/mechanics/:id - Update mechanic
 router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager']), async (req, res) => {
   try {
+    const factoryId = req.header('x-factory-id');
+
+    // Ensure mechanic belongs to factory on update
+    const existingMechanic = await Mechanic.findOne({
+      _id: req.params.id,
+      ...(factoryId && { factory: new mongoose.Types.ObjectId(factoryId) })
+    });
+
+    if (!existingMechanic) {
+      return res.status(404).json({ message: 'Mechanic not found' });
+    }
+
     const { matricule, firstName, lastName, specialization, certifications, isActive } = req.body;
 
     // Check if matricule is being changed and if it already exists
     if (matricule) {
-      const existing = await Mechanic.findOne({ 
-        matricule, 
-        _id: { $ne: req.params.id } 
+      const existing = await Mechanic.findOne({
+        matricule,
+        _id: { $ne: req.params.id },
+        factory: existingMechanic.factory
       });
       if (existing) {
-        return res.status(400).json({ message: 'A mechanic with this matricule already exists' });
+        return res.status(400).json({ message: 'A mechanic with this matricule already exists in this factory' });
       }
     }
 
@@ -134,10 +168,6 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
       { new: true, runValidators: true }
     );
 
-    if (!mechanic) {
-      return res.status(404).json({ message: 'Mechanic not found' });
-    }
-
     return res.status(200).json(mechanic);
   } catch (error) {
     console.error('Update mechanic error:', error);
@@ -148,8 +178,14 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
 // DELETE /api/mechanics/:id - Delete mechanic (soft delete by setting isActive to false)
 router.delete('/:id', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   try {
-    const mechanic = await Mechanic.findByIdAndUpdate(
-      req.params.id,
+    const factoryId = req.header('x-factory-id');
+    const query = { _id: req.params.id };
+    if (factoryId) {
+      query.factory = new mongoose.Types.ObjectId(factoryId);
+    }
+
+    const mechanic = await Mechanic.findOneAndUpdate(
+      query,
       { isActive: false },
       { new: true }
     );

@@ -21,6 +21,7 @@ const router = express.Router();
 router.get('/', requireUser, async (req, res) => {
   const { page = 1, limit = 50, status, category, q, sort = 'createdAt', order = 'desc' } = req.query || {};
   const query = {};
+  if (req.activeFactoryId) query.factory = req.activeFactoryId; // Filter by Factory
   if (status) query.status = status;
   if (category) query.category = category;
   if (q) query.$or = [
@@ -310,7 +311,8 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
       ...parse.data,
       brand: parse.data.brand && parse.data.brand.trim() !== '' ? parse.data.brand : undefined,
       lastStatusChangedBy: req.user._id,
-      lastStatusChange: new Date()
+      lastStatusChange: new Date(),
+      factory: req.activeFactoryId // Assign to current factory
     };
 
     const created = await Equipment.create(equipmentData);

@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const { Project } = require('../models/Project');
 const { requireUser } = require('./middleware/auth');
@@ -8,7 +9,10 @@ const { Part } = require('../models/Part');
 // GET /api/projects - List all projects
 router.get('/', requireUser, async (req, res) => {
     try {
-        const projects = await Project.find().sort({ startDate: -1 });
+        const factoryId = req.headers['x-factory-id'];
+        const query = factoryId ? { factory: factoryId } : {};
+
+        const projects = await Project.find(query).sort({ startDate: -1 });
         res.json({ projects });
     } catch (error) {
         console.error('Error fetching projects:', error);
@@ -19,18 +23,24 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/projects/stats - Get project statistics
 router.get('/stats', requireUser, async (req, res) => {
     try {
+        const factoryId = req.headers['x-factory-id'];
+        const query = factoryId ? { factory: new mongoose.Types.ObjectId(factoryId) } : {};
+        const countQuery = factoryId ? { factory: factoryId } : {};
+
         const [
             activeCount,
             completedCount,
             totalBudgetResult,
             totalTeamSizeResult
         ] = await Promise.all([
-            Project.countDocuments({ status: 'In Progress' }),
-            Project.countDocuments({ status: 'Completed' }),
+            Project.countDocuments({ ...countQuery, status: 'In Progress' }),
+            Project.countDocuments({ ...countQuery, status: 'Completed' }),
             Project.aggregate([
+                { $match: query },
                 { $group: { _id: null, total: { $sum: '$budget' } } }
             ]),
             Project.aggregate([
+                { $match: query },
                 { $group: { _id: null, total: { $sum: '$teamSize' } } }
             ])
         ]);
@@ -61,8 +71,10 @@ router.post('/', requireUser, async (req, res) => {
             startDate,
             endDate,
             teamSize,
+            teamSize,
             status: status || 'Planned',
-            createdBy: req.user._id
+            createdBy: req.user._id,
+            factory: req.headers['x-factory-id']
         });
 
         await project.save();

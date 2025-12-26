@@ -24,6 +24,7 @@ import { Link } from "react-router-dom"
 import { getInventory, updateStock, createPart, updatePart, deletePart } from "@/api/inventory"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
+import { useFactory } from "@/contexts/FactoryContext"
 import { saveAs } from "file-saver"
 
 interface InventoryItem {
@@ -95,6 +96,7 @@ export function Inventory() {
   const [deletingPartId, setDeletingPartId] = useState<string | null>(null)
   const { user } = useAuth()
   const { toast } = useToast()
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     const fetchInventory = async () => {
@@ -133,7 +135,8 @@ export function Inventory() {
     }
 
     fetchInventory()
-  }, [toast, page, categoryFilter, stockFilter, limit, sort, order, activeTab, debouncedSearch])
+    fetchInventory()
+  }, [toast, page, categoryFilter, stockFilter, limit, sort, order, activeTab, debouncedSearch, currentFactory])
 
   // Debounce search term
   useEffect(() => {

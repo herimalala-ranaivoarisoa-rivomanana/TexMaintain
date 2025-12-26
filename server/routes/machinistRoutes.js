@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { requireUser, requireRole } = require('./middleware/auth');
 const { Machinist } = require('../models/Machinist');
 
@@ -7,15 +8,20 @@ const router = express.Router();
 // GET /api/machinists - Get all machinists with pagination and filters
 router.get('/', requireUser, async (req, res) => {
   try {
+    const factoryId = req.header('x-factory-id');
+    if (!factoryId) {
+      return res.status(400).json({ message: 'Factory Header Missing' });
+    }
+
     const { page = 1, limit = 50, q, isActive } = req.query;
 
-    const query = {};
-    
+    const query = { factory: new mongoose.Types.ObjectId(factoryId) };
+
     // Filter by active status
     if (isActive !== undefined) {
       query.isActive = isActive === 'true';
     }
-    
+
     // Search by name or matricule
     if (q) {
       query.$or = [
@@ -52,12 +58,17 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/machinists/:id - Get single machinist
 router.get('/:id', requireUser, async (req, res) => {
   try {
-    const machinist = await Machinist.findById(req.params.id).lean();
-    
+    const factoryId = req.header('x-factory-id');
+    const query = { _id: req.params.id };
+    if (factoryId) {
+      query.factory = new mongoose.Types.ObjectId(factoryId);
+    }
+    const machinist = await Machinist.findOne(query).lean();
+
     if (!machinist) {
       return res.status(404).json({ message: 'Machinist not found' });
     }
-    
+
     return res.status(200).json(machinist);
   } catch (error) {
     console.error('Get machinist error:', error);
@@ -68,6 +79,11 @@ router.get('/:id', requireUser, async (req, res) => {
 // POST /api/machinists - Create new machinist
 router.post('/', requireUser, requireRole(['admin', 'production_manager', 'line_manager']), async (req, res) => {
   try {
+    const factoryId = req.header('x-factory-id');
+    if (!factoryId) {
+      return res.status(400).json({ message: 'Factory Header Missing' });
+    }
+
     const { matricule, firstName, lastName, isActive } = req.body;
 
     // Validate required fields
@@ -76,16 +92,20 @@ router.post('/', requireUser, requireRole(['admin', 'production_manager', 'line_
     }
 
     // Check if matricule already exists
-    const existing = await Machinist.findOne({ matricule });
+    const existing = await Machinist.findOne({
+      matricule,
+      factory: new mongoose.Types.ObjectId(factoryId)
+    });
     if (existing) {
-      return res.status(400).json({ message: 'A machinist with this matricule already exists' });
+      return res.status(400).json({ message: 'A machinist with this matricule already exists in this factory' });
     }
 
     const machinist = new Machinist({
       matricule,
       firstName,
       lastName,
-      isActive: isActive !== undefined ? isActive : true
+      isActive: isActive !== undefined ? isActive : true,
+      factory: factoryId
     });
 
     await machinist.save();
@@ -100,16 +120,29 @@ router.post('/', requireUser, requireRole(['admin', 'production_manager', 'line_
 // PUT /api/machinists/:id - Update machinist
 router.put('/:id', requireUser, requireRole(['admin', 'production_manager', 'line_manager']), async (req, res) => {
   try {
+    const factoryId = req.header('x-factory-id');
+
+    // Ensure machinist belongs to factory on update
+    const existingMachinist = await Machinist.findOne({
+      _id: req.params.id,
+      ...(factoryId && { factory: new mongoose.Types.ObjectId(factoryId) })
+    });
+
+    if (!existingMachinist) {
+      return res.status(404).json({ message: 'Machinist not found' });
+    }
+
     const { matricule, firstName, lastName, isActive } = req.body;
 
     // Check if matricule is being changed and if it already exists
     if (matricule) {
-      const existing = await Machinist.findOne({ 
-        matricule, 
-        _id: { $ne: req.params.id } 
+      const existing = await Machinist.findOne({
+        matricule,
+        _id: { $ne: req.params.id },
+        factory: existingMachinist.factory
       });
       if (existing) {
-        return res.status(400).json({ message: 'A machinist with this matricule already exists' });
+        return res.status(400).json({ message: 'A machinist with this matricule already exists in this factory' });
       }
     }
 
@@ -125,10 +158,6 @@ router.put('/:id', requireUser, requireRole(['admin', 'production_manager', 'lin
       { new: true, runValidators: true }
     );
 
-    if (!machinist) {
-      return res.status(404).json({ message: 'Machinist not found' });
-    }
-
     return res.status(200).json(machinist);
   } catch (error) {
     console.error('Update machinist error:', error);
@@ -139,8 +168,14 @@ router.put('/:id', requireUser, requireRole(['admin', 'production_manager', 'lin
 // DELETE /api/machinists/:id - Delete machinist (soft delete by setting isActive to false)
 router.delete('/:id', requireUser, requireRole(['admin', 'production_manager']), async (req, res) => {
   try {
-    const machinist = await Machinist.findByIdAndUpdate(
-      req.params.id,
+    const factoryId = req.header('x-factory-id');
+    const query = { _id: req.params.id };
+    if (factoryId) {
+      query.factory = new mongoose.Types.ObjectId(factoryId);
+    }
+
+    const machinist = await Machinist.findOneAndUpdate(
+      query,
       { isActive: false },
       { new: true }
     );

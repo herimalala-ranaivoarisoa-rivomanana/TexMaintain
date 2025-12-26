@@ -21,6 +21,12 @@ const schema = new mongoose.Schema({
     unique: true,
     sparse: true // Allow null/undefined values
   },
+  factory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Factory',
+    required: false, // Will be required after migration
+    index: true
+  },
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'EquipmentCategory',

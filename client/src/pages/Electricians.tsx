@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Pencil, Trash2, Search, Zap, X } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
+import { useFactory } from "@/contexts/FactoryContext"
 import { getElectricians, createElectrician, updateElectrician, deleteElectrician } from "@/api/electricians"
 import type { Electrician, ElectricianFormData } from "@/api/electricians"
 
@@ -58,10 +59,11 @@ export default function Electricians() {
   })
   const [newCertification, setNewCertification] = useState("")
   const { toast } = useToast()
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     fetchElectricians()
-  }, [searchQuery])
+  }, [searchQuery, currentFactory])
 
   const fetchElectricians = async () => {
     try {

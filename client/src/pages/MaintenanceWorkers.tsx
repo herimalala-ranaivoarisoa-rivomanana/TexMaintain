@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Pencil, Trash2, Search, HardHat, X } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
+import { useFactory } from "@/contexts/FactoryContext"
 import { getMaintenanceWorkers, createMaintenanceWorker, updateMaintenanceWorker, deleteMaintenanceWorker } from "@/api/maintenanceWorkers"
 import type { MaintenanceWorker, MaintenanceWorkerFormData } from "@/api/maintenanceWorkers"
 
@@ -58,10 +59,11 @@ export default function MaintenanceWorkers() {
   })
   const [newCertification, setNewCertification] = useState("")
   const { toast } = useToast()
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     fetchWorkers()
-  }, [searchQuery])
+  }, [searchQuery, currentFactory])
 
   const fetchWorkers = async () => {
     try {

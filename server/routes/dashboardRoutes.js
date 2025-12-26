@@ -1,28 +1,31 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { requireUser } = require('./middleware/auth');
-const { Equipment, EQUIPMENT_STATUSES } = require('../models/Equipment');
-const { ProductionLine } = require('../models/ProductionLine');
+const { Equipment } = require('../models/Equipment');
+const { ProcessArea } = require('../models/ProcessArea');
+const { ProcessDepartment } = require('../models/ProcessDepartment');
 const { Intervention } = require('../models/Intervention');
 const { Part } = require('../models/Part');
-const { ProductionSection } = require('../models/ProductionSection'); // Ensure this is registered
-const { EquipmentStatusHistory } = require('../models/EquipmentStatusHistory');
 
 const router = express.Router();
-
-// Helper to compute MTTR and MTBF from interventions - DEPRECATED
-// Now using stored values in Equipment model
-// const computeReliability = async (equipmentIds) => { ... }
 
 // GET /api/dashboard/kpis
 router.get('/kpis', requireUser, async (req, res) => {
   try {
-    const totalPlantEquipment = await Equipment.countDocuments();
-    const activeInterventions = await Intervention.countDocuments({ status: { $in: ['Pending', 'In Progress'] } });
-    const criticalParts = await Part.countDocuments({ $expr: { $lte: ['$currentStock', '$minStock'] } });
+    const factoryId = req.header('x-factory-id');
+    if (!factoryId) {
+      return res.status(400).json({ message: 'Factory Header Missing' });
+    }
+
+    const factoryQuery = { factory: new mongoose.Types.ObjectId(factoryId) };
+
+    const totalPlantEquipment = await Equipment.countDocuments(factoryQuery);
+    const activeInterventions = await Intervention.countDocuments({ ...factoryQuery, status: { $in: ['Pending', 'In Progress'] } });
+    const criticalParts = await Part.countDocuments({ ...factoryQuery, $expr: { $lte: ['$currentStock', '$minStock'] } });
 
     // Fetch Process areas first
-    const productionLines = await ProductionLine.find().populate({
-      path: 'sections.sectionId',
+    const processAreas = await ProcessArea.find(factoryQuery).populate({
+      path: 'departments.departmentId',
       populate: {
         path: 'equipment.equipmentId',
         model: 'Equipment'
@@ -31,11 +34,11 @@ router.get('/kpis', requireUser, async (req, res) => {
 
     // Collect all assigned equipment IDs for Global Reliability calculation
     const allAssignedEquipmentIds = [];
-    for (const line of productionLines) {
-      if (line.sections) {
-        for (const section of line.sections) {
-          if (section.sectionId && section.sectionId.equipment) {
-            for (const item of section.sectionId.equipment) {
+    for (const area of processAreas) {
+      if (area.departments) {
+        for (const dept of area.departments) {
+          if (dept.departmentId && dept.departmentId.equipment) {
+            for (const item of dept.departmentId.equipment) {
               if (item.equipmentId) {
                 allAssignedEquipmentIds.push(item.equipmentId._id);
               }
@@ -46,10 +49,6 @@ router.get('/kpis', requireUser, async (req, res) => {
     }
 
     // Aggregate MTBF and MTTR from Equipment collection
-    // Only consider equipment that is assigned to process areas (or all? usually all active equipment)
-    // For consistency with previous logic which used "allAssignedEquipmentIds", we filter by that.
-    // If allAssignedEquipmentIds is empty, we might want to fallback to all equipment or return 0.
-
     let mttr = 0;
     let mtbf = 0;
 
@@ -69,9 +68,6 @@ router.get('/kpis', requireUser, async (req, res) => {
         mtbf = Math.round((aggregation[0].avgMtbf || 0) * 100) / 100;
         mttr = Math.round((aggregation[0].avgMttr || 0) * 100) / 100;
       }
-    } else {
-      // Fallback to all equipment if no lines defined yet?
-      // Or just return 0.
     }
 
     // Aggregate data from all Process areas for Global OEE & Availability
@@ -89,7 +85,8 @@ router.get('/kpis', requireUser, async (req, res) => {
 
     // Get all corrective/emergency interventions for today for downtime calculation
     const allDowntimeInterventions = await Intervention.find({
-      type: { $in: ['Corrective', 'Emergency'] },
+      ...factoryQuery,
+      type: { $in: ['Corrective', 'Emergency'] }, // Use exact casing from SeedService
       createdDate: { $gte: startOfDay }
     }).lean();
 
@@ -107,46 +104,46 @@ router.get('/kpis', requireUser, async (req, res) => {
         downtime = (now - i.createdDate) / (1000 * 60); // minutes
       }
 
-      const eqId = i.equipment?.toString() || i.equipmentId?.toString();
+      const eqId = i.equipmentId?.toString(); // Ensure we use equipmentId ref
       if (eqId) {
         downtimeByEquipment[eqId] = (downtimeByEquipment[eqId] || 0) + downtime;
       }
     });
 
-    for (const line of productionLines) {
-      // Aggregate Production Stats
-      if (line.stats) {
-        totalTargetOutput += line.stats.targetOutput || 0;
-        totalActualOutput += line.stats.actualOutput || 0;
-        totalDefectCount += line.stats.defectCount || 0;
+    for (const area of processAreas) {
+      // Aggregate Production Stats from Area
+      if (area.stats) {
+        totalTargetOutput += area.stats.targetOutput || 0;
+        totalActualOutput += area.stats.actualOutput || 0;
+        totalDefectCount += area.stats.defectCount || 0;
       }
 
       // Aggregate Equipment Stats (Availability)
-      let lineEquipmentCount = 0;
-      const lineEquipmentIds = [];
+      let areaEquipmentCount = 0;
+      const areaEquipmentIds = [];
 
-      if (line.sections) {
-        for (const section of line.sections) {
-          if (section.sectionId && section.sectionId.equipment) {
-            for (const item of section.sectionId.equipment) {
+      if (area.departments) {
+        for (const dept of area.departments) {
+          if (dept.departmentId && dept.departmentId.equipment) {
+            for (const item of dept.departmentId.equipment) {
               if (item.equipmentId) {
-                lineEquipmentCount++;
-                lineEquipmentIds.push(item.equipmentId._id.toString());
+                areaEquipmentCount++;
+                areaEquipmentIds.push(item.equipmentId._id.toString());
               }
             }
           }
         }
       }
 
-      // Calculate Scheduled Time for this line
-      const shiftDuration = line.stats?.shiftDuration || 480;
-      const plannedDowntime = line.stats?.plannedDowntime || 0;
+      // Calculate Scheduled Time for this area
+      const shiftDuration = area.stats?.shiftDuration || 480;
+      const plannedDowntime = area.stats?.plannedDowntime || 0;
       const scheduledTimePerEquipment = Math.max(0, shiftDuration - plannedDowntime);
 
-      globalScheduledTime += lineEquipmentCount * scheduledTimePerEquipment;
+      globalScheduledTime += areaEquipmentCount * scheduledTimePerEquipment;
 
-      // Sum downtime for equipment in this line
-      lineEquipmentIds.forEach(eqId => {
+      // Sum downtime for equipment in this area
+      areaEquipmentIds.forEach(eqId => {
         globalUnplannedDowntime += (downtimeByEquipment[eqId] || 0);
       });
     }
@@ -176,7 +173,7 @@ router.get('/kpis', requireUser, async (req, res) => {
     const oee = Math.round(availabilityFactor * performance * quality * 100 * 100) / 100;
 
     // Calculate pending orders count
-    const partsWithOrders = await Part.find({ 'pendingOrders.status': { $in: ['pending', 'ordered', 'in_transit'] } });
+    const partsWithOrders = await Part.find({ ...factoryQuery, 'pendingOrders.status': { $in: ['pending', 'ordered', 'in_transit'] } });
     const pendingOrders = partsWithOrders.reduce((total, part) => {
       return total + part.pendingOrders.filter(o => ['pending', 'ordered', 'in_transit'].includes(o.status)).length;
     }, 0);
@@ -203,9 +200,15 @@ router.get('/kpis', requireUser, async (req, res) => {
 // GET /api/dashboard/activities (last 10 changes based on creation dates)
 router.get('/activities', requireUser, async (req, res) => {
   try {
-    const recentInterventions = await Intervention.find().sort({ createdDate: -1 }).limit(5).lean();
-    const recentParts = await Part.find().sort({ updatedAt: -1 }).limit(3).lean();
-    const recentEquipment = await Equipment.find().sort({ updatedAt: -1 }).limit(2).lean();
+    const factoryId = req.header('x-factory-id');
+    if (!factoryId) {
+      return res.status(400).json({ message: 'Factory Header Missing' });
+    }
+    const factoryQuery = { factory: new mongoose.Types.ObjectId(factoryId) };
+
+    const recentInterventions = await Intervention.find(factoryQuery).sort({ createdDate: -1 }).limit(5).lean();
+    const recentParts = await Part.find(factoryQuery).sort({ updatedAt: -1 }).limit(3).lean();
+    const recentEquipment = await Equipment.find(factoryQuery).sort({ updatedAt: -1 }).limit(2).lean();
 
     const activities = [
       ...recentInterventions.map(i => ({

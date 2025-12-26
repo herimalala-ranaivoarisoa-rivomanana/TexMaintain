@@ -14,8 +14,41 @@ const { MaintenanceWorker } = require('../models/MaintenanceWorker.js');
 const { Machinist } = require('../models/Machinist.js');
 const { ProductionLine } = require('../models/ProductionLine.js');
 const { ProductionSection } = require('../models/ProductionSection.js');
+const { ProcessArea } = require('../models/ProcessArea.js');
+const { ProcessDepartment } = require('../models/ProcessDepartment.js');
+const { Factory } = require('../models/Factory.js');
 
 class SeedService {
+  static async clearDatabase() {
+    try {
+      console.log('🧹 Clearing database (except Users and Factories)...');
+
+      // Clear operational data
+      await Promise.all([
+        Equipment.deleteMany({}),
+        Intervention.deleteMany({}),
+        Project.deleteMany({}),
+        ProcessArea.deleteMany({}),
+        ProcessDepartment.deleteMany({}),
+        Part.deleteMany({}),
+        EquipmentCategory.deleteMany({}),
+        EquipmentType.deleteMany({}),
+        Brand.deleteMany({}),
+        ProductionLine.deleteMany({}),
+        ProductionSection.deleteMany({}),
+        Mechanic.deleteMany({}),
+        Electrician.deleteMany({}),
+        MaintenanceWorker.deleteMany({}),
+        Machinist.deleteMany({})
+      ]);
+
+      console.log('✅ Database cleared successfully.');
+    } catch (error) {
+      console.error('❌ Error clearing database:', error);
+      throw error;
+    }
+  }
+
   static async seedAdminUser() {
     try {
       console.log('Starting admin user seeding...');
@@ -59,6 +92,55 @@ class SeedService {
     } catch (error) {
       console.error('Error seeding admin user:', error);
       throw new Error(`Failed to seed admin user: ${error.message}`);
+    }
+  }
+
+  static async seedFactories() {
+    try {
+      console.log('Starting factories seeding...');
+
+      const factoriesData = [
+        { name: 'TANA', code: 'TANA', address: 'Antananarivo' },
+        { name: 'TANA WASH PLANT', code: 'TANA_WASH', address: 'Antananarivo' },
+        { name: 'ANTSIRABE-1', code: 'ANTSIRABE-1', address: 'Antsirabe' },
+        { name: 'ANTSIRABE-1 WHASH PLANT', code: 'ANTSIRABE-1_WASH', address: 'Antsirabe' },
+        { name: 'ANTSIRABE-2', code: 'ANTSIRABE-2', address: 'Antsirabe' },
+        { name: 'ANTSIRABE-2 WHASH PLANT', code: 'ANTSIRABE-2_WASH', address: 'Antsirabe' },
+        { name: 'DEEPING', code: 'DEEPING', address: 'Unknown' }
+      ];
+
+      const createdFactories = [];
+      let skippedCount = 0;
+
+      for (const fData of factoriesData) {
+        const existing = await Factory.findOne({ code: fData.code });
+        if (existing) {
+          console.log(`Factory already exists: ${fData.name}`);
+          createdFactories.push(existing); // Keep existing ones in list for downstream use
+          skippedCount++;
+          continue;
+        }
+
+        const factory = new Factory({
+          ...fData,
+          description: `Factory location for ${fData.name}`
+        });
+        await factory.save();
+        createdFactories.push(factory);
+        console.log(`Factory created: ${factory.name}`);
+      }
+
+      console.log(`Factories seeding completed. Created: ${createdFactories.length - skippedCount}, Skipped: ${skippedCount}`);
+
+      return {
+        success: true,
+        created: createdFactories,
+        skipped: skippedCount
+      };
+
+    } catch (error) {
+      console.error('Error seeding factories:', error);
+      throw new Error(`Failed to seed factories: ${error.message}`);
     }
   }
 
@@ -317,103 +399,123 @@ class SeedService {
         };
       };
 
+      // Update equipment seeding to distribute across factories
+      const factories = await Factory.find();
+      if (factories.length === 0) {
+        console.warn('No factories found during equipment seeding. Defaulting to legacy behavior if possible.');
+      }
+
       const equipmentData = [];
-      let sectionIndex = 0;
 
-      console.log(`Processing ${SPECIFIC_MODELS.length} specific models...`);
+      // We want to create equipment for EACH factory effectively
+      // Or distribute the specific models across factories
+      // Let's create a set of equipment for each factory's process areas
 
-      for (const modelName of SPECIFIC_MODELS) {
-        // Find existing Category, Type, Brand
-        const details = getDetailsFromModel(modelName);
+      console.log(`Processing equipment for ${factories.length} factories...`);
 
-        let category = categories.find(c => c.key === details.categoryKey);
-        if (!category) category = categories.find(c => c.name.toLowerCase().includes(details.categoryKey)) || categories[0];
+      for (const factory of factories) {
+        // Find departments belonging to this factory
+        const factoryAreas = await ProcessArea.find({ factory: factory._id });
+        const factoryAreaIds = factoryAreas.map(l => l._id);
 
-        let type = types.find(t => t.key === details.typeKey);
-        if (!type) type = types.find(t => t.name.toLowerCase().includes(details.typeKey)) || types[0];
+        const factoryDepartments = await ProcessDepartment.find({ processArea: { $in: factoryAreaIds } });
 
-        let brand = brands.find(b => b.name === details.brandName);
-        if (!brand) brand = brands[0];
-
-        const serialNumber = `${modelName.substring(0, 3)}-${Math.floor(Math.random() * 100000)}`;
-
-        // Status distribution
-        let status = 'in_production';
-        const rand = Math.random();
-        if (rand > 0.90) status = 'breakdown';
-        else if (rand > 0.80) status = 'scheduled_maintenance';
-
-        // Assign to a section
-        let location = 'Antsirabe-1';
-        let assignedSection = null;
-        let assignedLineId = null;
-
-        if (sections.length > 0) {
-          assignedSection = sections[sectionIndex % sections.length];
-          assignedLineId = assignedSection.productionLine ? assignedSection.productionLine._id : null;
-          // location = 'Antsirabe-1'; // Already set
-          sectionIndex++;
+        if (factoryDepartments.length === 0) {
+          console.log(`No departments found for factory ${factory.name}, skipping equipment generation for it.`);
+          continue;
         }
 
-        // Generate lifecycle
-        const acquisitionDate = new Date(Date.now() - Math.floor(Math.random() * 1500 * 24 * 60 * 60 * 1000)); // 0-4 years
-        const metrics = generateMetrics(acquisitionDate);
+        let deptIndex = 0;
 
-        equipmentData.push({
-          name: `${details.brandName} ${modelName}`,
-          code: `EQ-${modelName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)}-${Math.floor(Math.random() * 99999)}`,
-          category: category._id,
-          type: type._id,
-          status: status,
-          location: location,
-          productionLine: assignedLineId,
-          productionSection: assignedSection ? assignedSection._id : null,
-          model: modelName,
-          brand: brand._id,
-          manufacturer: details.brandName,
-          serialNumber: serialNumber,
-          acquisitionDate: acquisitionDate,
-          lastMaintenance: new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)),
-          nextMaintenance: new Date(Date.now() + Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)),
+        // Generate a subset of equipment for this factory
+        const factoryModels = SPECIFIC_MODELS.filter(() => Math.random() > 0.5); // 50% of models per factory
 
-          // Metrics
-          mtbf: metrics.mtbf,
-          mttr: metrics.mttr,
-          downtime: metrics.downtime,
-          operatingTime: metrics.operatingTime,
-          availability: metrics.availability,
-          timeSinceAcquisition: Math.floor((Date.now() - acquisitionDate) / (1000 * 60 * 60 * 24)),
+        for (const modelName of (factoryModels.length > 0 ? factoryModels : SPECIFIC_MODELS.slice(0, 10))) {
+          const details = getDetailsFromModel(modelName);
 
-          // Internal reference for linking
-          _assignedSection: assignedSection
-        });
+          let category = categories.find(c => c.key === details.categoryKey);
+          if (!category) category = categories.find(c => c.name.toLowerCase().includes(details.categoryKey)) || categories[0];
+
+          let type = types.find(t => t.key === details.typeKey);
+          if (!type) type = types.find(t => t.name.toLowerCase().includes(details.typeKey)) || types[0];
+
+          let brand = brands.find(b => b.name === details.brandName);
+          if (!brand) brand = brands[0];
+
+          const serialNumber = `${factory.code.substring(0, 3)}-${modelName.substring(0, 3)}-${Math.floor(Math.random() * 100000)}`;
+
+          // Status distribution
+          let status = 'in_production';
+          const rand = Math.random();
+          if (rand > 0.90) status = 'breakdown';
+          else if (rand > 0.80) status = 'scheduled_maintenance';
+
+          // Assign to a department in this factory
+          const assignedDept = factoryDepartments[deptIndex % factoryDepartments.length];
+          deptIndex++;
+
+          // Generate lifecycle
+          const acquisitionDate = new Date(Date.now() - Math.floor(Math.random() * 1500 * 24 * 60 * 60 * 1000));
+          const metrics = generateMetrics(acquisitionDate);
+
+          equipmentData.push({
+            name: `${details.brandName} ${modelName}`,
+            code: `EQ-${factory.code}-${modelName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)}-${Math.floor(Math.random() * 9999)}`,
+            category: category._id,
+            type: type._id,
+            status: status,
+            location: factory.name,
+            factory: factory._id,
+            processArea: assignedDept.processArea,
+            processDepartment: assignedDept._id,
+            model: modelName,
+            brand: brand._id,
+            manufacturer: details.brandName,
+            serialNumber: serialNumber,
+            acquisitionDate: acquisitionDate,
+            lastMaintenance: new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)),
+            nextMaintenance: new Date(Date.now() + Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)),
+
+            // Metrics
+            mtbf: metrics.mtbf,
+            mttr: metrics.mttr,
+            downtime: metrics.downtime,
+            operatingTime: metrics.operatingTime,
+            availability: metrics.availability,
+            timeSinceAcquisition: Math.floor((Date.now() - acquisitionDate) / (1000 * 60 * 60 * 24)),
+
+            // Internal reference for linking
+            _assignedDept: assignedDept
+          });
+        }
       }
+
+      console.log(`Generated ${equipmentData.length} equipment entries across factories.`);
 
       const createdEquipment = [];
       let skippedCount = 0;
 
       for (const equipData of equipmentData) {
+        // Check uniqueness by serial number AND factory to be safe (though serial includes factory code now)
         const existingEquipment = await Equipment.findOne({ serialNumber: equipData.serialNumber });
         if (existingEquipment) {
           skippedCount++;
           continue;
         }
 
-        // Extract internal reference
-        const assignedSection = equipData._assignedSection;
-        delete equipData._assignedSection;
+        const assignedDept = equipData._assignedDept;
+        delete equipData._assignedDept;
 
         const equipment = new Equipment(equipData);
         await equipment.save();
         createdEquipment.push(equipment);
 
-        // Update ProductionSection if assigned
-        if (assignedSection) {
-          await ProductionSection.findByIdAndUpdate(assignedSection._id, {
+        if (assignedDept) {
+          await ProcessDepartment.findByIdAndUpdate(assignedDept._id, {
             $push: {
               equipment: {
                 equipmentId: equipment._id,
-                order: assignedSection.equipment.length + 1,
+                order: (assignedDept.equipment?.length || 0) + 1,
                 mtbf: equipment.mtbf,
                 mttr: equipment.mttr,
                 downTime: equipment.downtime,
@@ -439,102 +541,113 @@ class SeedService {
     }
   }
 
-  static async seedProductionLines() {
+  static async seedProcessAreas() {
     try {
-      console.log('Starting process areas seeding...');
+      console.log('Starting process areas seeding (ProcessArea/Department)...');
 
-      const linesData = [
+      // Ensure factories exist
+      const factories = await Factory.find();
+      if (factories.length === 0) {
+        throw new Error('No factories found. Please seed factories first.');
+      }
+
+      const createdAreas = [];
+      let skippedCount = 0;
+
+      // Define standard areas and departments structure to replicate per factory
+      const standardAreas = [
         {
           name: 'Line 1',
-          description: 'Sewing Line 1',
-          status: 'active',
-          sections: ['Front', 'Back', 'Sleeve', 'Cuff']
+          description: 'Production Line 1',
+          type: 'production',
+          departments: ['Preparation', 'Assembly', 'Finishing', 'Quality Control']
         },
         {
           name: 'Line 2',
-          description: 'Sewing Line 2',
-          status: 'active',
-          sections: ['Front', 'Back', 'Sleeve', 'Cuff']
+          description: 'Production Line 2',
+          type: 'production',
+          departments: ['Cutting', 'Sewing', 'Ironing', 'Packing']
         },
         {
           name: 'Line 3',
-          description: 'Sewing Line 3',
-          status: 'active',
-          sections: ['Front', 'Back', 'Sleeve', 'Cuff']
+          description: 'Production Line 3',
+          type: 'production',
+          departments: ['Molding', 'Assembly', 'Testing']
+        },
+        {
+          name: 'Utilities',
+          description: 'Factory Utilities',
+          type: 'utility',
+          departments: ['Power Plant', 'Water Treatment', 'Compressor Room']
         }
       ];
 
-      const createdLines = [];
-      let skippedCount = 0;
+      for (const factory of factories) {
+        console.log(`Seeding process areas for factory: ${factory.name}`);
 
-      for (const lineData of linesData) {
-        const existingLine = await ProductionLine.findOne({ name: lineData.name });
-        if (existingLine) {
-          console.log(`Process Area already exists: ${lineData.name}`);
-          skippedCount++;
-          continue;
-        }
-
-        // Create the line first to get its ID
-        const line = new ProductionLine({
-          name: lineData.name,
-          description: lineData.description,
-          status: lineData.status,
-          sections: [], // Will populate after creating sections
-          stats: {
-            targetOutput: Math.floor(Math.random() * 500) + 1000,
-            actualOutput: Math.floor(Math.random() * 400) + 800,
-            defectCount: Math.floor(Math.random() * 50),
-            shiftDuration: 480,
-            plannedDowntime: 30,
-            lastUpdated: new Date()
+        for (const areaTemplate of standardAreas) {
+          const existingArea = await ProcessArea.findOne({ name: areaTemplate.name, factory: factory._id });
+          if (existingArea) {
+            skippedCount++;
+            createdAreas.push(existingArea);
+            continue;
           }
-        });
-        await line.save();
 
-        // Create sections linked to the line
-        const sectionObjects = [];
-        for (const sectionName of lineData.sections) {
-          const section = new ProductionSection({
-            name: sectionName,
-            description: `${sectionName} section for ${lineData.name}`,
+          const area = new ProcessArea({
+            name: areaTemplate.name,
+            description: `${areaTemplate.description} - ${factory.name}`,
             status: 'active',
-            productionLine: line._id, // Link to the created line
-            equipment: []
+            type: areaTemplate.type,
+            factory: factory._id,
+            stats: {
+              targetOutput: Math.floor(Math.random() * 500) + 1000,
+              actualOutput: Math.floor(Math.random() * 400) + 800,
+              defectCount: Math.floor(Math.random() * 50),
+              shiftDuration: 480,
+              plannedDowntime: 30,
+              lastUpdated: new Date()
+            }
           });
-          await section.save();
+          await area.save();
 
-          sectionObjects.push({
-            sectionId: section._id,
-            order: sectionObjects.length + 1
-          });
+          // Create departments
+          const deptObjects = [];
+          for (const deptName of areaTemplate.departments) {
+            const department = new ProcessDepartment({
+              name: deptName,
+              description: `${deptName} - ${areaTemplate.name} (${factory.name})`,
+              processArea: area._id,
+              equipment: []
+            });
+            await department.save();
+
+            deptObjects.push({
+              departmentId: department._id,
+              order: deptObjects.length + 1
+            });
+          }
+
+          area.departments = deptObjects;
+          await area.save();
+
+          createdAreas.push(area);
+          console.log(`Created Process Area ${area.name} for ${factory.name}`);
         }
-
-        // Update the line with the created sections
-        line.sections = sectionObjects;
-        await line.save();
-
-        // Update sections with production line ID
-        for (const sec of sectionObjects) {
-          await ProductionSection.findByIdAndUpdate(sec.sectionId, { productionLine: line._id });
-        }
-
-        createdLines.push(line);
-        console.log(`Process Area created: ${line.name}`);
       }
 
-      console.log(`Process areas seeding completed. Created: ${createdLines.length}, Skipped: ${skippedCount}`);
+      console.log(`Process areas seeding completed. Created: ${createdAreas.length - skippedCount}, Skipped: ${skippedCount}`);
 
       return {
         success: true,
-        message: `Process areas seeding completed. Created: ${createdLines.length}, Skipped: ${skippedCount}`,
-        created: createdLines,
+        message: `Process areas seeding completed.`,
+        created: createdAreas,
         skipped: skippedCount
       };
 
+
     } catch (error) {
       console.error('Error seeding process areas:', error);
-      throw new Error(`Failed to seed process areas: ${error.message}`);
+      throw new Error(`Failed to seed process areas: ${error.message} `);
     }
   }
 
@@ -542,1424 +655,1442 @@ class SeedService {
     try {
       console.log('Starting parts seeding...');
 
-      const partsData = [
-        // PIÈCES DE RECHANGE (41 pièces)
-        {
-          name: 'V-Belt Type A',
-          partNumber: 'VB-A-001',
-          category: 'Belts',
-          type: 'part',
-          currentStock: 15,
-          minStock: 10,
-          maxStock: 50,
-          unitPrice: 25.50,
-          supplier: 'Industrial Parts Co.',
-          location: 'Warehouse A-1',
-          pendingOrders: [
-            { quantity: 20, status: 'ordered', orderDate: new Date(), expectedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
-          ],
-          pendingQuantity: 20
-        },
-        {
-          name: 'V-Belt Type B',
-          partNumber: 'VB-B-002',
-          category: 'Belts',
-          type: 'part',
-          currentStock: 8,
-          minStock: 12,
-          maxStock: 40,
-          unitPrice: 28.75,
-          supplier: 'Industrial Parts Co.',
-          location: 'Warehouse A-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Timing Belt XL',
-          partNumber: 'TB-XL-003',
-          category: 'Belts',
-          type: 'part',
-          currentStock: 22,
-          minStock: 15,
-          maxStock: 60,
-          unitPrice: 35.00,
-          supplier: 'Precision Parts Ltd.',
-          location: 'Warehouse A-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Bearing 6205',
-          partNumber: 'BR-6205',
-          category: 'Bearings',
-          type: 'part',
-          currentStock: 5,
-          minStock: 8,
-          maxStock: 30,
-          unitPrice: 12.75,
-          supplier: 'Bearing Solutions Ltd.',
-          location: 'Warehouse A-2',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Bearing 6306',
-          partNumber: 'BR-6306',
-          category: 'Bearings',
-          type: 'part',
-          currentStock: 12,
-          minStock: 6,
-          maxStock: 25,
-          unitPrice: 18.50,
-          supplier: 'Bearing Solutions Ltd.',
-          location: 'Warehouse A-2',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Ball Bearing 608',
-          partNumber: 'BR-608',
-          category: 'Bearings',
-          type: 'part',
-          currentStock: 35,
-          minStock: 20,
-          maxStock: 100,
-          unitPrice: 8.25,
-          supplier: 'Bearing Solutions Ltd.',
-          location: 'Warehouse A-2',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Tapered Roller Bearing',
-          partNumber: 'BR-TRB-001',
-          category: 'Bearings',
-          type: 'part',
-          currentStock: 7,
-          minStock: 10,
-          maxStock: 35,
-          unitPrice: 45.00,
-          supplier: 'Heavy Duty Parts Inc.',
-          location: 'Warehouse A-2',
-          pendingOrders: [
-            { quantity: 15, status: 'pending', orderDate: new Date(), expectedDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000) }
-          ],
-          pendingQuantity: 15
-        },
-        {
-          name: 'Motor 3-Phase 2HP',
-          partNumber: 'MOT-3PH-2HP',
-          category: 'Motors',
-          type: 'part',
-          currentStock: 3,
-          minStock: 2,
-          maxStock: 8,
-          unitPrice: 285.00,
-          supplier: 'Electric Motors Co.',
-          location: 'Warehouse B-3',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Servo Motor 750W',
-          partNumber: 'MOT-SRV-750W',
-          category: 'Motors',
-          type: 'part',
-          currentStock: 4,
-          minStock: 3,
-          maxStock: 12,
-          unitPrice: 450.00,
-          supplier: 'Automation Parts Ltd.',
-          location: 'Warehouse B-3',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'DC Motor 12V',
-          partNumber: 'MOT-DC-12V',
-          category: 'Motors',
-          type: 'part',
-          currentStock: 8,
-          minStock: 5,
-          maxStock: 20,
-          unitPrice: 65.00,
-          supplier: 'Small Motors Inc.',
-          location: 'Warehouse B-3',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Centrifugal Pump',
-          partNumber: 'PMP-CF-001',
-          category: 'Pumps',
-          type: 'part',
-          currentStock: 2,
-          minStock: 1,
-          maxStock: 5,
-          unitPrice: 320.00,
-          supplier: 'Pump Systems Ltd.',
-          location: 'Warehouse C-2',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Gear Pump 5GPM',
-          partNumber: 'PMP-GR-5GPM',
-          category: 'Pumps',
-          type: 'part',
-          currentStock: 6,
-          minStock: 4,
-          maxStock: 15,
-          unitPrice: 185.00,
-          supplier: 'Industrial Pumps Co.',
-          location: 'Warehouse C-2',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Solenoid Valve 1/2"',
-          partNumber: 'VAL-SOL-12',
-          category: 'Valves',
-          type: 'part',
-          currentStock: 18,
-          minStock: 12,
-          maxStock: 50,
-          unitPrice: 45.00,
-          supplier: 'Valve Specialists Inc.',
-          location: 'Warehouse D-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Ball Valve 3/4"',
-          partNumber: 'VAL-BALL-34',
-          category: 'Valves',
-          type: 'part',
-          currentStock: 25,
-          minStock: 15,
-          maxStock: 75,
-          unitPrice: 22.50,
-          supplier: 'Valve Specialists Inc.',
-          location: 'Warehouse D-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Pressure Relief Valve',
-          partNumber: 'VAL-PRV-100',
-          category: 'Valves',
-          type: 'part',
-          currentStock: 9,
-          minStock: 6,
-          maxStock: 25,
-          unitPrice: 78.00,
-          supplier: 'Safety Valves Ltd.',
-          location: 'Warehouse D-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'HEPA Filter 24x24',
-          partNumber: 'FLT-HEPA-2424',
-          category: 'Filters',
-          type: 'part',
-          currentStock: 12,
-          minStock: 8,
-          maxStock: 30,
-          unitPrice: 85.00,
-          supplier: 'Air Filtration Systems',
-          location: 'Warehouse E-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Oil Filter Element',
-          partNumber: 'FLT-OIL-ELEM',
-          category: 'Filters',
-          type: 'part',
-          currentStock: 45,
-          minStock: 30,
-          maxStock: 120,
-          unitPrice: 12.00,
-          supplier: 'Filter Tech Inc.',
-          location: 'Warehouse E-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Air Filter Cartridge',
-          partNumber: 'FLT-AIR-CART',
-          category: 'Filters',
-          type: 'part',
-          currentStock: 28,
-          minStock: 20,
-          maxStock: 80,
-          unitPrice: 18.50,
-          supplier: 'Air Filtration Systems',
-          location: 'Warehouse E-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Temperature Sensor PT100',
-          partNumber: 'SEN-TEMP-PT100',
-          category: 'Sensors',
-          type: 'part',
-          currentStock: 20,
-          minStock: 15,
-          maxStock: 60,
-          unitPrice: 35.00,
-          supplier: 'Sensor Solutions Ltd.',
-          location: 'Warehouse F-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Proximity Sensor M18',
-          partNumber: 'SEN-PROX-M18',
-          category: 'Sensors',
-          type: 'part',
-          currentStock: 32,
-          minStock: 25,
-          maxStock: 100,
-          unitPrice: 28.00,
-          supplier: 'Sensor Solutions Ltd.',
-          location: 'Warehouse F-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Pressure Transducer 0-10bar',
-          partNumber: 'SEN-PRESS-10BAR',
-          category: 'Sensors',
-          type: 'part',
-          currentStock: 14,
-          minStock: 10,
-          maxStock: 40,
-          unitPrice: 95.00,
-          supplier: 'Process Sensors Inc.',
-          location: 'Warehouse F-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Linear Actuator 100mm',
-          partNumber: 'ACT-LIN-100MM',
-          category: 'Actuators',
-          type: 'part',
-          currentStock: 5,
-          minStock: 3,
-          maxStock: 12,
-          unitPrice: 180.00,
-          supplier: 'Motion Control Systems',
-          location: 'Warehouse G-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Pneumatic Cylinder 50mm',
-          partNumber: 'ACT-PNEU-50MM',
-          category: 'Actuators',
-          type: 'part',
-          currentStock: 12,
-          minStock: 8,
-          maxStock: 35,
-          unitPrice: 75.00,
-          supplier: 'Pneumatic Solutions Ltd.',
-          location: 'Warehouse G-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Stepper Motor NEMA23',
-          partNumber: 'ACT-STEP-N23',
-          category: 'Actuators',
-          type: 'part',
-          currentStock: 8,
-          minStock: 5,
-          maxStock: 20,
-          unitPrice: 120.00,
-          supplier: 'Motion Control Systems',
-          location: 'Warehouse G-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'USB Cable Type A-B',
-          partNumber: 'CAB-USB-AB',
-          category: 'Cables',
-          type: 'part',
-          currentStock: 50,
-          minStock: 30,
-          maxStock: 150,
-          unitPrice: 8.50,
-          supplier: 'Cable Specialists Inc.',
-          location: 'Warehouse H-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Ethernet Cable Cat6 1m',
-          partNumber: 'CAB-ETH-C6-1M',
-          category: 'Cables',
-          type: 'part',
-          currentStock: 75,
-          minStock: 40,
-          maxStock: 200,
-          unitPrice: 12.00,
-          supplier: 'Network Cables Ltd.',
-          location: 'Warehouse H-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Power Cable 3-Core',
-          partNumber: 'CAB-PWR-3C',
-          category: 'Cables',
-          type: 'part',
-          currentStock: 30,
-          minStock: 20,
-          maxStock: 80,
-          unitPrice: 15.50,
-          supplier: 'Electrical Supplies Co.',
-          location: 'Warehouse H-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Terminal Block 10-Pole',
-          partNumber: 'CONN-TB-10P',
-          category: 'Connectors',
-          type: 'part',
-          currentStock: 40,
-          minStock: 25,
-          maxStock: 120,
-          unitPrice: 6.50,
-          supplier: 'Electrical Connectors Ltd.',
-          location: 'Warehouse I-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'RJ45 Connector',
-          partNumber: 'CONN-RJ45',
-          category: 'Connectors',
-          type: 'part',
-          currentStock: 100,
-          minStock: 60,
-          maxStock: 300,
-          unitPrice: 2.25,
-          supplier: 'Network Connectors Inc.',
-          location: 'Warehouse I-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Relay SPDT 12V',
-          partNumber: 'SW-RLY-SPDT-12V',
-          category: 'Switches',
-          type: 'part',
-          currentStock: 35,
-          minStock: 20,
-          maxStock: 100,
-          unitPrice: 8.75,
-          supplier: 'Electronic Components Ltd.',
-          location: 'Warehouse J-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Limit Switch Roller',
-          partNumber: 'SW-LMT-RLR',
-          category: 'Switches',
-          type: 'part',
-          currentStock: 22,
-          minStock: 15,
-          maxStock: 60,
-          unitPrice: 18.50,
-          supplier: 'Switch Specialists Inc.',
-          location: 'Warehouse J-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Push Button Switch',
-          partNumber: 'SW-PB-RED',
-          category: 'Switches',
-          type: 'part',
-          currentStock: 55,
-          minStock: 30,
-          maxStock: 150,
-          unitPrice: 5.25,
-          supplier: 'Control Components Ltd.',
-          location: 'Warehouse J-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Arduino Mega 2560',
-          partNumber: 'PCB-ARD-MEGA',
-          category: 'Circuit Boards',
-          type: 'part',
-          currentStock: 8,
-          minStock: 5,
-          maxStock: 20,
-          unitPrice: 45.00,
-          supplier: 'Electronics Warehouse',
-          location: 'Warehouse K-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Raspberry Pi 4B',
-          partNumber: 'PCB-RPI-4B',
-          category: 'Circuit Boards',
-          type: 'part',
-          currentStock: 6,
-          minStock: 4,
-          maxStock: 15,
-          unitPrice: 85.00,
-          supplier: 'Raspberry Pi Store',
-          location: 'Warehouse K-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Screw M8x50 Hex',
-          partNumber: 'FST-SCR-M8X50',
-          category: 'Fasteners',
-          type: 'part',
-          currentStock: 200,
-          minStock: 100,
-          maxStock: 500,
-          unitPrice: 0.75,
-          supplier: 'Fastener Supply Co.',
-          location: 'Warehouse L-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Nut M8 Hex',
-          partNumber: 'FST-NUT-M8',
-          category: 'Fasteners',
-          type: 'part',
-          currentStock: 300,
-          minStock: 150,
-          maxStock: 800,
-          unitPrice: 0.25,
-          supplier: 'Fastener Supply Co.',
-          location: 'Warehouse L-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Washer M8 Flat',
-          partNumber: 'FST-WSH-M8-FLAT',
-          category: 'Fasteners',
-          type: 'part',
-          currentStock: 400,
-          minStock: 200,
-          maxStock: 1000,
-          unitPrice: 0.15,
-          supplier: 'Fastener Supply Co.',
-          location: 'Warehouse L-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Hammer 16oz',
-          partNumber: 'TOOL-HMR-16OZ',
-          category: 'Tools',
-          type: 'part',
-          currentStock: 12,
-          minStock: 8,
-          maxStock: 30,
-          unitPrice: 25.00,
-          supplier: 'Tool Masters Inc.',
-          location: 'Warehouse M-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Screwdriver Set 10pc',
-          partNumber: 'TOOL-SDR-10PC',
-          category: 'Tools',
-          type: 'part',
-          currentStock: 18,
-          minStock: 12,
-          maxStock: 45,
-          unitPrice: 35.00,
-          supplier: 'Tool Masters Inc.',
-          location: 'Warehouse M-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Digital Multimeter',
-          partNumber: 'TOOL-DMM-BASIC',
-          category: 'Tools',
-          type: 'part',
-          currentStock: 7,
-          minStock: 5,
-          maxStock: 20,
-          unitPrice: 65.00,
-          supplier: 'Electrical Tools Ltd.',
-          location: 'Warehouse M-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Maintenance Tool Kit',
-          partNumber: 'TOOL-KIT-MAINT',
-          category: 'Maintenance Equipment',
-          type: 'part',
-          currentStock: 5,
-          minStock: 3,
-          maxStock: 12,
-          unitPrice: 180.00,
-          supplier: 'Maintenance Supplies Co.',
-          location: 'Warehouse N-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Calibration Kit',
-          partNumber: 'MAINT-CAL-KIT',
-          category: 'Maintenance Equipment',
-          type: 'part',
-          currentStock: 4,
-          minStock: 2,
-          maxStock: 10,
-          unitPrice: 250.00,
-          supplier: 'Precision Instruments Ltd.',
-          location: 'Warehouse N-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Needle Set 70/10',
-          partNumber: 'NEEDLE-7010',
-          category: 'Sewing Supplies',
-          type: 'part',
-          currentStock: 100,
-          minStock: 50,
-          maxStock: 200,
-          unitPrice: 2.50,
-          supplier: 'Sewing Parts Inc.',
-          location: 'Warehouse O-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Bobbin Case Assembly',
-          partNumber: 'SEW-BOB-CASE',
-          category: 'Sewing Supplies',
-          type: 'part',
-          currentStock: 25,
-          minStock: 15,
-          maxStock: 60,
-          unitPrice: 45.00,
-          supplier: 'Sewing Parts Inc.',
-          location: 'Warehouse O-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Cutting Blade 8"',
-          partNumber: 'CUT-BLADE-8IN',
-          category: 'Cutting Tools',
-          type: 'part',
-          currentStock: 15,
-          minStock: 10,
-          maxStock: 40,
-          unitPrice: 28.00,
-          supplier: 'Cutting Tools Specialists',
-          location: 'Warehouse P-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Rotary Cutter 45mm',
-          partNumber: 'CUT-ROT-45MM',
-          category: 'Cutting Tools',
-          type: 'part',
-          currentStock: 20,
-          minStock: 12,
-          maxStock: 50,
-          unitPrice: 35.00,
-          supplier: 'Fabric Cutting Supplies',
-          location: 'Warehouse P-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
+      const factories = await Factory.find();
+      if (factories.length === 0) throw new Error('No factories found. Seed factories first.');
 
-        // IRONING / BUCKPRESS PARTS (Repassage)
-        {
-          name: 'Solenoid Valve Steam 24V',
-          partNumber: 'VLV-STM-24V',
-          category: 'Valves',
-          type: 'part',
-          currentStock: 10,
-          minStock: 4,
-          maxStock: 25,
-          unitPrice: 45.00,
-          supplier: 'Hashima Parts',
-          location: 'Shelf H-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Teflon Shoe HP-450',
-          partNumber: 'SHOE-TEF-450',
-          category: 'Consumables',
-          type: 'consumable',
-          currentStock: 15,
-          minStock: 5,
-          maxStock: 40,
-          unitPrice: 22.00,
-          supplier: 'Ironing Supplies',
-          location: 'Cabinet I-2',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Press Padding Upper (Felt)',
-          partNumber: 'PAD-UP-FELT',
-          category: 'Consumables',
-          type: 'consumable',
-          currentStock: 8,
-          minStock: 3,
-          maxStock: 20,
-          unitPrice: 35.00,
-          supplier: 'Macpi Genuine',
-          location: 'Rack J-3',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Steam Hose High Temp 5m',
-          partNumber: 'HOSE-STM-HI-5M',
-          category: 'Hoses',
-          type: 'part',
-          currentStock: 12,
-          minStock: 5,
-          maxStock: 30,
-          unitPrice: 18.50,
-          supplier: 'Industrial Hoses',
-          location: 'Shelf K-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Ironing Table Cover',
-          partNumber: 'CVR-TBL-STD',
-          category: 'Consumables',
-          type: 'consumable',
-          currentStock: 20,
-          minStock: 10,
-          maxStock: 60,
-          unitPrice: 12.00,
-          supplier: 'Ironing Supplies',
-          location: 'Rack J-4',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-
-        // ELECTRICAL & SOLENOIDSOMMABLES (44 pièces)
-        {
-          name: 'Motor Oil SAE 30',
-          partNumber: 'OIL-SAE30',
-          category: 'Lubricants',
-          type: 'consumable',
-          currentStock: 25,
-          minStock: 15,
-          maxStock: 100,
-          unitPrice: 8.90,
-          supplier: 'Lubricant Express',
-          location: 'Warehouse B-1',
-          pendingOrders: [
-            { quantity: 50, status: 'pending', orderDate: new Date(), expectedDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) }
-          ],
-          pendingQuantity: 50
-        },
-        {
-          name: 'Grease NLGI 2',
-          partNumber: 'GREASE-NLGI2',
-          category: 'Lubricants',
-          type: 'consumable',
-          currentStock: 12,
-          minStock: 20,
-          maxStock: 80,
-          unitPrice: 15.75,
-          supplier: 'Lubricant Express',
-          location: 'Warehouse B-2',
-          pendingOrders: [
-            { quantity: 30, status: 'ordered', orderDate: new Date(), expectedDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) }
-          ],
-          pendingQuantity: 30
-        },
-        {
-          name: 'Hydraulic Oil ISO 46',
-          partNumber: 'OIL-HYD-ISO46',
-          category: 'Lubricants',
-          type: 'consumable',
-          currentStock: 18,
-          minStock: 25,
-          maxStock: 90,
-          unitPrice: 22.50,
-          supplier: 'Industrial Lubricants Ltd.',
-          location: 'Warehouse B-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Gear Oil 80W-90',
-          partNumber: 'OIL-GEAR-8090',
-          category: 'Lubricants',
-          type: 'consumable',
-          currentStock: 30,
-          minStock: 20,
-          maxStock: 120,
-          unitPrice: 18.25,
-          supplier: 'Gear Lubricants Inc.',
-          location: 'Warehouse B-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Transmission Fluid ATF',
-          partNumber: 'OIL-TRNS-ATF',
-          category: 'Lubricants',
-          type: 'consumable',
-          currentStock: 22,
-          minStock: 15,
-          maxStock: 85,
-          unitPrice: 16.75,
-          supplier: 'Auto Fluids Supply',
-          location: 'Warehouse B-2',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Cutting Oil Synthetic',
-          partNumber: 'OIL-CUT-SYN',
-          category: 'Lubricants',
-          type: 'consumable',
-          currentStock: 35,
-          minStock: 25,
-          maxStock: 150,
-          unitPrice: 12.50,
-          supplier: 'Metalworking Lubricants',
-          location: 'Warehouse B-2',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Compressor Oil 10W',
-          partNumber: 'OIL-COMP-10W',
-          category: 'Oils',
-          type: 'consumable',
-          currentStock: 28,
-          minStock: 20,
-          maxStock: 100,
-          unitPrice: 19.75,
-          supplier: 'Compressor Specialists',
-          location: 'Warehouse Q-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Transformer Oil',
-          partNumber: 'OIL-TRNSFRM',
-          category: 'Oils',
-          type: 'consumable',
-          currentStock: 15,
-          minStock: 10,
-          maxStock: 50,
-          unitPrice: 45.00,
-          supplier: 'Electrical Oils Ltd.',
-          location: 'Warehouse Q-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Silicone Oil 100cSt',
-          partNumber: 'OIL-SIL-100CST',
-          category: 'Oils',
-          type: 'consumable',
-          currentStock: 20,
-          minStock: 12,
-          maxStock: 75,
-          unitPrice: 28.50,
-          supplier: 'Specialty Oils Co.',
-          location: 'Warehouse Q-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'White Lithium Grease',
-          partNumber: 'GREASE-WHT-LITH',
-          category: 'Greases',
-          type: 'consumable',
-          currentStock: 40,
-          minStock: 25,
-          maxStock: 150,
-          unitPrice: 8.75,
-          supplier: 'Grease Manufacturers Inc.',
-          location: 'Warehouse R-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'High Temp Grease',
-          partNumber: 'GREASE-HT-500',
-          category: 'Greases',
-          type: 'consumable',
-          currentStock: 18,
-          minStock: 15,
-          maxStock: 60,
-          unitPrice: 24.00,
-          supplier: 'Industrial Greases Ltd.',
-          location: 'Warehouse R-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Food Grade Grease',
-          partNumber: 'GREASE-FOOD-H1',
-          category: 'Greases',
-          type: 'consumable',
-          currentStock: 12,
-          minStock: 8,
-          maxStock: 40,
-          unitPrice: 35.00,
-          supplier: 'Food Safe Lubricants',
-          location: 'Warehouse R-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Coolant Ethylene Glycol',
-          partNumber: 'COOL-ETH-GLYCOL',
-          category: 'Coolants',
-          type: 'consumable',
-          currentStock: 45,
-          minStock: 30,
-          maxStock: 180,
-          unitPrice: 14.25,
-          supplier: 'Cooling Solutions Inc.',
-          location: 'Warehouse S-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Coolant Propylene Glycol',
-          partNumber: 'COOL-PROP-GLYCOL',
-          category: 'Coolants',
-          type: 'consumable',
-          currentStock: 32,
-          minStock: 25,
-          maxStock: 120,
-          unitPrice: 16.50,
-          supplier: 'Cooling Solutions Inc.',
-          location: 'Warehouse S-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Isopropyl Alcohol 99%',
-          partNumber: 'CLN-IPA-99PCT',
-          category: 'Cleaning Agents',
-          type: 'consumable',
-          currentStock: 60,
-          minStock: 40,
-          maxStock: 200,
-          unitPrice: 12.00,
-          supplier: 'Chemical Cleaners Ltd.',
-          location: 'Warehouse T-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Degreaser Heavy Duty',
-          partNumber: 'CLN-DEGR-HD',
-          category: 'Cleaning Agents',
-          type: 'consumable',
-          currentStock: 25,
-          minStock: 15,
-          maxStock: 80,
-          unitPrice: 18.75,
-          supplier: 'Industrial Cleaners Co.',
-          location: 'Warehouse T-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Contact Cleaner Spray',
-          partNumber: 'CLN-CONTACT',
-          category: 'Cleaning Agents',
-          type: 'consumable',
-          currentStock: 40,
-          minStock: 25,
-          maxStock: 120,
-          unitPrice: 9.50,
-          supplier: 'Electronic Cleaners Inc.',
-          location: 'Warehouse T-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Epoxy Adhesive 5min',
-          partNumber: 'ADH-EPOXY-5MIN',
-          category: 'Adhesives',
-          type: 'consumable',
-          currentStock: 35,
-          minStock: 20,
-          maxStock: 100,
-          unitPrice: 15.25,
-          supplier: 'Adhesive Technologies',
-          location: 'Warehouse U-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Super Glue Gel',
-          partNumber: 'ADH-SUPER-GEL',
-          category: 'Adhesives',
-          type: 'consumable',
-          currentStock: 50,
-          minStock: 30,
-          maxStock: 150,
-          unitPrice: 6.50,
-          supplier: 'Fast Bond Adhesives',
-          location: 'Warehouse U-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Threadlocker Blue',
-          partNumber: 'ADH-THRD-BLUE',
-          category: 'Adhesives',
-          type: 'consumable',
-          currentStock: 28,
-          minStock: 15,
-          maxStock: 80,
-          unitPrice: 12.00,
-          supplier: 'Thread Sealing Solutions',
-          location: 'Warehouse U-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'RTV Silicone Sealant',
-          partNumber: 'SEAL-RTV-SIL',
-          category: 'Sealants',
-          type: 'consumable',
-          currentStock: 42,
-          minStock: 25,
-          maxStock: 120,
-          unitPrice: 8.75,
-          supplier: 'Sealant Specialists',
-          location: 'Warehouse V-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Gasket Maker Anaerobic',
-          partNumber: 'SEAL-GKT-ANA',
-          category: 'Sealants',
-          type: 'consumable',
-          currentStock: 18,
-          minStock: 12,
-          maxStock: 60,
-          unitPrice: 22.50,
-          supplier: 'Gasket Solutions Ltd.',
-          location: 'Warehouse V-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Pipe Thread Sealant',
-          partNumber: 'SEAL-PTHR-TAPE',
-          category: 'Sealants',
-          type: 'consumable',
-          currentStock: 65,
-          minStock: 40,
-          maxStock: 200,
-          unitPrice: 5.25,
-          supplier: 'Pipe Sealing Experts',
-          location: 'Warehouse V-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Spray Paint Black',
-          partNumber: 'PAINT-SPR-BLK',
-          category: 'Paints',
-          type: 'consumable',
-          currentStock: 30,
-          minStock: 15,
-          maxStock: 90,
-          unitPrice: 11.50,
-          supplier: 'Industrial Paints Co.',
-          location: 'Warehouse W-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Rust Preventive Spray',
-          partNumber: 'PAINT-RUST-PREV',
-          category: 'Paints',
-          type: 'consumable',
-          currentStock: 22,
-          minStock: 12,
-          maxStock: 70,
-          unitPrice: 16.75,
-          supplier: 'Corrosion Protection Ltd.',
-          location: 'Warehouse W-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Primer Metal',
-          partNumber: 'PAINT-PRIM-METAL',
-          category: 'Paints',
-          type: 'consumable',
-          currentStock: 15,
-          minStock: 10,
-          maxStock: 50,
-          unitPrice: 19.00,
-          supplier: 'Metal Primers Inc.',
-          location: 'Warehouse W-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Clear Coat Spray',
-          partNumber: 'COAT-CLEAR-SPR',
-          category: 'Coatings',
-          type: 'consumable',
-          currentStock: 25,
-          minStock: 15,
-          maxStock: 75,
-          unitPrice: 14.25,
-          supplier: 'Coating Specialists',
-          location: 'Warehouse X-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Anti-Corrosion Coating',
-          partNumber: 'COAT-ANTI-CORR',
-          category: 'Coatings',
-          type: 'consumable',
-          currentStock: 12,
-          minStock: 8,
-          maxStock: 40,
-          unitPrice: 28.50,
-          supplier: 'Corrosion Control Systems',
-          location: 'Warehouse X-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Acetone Technical Grade',
-          partNumber: 'CHEM-ACET-TECH',
-          category: 'Chemicals',
-          type: 'consumable',
-          currentStock: 20,
-          minStock: 10,
-          maxStock: 60,
-          unitPrice: 18.75,
-          supplier: 'Chemical Suppliers Ltd.',
-          location: 'Warehouse Y-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Methanol Pure',
-          partNumber: 'CHEM-METH-PURE',
-          category: 'Chemicals',
-          type: 'consumable',
-          currentStock: 15,
-          minStock: 8,
-          maxStock: 45,
-          unitPrice: 25.00,
-          supplier: 'Lab Chemicals Inc.',
-          location: 'Warehouse Y-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Sodium Hydroxide',
-          partNumber: 'CHEM-NAOH',
-          category: 'Chemicals',
-          type: 'consumable',
-          currentStock: 8,
-          minStock: 5,
-          maxStock: 25,
-          unitPrice: 32.50,
-          supplier: 'Industrial Chemicals Co.',
-          location: 'Warehouse Y-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Toluene Solvent',
-          partNumber: 'SOLV-TOLUENE',
-          category: 'Solvents',
-          type: 'consumable',
-          currentStock: 18,
-          minStock: 12,
-          maxStock: 55,
-          unitPrice: 21.25,
-          supplier: 'Solvent Specialists',
-          location: 'Warehouse Z-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Xylene Mix',
-          partNumber: 'SOLV-XYLENE',
-          category: 'Solvents',
-          type: 'consumable',
-          currentStock: 14,
-          minStock: 10,
-          maxStock: 45,
-          unitPrice: 19.75,
-          supplier: 'Paint Thinners Ltd.',
-          location: 'Warehouse Z-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Diesel Fuel Regular',
-          partNumber: 'FUEL-DIESEL-REG',
-          category: 'Fuels',
-          type: 'consumable',
-          currentStock: 120,
-          minStock: 80,
-          maxStock: 400,
-          unitPrice: 1.85,
-          supplier: 'Fuel Distributors Inc.',
-          location: 'Warehouse AA-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Gasoline Unleaded',
-          partNumber: 'FUEL-GAS-UNL',
-          category: 'Fuels',
-          type: 'consumable',
-          currentStock: 85,
-          minStock: 50,
-          maxStock: 300,
-          unitPrice: 1.95,
-          supplier: 'Petrol Station Supply',
-          location: 'Warehouse AA-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'AA Battery Pack',
-          partNumber: 'BAT-AA-PACK',
-          category: 'Batteries',
-          type: 'consumable',
-          currentStock: 60,
-          minStock: 30,
-          maxStock: 180,
-          unitPrice: 4.25,
-          supplier: 'Battery Wholesale Ltd.',
-          location: 'Warehouse BB-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: '9V Battery',
-          partNumber: 'BAT-9V',
-          category: 'Batteries',
-          type: 'consumable',
-          currentStock: 45,
-          minStock: 25,
-          maxStock: 150,
-          unitPrice: 2.75,
-          supplier: 'Battery Wholesale Ltd.',
-          location: 'Warehouse BB-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Cartridge Toner Black',
-          partNumber: 'CART-TONER-BLK',
-          category: 'Cartridges',
-          type: 'consumable',
-          currentStock: 12,
-          minStock: 8,
-          maxStock: 35,
-          unitPrice: 65.00,
-          supplier: 'Printer Supplies Co.',
-          location: 'Warehouse CC-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Ink Cartridge Color',
-          partNumber: 'CART-INK-COLOR',
-          category: 'Cartridges',
-          type: 'consumable',
-          currentStock: 18,
-          minStock: 12,
-          maxStock: 50,
-          unitPrice: 42.50,
-          supplier: 'Ink Cartridge Specialists',
-          location: 'Warehouse CC-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Duct Tape 2" x 50m',
-          partNumber: 'TAPE-DUCT-2X50',
-          category: 'Tapes',
-          type: 'consumable',
-          currentStock: 35,
-          minStock: 20,
-          maxStock: 100,
-          unitPrice: 8.50,
-          supplier: 'Tape Manufacturers Ltd.',
-          location: 'Warehouse DD-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Electrical Tape Black',
-          partNumber: 'TAPE-ELEC-BLK',
-          category: 'Tapes',
-          type: 'consumable',
-          currentStock: 50,
-          minStock: 30,
-          maxStock: 150,
-          unitPrice: 3.25,
-          supplier: 'Electrical Supplies Co.',
-          location: 'Warehouse DD-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Masking Tape 1"',
-          partNumber: 'TAPE-MASK-1IN',
-          category: 'Tapes',
-          type: 'consumable',
-          currentStock: 40,
-          minStock: 25,
-          maxStock: 120,
-          unitPrice: 2.75,
-          supplier: 'Painting Supplies Inc.',
-          location: 'Warehouse DD-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Hot Glue Sticks 7mm',
-          partNumber: 'GLUE-HOT-7MM',
-          category: 'Glues',
-          type: 'consumable',
-          currentStock: 75,
-          minStock: 40,
-          maxStock: 250,
-          unitPrice: 0.75,
-          supplier: 'Glue Gun Supplies',
-          location: 'Warehouse EE-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'PVC Cement Medium',
-          partNumber: 'GLUE-PVC-MED',
-          category: 'Glues',
-          type: 'consumable',
-          currentStock: 28,
-          minStock: 15,
-          maxStock: 80,
-          unitPrice: 12.50,
-          supplier: 'Pipe Cement Specialists',
-          location: 'Warehouse EE-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'Welding Rod 7018 1/8"',
-          partNumber: 'WELD-ROD-7018',
-          category: 'Welding Supplies',
-          type: 'consumable',
-          currentStock: 45,
-          minStock: 25,
-          maxStock: 150,
-          unitPrice: 5.25,
-          supplier: 'Welding Supply Co.',
-          location: 'Warehouse FF-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        },
-        {
-          name: 'MIG Welding Wire',
-          partNumber: 'WELD-WIRE-MIG',
-          category: 'Welding Supplies',
-          type: 'consumable',
-          currentStock: 30,
-          minStock: 20,
-          maxStock: 100,
-          unitPrice: 8.75,
-          supplier: 'Welding Supply Co.',
-          location: 'Warehouse FF-1',
-          pendingOrders: [],
-          pendingQuantity: 0
-        }
-      ];
-
-      // Inject random low stock and pending orders for dashboard liveliness
-      partsData.forEach(p => {
-        const rand = Math.random();
-        if (rand < 0.15) { // 15% chance of low stock
-          p.currentStock = Math.max(0, Math.floor(p.minStock * 0.5));
-        }
-        if (rand < 0.15) { // 15% chance of pending orders
-          p.pendingOrders.push({
-            quantity: Math.floor(Math.random() * 20) + 5,
-            status: 'ordered',
-            orderDate: new Date(),
-            expectedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-          });
-          p.pendingQuantity = p.pendingOrders.reduce((acc, o) => acc + o.quantity, 0);
-        }
-      });
-
+      let totalCreated = 0;
+      let totalSkipped = 0;
       const createdParts = [];
-      let skippedCount = 0;
 
-      for (const partData of partsData) {
-        const existing = await Part.findOne({ partNumber: partData.partNumber });
-        if (existing) {
-          console.log(`Part already exists: ${partData.partNumber}`);
-          skippedCount++;
-          continue;
+      for (const factory of factories) {
+        console.log(`Seeding parts for factory: ${factory.name}`);
+
+        const partsData = [
+          // PIÈCES DE RECHANGE (41 pièces)
+          {
+            name: 'V-Belt Type A',
+            partNumber: 'VB-A-001',
+            category: 'Belts',
+            type: 'part',
+            currentStock: 15,
+            minStock: 10,
+            maxStock: 50,
+            unitPrice: 25.50,
+            supplier: 'Industrial Parts Co.',
+            location: 'Warehouse A-1',
+            pendingOrders: [
+              { quantity: 20, status: 'ordered', orderDate: new Date(), expectedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
+            ],
+            pendingQuantity: 20
+          },
+          {
+            name: 'V-Belt Type B',
+            partNumber: 'VB-B-002',
+            category: 'Belts',
+            type: 'part',
+            currentStock: 8,
+            minStock: 12,
+            maxStock: 40,
+            unitPrice: 28.75,
+            supplier: 'Industrial Parts Co.',
+            location: 'Warehouse A-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Timing Belt XL',
+            partNumber: 'TB-XL-003',
+            category: 'Belts',
+            type: 'part',
+            currentStock: 22,
+            minStock: 15,
+            maxStock: 60,
+            unitPrice: 35.00,
+            supplier: 'Precision Parts Ltd.',
+            location: 'Warehouse A-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Bearing 6205',
+            partNumber: 'BR-6205',
+            category: 'Bearings',
+            type: 'part',
+            currentStock: 5,
+            minStock: 8,
+            maxStock: 30,
+            unitPrice: 12.75,
+            supplier: 'Bearing Solutions Ltd.',
+            location: 'Warehouse A-2',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Bearing 6306',
+            partNumber: 'BR-6306',
+            category: 'Bearings',
+            type: 'part',
+            currentStock: 12,
+            minStock: 6,
+            maxStock: 25,
+            unitPrice: 18.50,
+            supplier: 'Bearing Solutions Ltd.',
+            location: 'Warehouse A-2',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Ball Bearing 608',
+            partNumber: 'BR-608',
+            category: 'Bearings',
+            type: 'part',
+            currentStock: 35,
+            minStock: 20,
+            maxStock: 100,
+            unitPrice: 8.25,
+            supplier: 'Bearing Solutions Ltd.',
+            location: 'Warehouse A-2',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Tapered Roller Bearing',
+            partNumber: 'BR-TRB-001',
+            category: 'Bearings',
+            type: 'part',
+            currentStock: 7,
+            minStock: 10,
+            maxStock: 35,
+            unitPrice: 45.00,
+            supplier: 'Heavy Duty Parts Inc.',
+            location: 'Warehouse A-2',
+            pendingOrders: [
+              { quantity: 15, status: 'pending', orderDate: new Date(), expectedDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000) }
+            ],
+            pendingQuantity: 15
+          },
+          {
+            name: 'Motor 3-Phase 2HP',
+            partNumber: 'MOT-3PH-2HP',
+            category: 'Motors',
+            type: 'part',
+            currentStock: 3,
+            minStock: 2,
+            maxStock: 8,
+            unitPrice: 285.00,
+            supplier: 'Electric Motors Co.',
+            location: 'Warehouse B-3',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Servo Motor 750W',
+            partNumber: 'MOT-SRV-750W',
+            category: 'Motors',
+            type: 'part',
+            currentStock: 4,
+            minStock: 3,
+            maxStock: 12,
+            unitPrice: 450.00,
+            supplier: 'Automation Parts Ltd.',
+            location: 'Warehouse B-3',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'DC Motor 12V',
+            partNumber: 'MOT-DC-12V',
+            category: 'Motors',
+            type: 'part',
+            currentStock: 8,
+            minStock: 5,
+            maxStock: 20,
+            unitPrice: 65.00,
+            supplier: 'Small Motors Inc.',
+            location: 'Warehouse B-3',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Centrifugal Pump',
+            partNumber: 'PMP-CF-001',
+            category: 'Pumps',
+            type: 'part',
+            currentStock: 2,
+            minStock: 1,
+            maxStock: 5,
+            unitPrice: 320.00,
+            supplier: 'Pump Systems Ltd.',
+            location: 'Warehouse C-2',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Gear Pump 5GPM',
+            partNumber: 'PMP-GR-5GPM',
+            category: 'Pumps',
+            type: 'part',
+            currentStock: 6,
+            minStock: 4,
+            maxStock: 15,
+            unitPrice: 185.00,
+            supplier: 'Industrial Pumps Co.',
+            location: 'Warehouse C-2',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Solenoid Valve 1/2"',
+            partNumber: 'VAL-SOL-12',
+            category: 'Valves',
+            type: 'part',
+            currentStock: 18,
+            minStock: 12,
+            maxStock: 50,
+            unitPrice: 45.00,
+            supplier: 'Valve Specialists Inc.',
+            location: 'Warehouse D-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Ball Valve 3/4"',
+            partNumber: 'VAL-BALL-34',
+            category: 'Valves',
+            type: 'part',
+            currentStock: 25,
+            minStock: 15,
+            maxStock: 75,
+            unitPrice: 22.50,
+            supplier: 'Valve Specialists Inc.',
+            location: 'Warehouse D-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Pressure Relief Valve',
+            partNumber: 'VAL-PRV-100',
+            category: 'Valves',
+            type: 'part',
+            currentStock: 9,
+            minStock: 6,
+            maxStock: 25,
+            unitPrice: 78.00,
+            supplier: 'Safety Valves Ltd.',
+            location: 'Warehouse D-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'HEPA Filter 24x24',
+            partNumber: 'FLT-HEPA-2424',
+            category: 'Filters',
+            type: 'part',
+            currentStock: 12,
+            minStock: 8,
+            maxStock: 30,
+            unitPrice: 85.00,
+            supplier: 'Air Filtration Systems',
+            location: 'Warehouse E-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Oil Filter Element',
+            partNumber: 'FLT-OIL-ELEM',
+            category: 'Filters',
+            type: 'part',
+            currentStock: 45,
+            minStock: 30,
+            maxStock: 120,
+            unitPrice: 12.00,
+            supplier: 'Filter Tech Inc.',
+            location: 'Warehouse E-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Air Filter Cartridge',
+            partNumber: 'FLT-AIR-CART',
+            category: 'Filters',
+            type: 'part',
+            currentStock: 28,
+            minStock: 20,
+            maxStock: 80,
+            unitPrice: 18.50,
+            supplier: 'Air Filtration Systems',
+            location: 'Warehouse E-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Temperature Sensor PT100',
+            partNumber: 'SEN-TEMP-PT100',
+            category: 'Sensors',
+            type: 'part',
+            currentStock: 20,
+            minStock: 15,
+            maxStock: 60,
+            unitPrice: 35.00,
+            supplier: 'Sensor Solutions Ltd.',
+            location: 'Warehouse F-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Proximity Sensor M18',
+            partNumber: 'SEN-PROX-M18',
+            category: 'Sensors',
+            type: 'part',
+            currentStock: 32,
+            minStock: 25,
+            maxStock: 100,
+            unitPrice: 28.00,
+            supplier: 'Sensor Solutions Ltd.',
+            location: 'Warehouse F-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Pressure Transducer 0-10bar',
+            partNumber: 'SEN-PRESS-10BAR',
+            category: 'Sensors',
+            type: 'part',
+            currentStock: 14,
+            minStock: 10,
+            maxStock: 40,
+            unitPrice: 95.00,
+            supplier: 'Process Sensors Inc.',
+            location: 'Warehouse F-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Linear Actuator 100mm',
+            partNumber: 'ACT-LIN-100MM',
+            category: 'Actuators',
+            type: 'part',
+            currentStock: 5,
+            minStock: 3,
+            maxStock: 12,
+            unitPrice: 180.00,
+            supplier: 'Motion Control Systems',
+            location: 'Warehouse G-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Pneumatic Cylinder 50mm',
+            partNumber: 'ACT-PNEU-50MM',
+            category: 'Actuators',
+            type: 'part',
+            currentStock: 12,
+            minStock: 8,
+            maxStock: 35,
+            unitPrice: 75.00,
+            supplier: 'Pneumatic Solutions Ltd.',
+            location: 'Warehouse G-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Stepper Motor NEMA23',
+            partNumber: 'ACT-STEP-N23',
+            category: 'Actuators',
+            type: 'part',
+            currentStock: 8,
+            minStock: 5,
+            maxStock: 20,
+            unitPrice: 120.00,
+            supplier: 'Motion Control Systems',
+            location: 'Warehouse G-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'USB Cable Type A-B',
+            partNumber: 'CAB-USB-AB',
+            category: 'Cables',
+            type: 'part',
+            currentStock: 50,
+            minStock: 30,
+            maxStock: 150,
+            unitPrice: 8.50,
+            supplier: 'Cable Specialists Inc.',
+            location: 'Warehouse H-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Ethernet Cable Cat6 1m',
+            partNumber: 'CAB-ETH-C6-1M',
+            category: 'Cables',
+            type: 'part',
+            currentStock: 75,
+            minStock: 40,
+            maxStock: 200,
+            unitPrice: 12.00,
+            supplier: 'Network Cables Ltd.',
+            location: 'Warehouse H-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Power Cable 3-Core',
+            partNumber: 'CAB-PWR-3C',
+            category: 'Cables',
+            type: 'part',
+            currentStock: 30,
+            minStock: 20,
+            maxStock: 80,
+            unitPrice: 15.50,
+            supplier: 'Electrical Supplies Co.',
+            location: 'Warehouse H-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Terminal Block 10-Pole',
+            partNumber: 'CONN-TB-10P',
+            category: 'Connectors',
+            type: 'part',
+            currentStock: 40,
+            minStock: 25,
+            maxStock: 120,
+            unitPrice: 6.50,
+            supplier: 'Electrical Connectors Ltd.',
+            location: 'Warehouse I-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'RJ45 Connector',
+            partNumber: 'CONN-RJ45',
+            category: 'Connectors',
+            type: 'part',
+            currentStock: 100,
+            minStock: 60,
+            maxStock: 300,
+            unitPrice: 2.25,
+            supplier: 'Network Connectors Inc.',
+            location: 'Warehouse I-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Relay SPDT 12V',
+            partNumber: 'SW-RLY-SPDT-12V',
+            category: 'Switches',
+            type: 'part',
+            currentStock: 35,
+            minStock: 20,
+            maxStock: 100,
+            unitPrice: 8.75,
+            supplier: 'Electronic Components Ltd.',
+            location: 'Warehouse J-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Limit Switch Roller',
+            partNumber: 'SW-LMT-RLR',
+            category: 'Switches',
+            type: 'part',
+            currentStock: 22,
+            minStock: 15,
+            maxStock: 60,
+            unitPrice: 18.50,
+            supplier: 'Switch Specialists Inc.',
+            location: 'Warehouse J-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Push Button Switch',
+            partNumber: 'SW-PB-RED',
+            category: 'Switches',
+            type: 'part',
+            currentStock: 55,
+            minStock: 30,
+            maxStock: 150,
+            unitPrice: 5.25,
+            supplier: 'Control Components Ltd.',
+            location: 'Warehouse J-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Arduino Mega 2560',
+            partNumber: 'PCB-ARD-MEGA',
+            category: 'Circuit Boards',
+            type: 'part',
+            currentStock: 8,
+            minStock: 5,
+            maxStock: 20,
+            unitPrice: 45.00,
+            supplier: 'Electronics Warehouse',
+            location: 'Warehouse K-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Raspberry Pi 4B',
+            partNumber: 'PCB-RPI-4B',
+            category: 'Circuit Boards',
+            type: 'part',
+            currentStock: 6,
+            minStock: 4,
+            maxStock: 15,
+            unitPrice: 85.00,
+            supplier: 'Raspberry Pi Store',
+            location: 'Warehouse K-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Screw M8x50 Hex',
+            partNumber: 'FST-SCR-M8X50',
+            category: 'Fasteners',
+            type: 'part',
+            currentStock: 200,
+            minStock: 100,
+            maxStock: 500,
+            unitPrice: 0.75,
+            supplier: 'Fastener Supply Co.',
+            location: 'Warehouse L-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Nut M8 Hex',
+            partNumber: 'FST-NUT-M8',
+            category: 'Fasteners',
+            type: 'part',
+            currentStock: 300,
+            minStock: 150,
+            maxStock: 800,
+            unitPrice: 0.25,
+            supplier: 'Fastener Supply Co.',
+            location: 'Warehouse L-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Washer M8 Flat',
+            partNumber: 'FST-WSH-M8-FLAT',
+            category: 'Fasteners',
+            type: 'part',
+            currentStock: 400,
+            minStock: 200,
+            maxStock: 1000,
+            unitPrice: 0.15,
+            supplier: 'Fastener Supply Co.',
+            location: 'Warehouse L-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Hammer 16oz',
+            partNumber: 'TOOL-HMR-16OZ',
+            category: 'Tools',
+            type: 'part',
+            currentStock: 12,
+            minStock: 8,
+            maxStock: 30,
+            unitPrice: 25.00,
+            supplier: 'Tool Masters Inc.',
+            location: 'Warehouse M-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Screwdriver Set 10pc',
+            partNumber: 'TOOL-SDR-10PC',
+            category: 'Tools',
+            type: 'part',
+            currentStock: 18,
+            minStock: 12,
+            maxStock: 45,
+            unitPrice: 35.00,
+            supplier: 'Tool Masters Inc.',
+            location: 'Warehouse M-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Digital Multimeter',
+            partNumber: 'TOOL-DMM-BASIC',
+            category: 'Tools',
+            type: 'part',
+            currentStock: 7,
+            minStock: 5,
+            maxStock: 20,
+            unitPrice: 65.00,
+            supplier: 'Electrical Tools Ltd.',
+            location: 'Warehouse M-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Maintenance Tool Kit',
+            partNumber: 'TOOL-KIT-MAINT',
+            category: 'Maintenance Equipment',
+            type: 'part',
+            currentStock: 5,
+            minStock: 3,
+            maxStock: 12,
+            unitPrice: 180.00,
+            supplier: 'Maintenance Supplies Co.',
+            location: 'Warehouse N-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Calibration Kit',
+            partNumber: 'MAINT-CAL-KIT',
+            category: 'Maintenance Equipment',
+            type: 'part',
+            currentStock: 4,
+            minStock: 2,
+            maxStock: 10,
+            unitPrice: 250.00,
+            supplier: 'Precision Instruments Ltd.',
+            location: 'Warehouse N-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Needle Set 70/10',
+            partNumber: 'NEEDLE-7010',
+            category: 'Sewing Supplies',
+            type: 'part',
+            currentStock: 100,
+            minStock: 50,
+            maxStock: 200,
+            unitPrice: 2.50,
+            supplier: 'Sewing Parts Inc.',
+            location: 'Warehouse O-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Bobbin Case Assembly',
+            partNumber: 'SEW-BOB-CASE',
+            category: 'Sewing Supplies',
+            type: 'part',
+            currentStock: 25,
+            minStock: 15,
+            maxStock: 60,
+            unitPrice: 45.00,
+            supplier: 'Sewing Parts Inc.',
+            location: 'Warehouse O-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Cutting Blade 8"',
+            partNumber: 'CUT-BLADE-8IN',
+            category: 'Cutting Tools',
+            type: 'part',
+            currentStock: 15,
+            minStock: 10,
+            maxStock: 40,
+            unitPrice: 28.00,
+            supplier: 'Cutting Tools Specialists',
+            location: 'Warehouse P-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Rotary Cutter 45mm',
+            partNumber: 'CUT-ROT-45MM',
+            category: 'Cutting Tools',
+            type: 'part',
+            currentStock: 20,
+            minStock: 12,
+            maxStock: 50,
+            unitPrice: 35.00,
+            supplier: 'Fabric Cutting Supplies',
+            location: 'Warehouse P-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+
+          // IRONING / BUCKPRESS PARTS (Repassage)
+          {
+            name: 'Solenoid Valve Steam 24V',
+            partNumber: 'VLV-STM-24V',
+            category: 'Valves',
+            type: 'part',
+            currentStock: 10,
+            minStock: 4,
+            maxStock: 25,
+            unitPrice: 45.00,
+            supplier: 'Hashima Parts',
+            location: 'Shelf H-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Teflon Shoe HP-450',
+            partNumber: 'SHOE-TEF-450',
+            category: 'Consumables',
+            type: 'consumable',
+            currentStock: 15,
+            minStock: 5,
+            maxStock: 40,
+            unitPrice: 22.00,
+            supplier: 'Ironing Supplies',
+            location: 'Cabinet I-2',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Press Padding Upper (Felt)',
+            partNumber: 'PAD-UP-FELT',
+            category: 'Consumables',
+            type: 'consumable',
+            currentStock: 8,
+            minStock: 3,
+            maxStock: 20,
+            unitPrice: 35.00,
+            supplier: 'Macpi Genuine',
+            location: 'Rack J-3',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Steam Hose High Temp 5m',
+            partNumber: 'HOSE-STM-HI-5M',
+            category: 'Hoses',
+            type: 'part',
+            currentStock: 12,
+            minStock: 5,
+            maxStock: 30,
+            unitPrice: 18.50,
+            supplier: 'Industrial Hoses',
+            location: 'Shelf K-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Ironing Table Cover',
+            partNumber: 'CVR-TBL-STD',
+            category: 'Consumables',
+            type: 'consumable',
+            currentStock: 20,
+            minStock: 10,
+            maxStock: 60,
+            unitPrice: 12.00,
+            supplier: 'Ironing Supplies',
+            location: 'Rack J-4',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+
+          // ELECTRICAL & SOLENOIDSOMMABLES (44 pièces)
+          {
+            name: 'Motor Oil SAE 30',
+            partNumber: 'OIL-SAE30',
+            category: 'Lubricants',
+            type: 'consumable',
+            currentStock: 25,
+            minStock: 15,
+            maxStock: 100,
+            unitPrice: 8.90,
+            supplier: 'Lubricant Express',
+            location: 'Warehouse B-1',
+            pendingOrders: [
+              { quantity: 50, status: 'pending', orderDate: new Date(), expectedDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) }
+            ],
+            pendingQuantity: 50
+          },
+          {
+            name: 'Grease NLGI 2',
+            partNumber: 'GREASE-NLGI2',
+            category: 'Lubricants',
+            type: 'consumable',
+            currentStock: 12,
+            minStock: 20,
+            maxStock: 80,
+            unitPrice: 15.75,
+            supplier: 'Lubricant Express',
+            location: 'Warehouse B-2',
+            pendingOrders: [
+              { quantity: 30, status: 'ordered', orderDate: new Date(), expectedDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) }
+            ],
+            pendingQuantity: 30
+          },
+          {
+            name: 'Hydraulic Oil ISO 46',
+            partNumber: 'OIL-HYD-ISO46',
+            category: 'Lubricants',
+            type: 'consumable',
+            currentStock: 18,
+            minStock: 25,
+            maxStock: 90,
+            unitPrice: 22.50,
+            supplier: 'Industrial Lubricants Ltd.',
+            location: 'Warehouse B-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Gear Oil 80W-90',
+            partNumber: 'OIL-GEAR-8090',
+            category: 'Lubricants',
+            type: 'consumable',
+            currentStock: 30,
+            minStock: 20,
+            maxStock: 120,
+            unitPrice: 18.25,
+            supplier: 'Gear Lubricants Inc.',
+            location: 'Warehouse B-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Transmission Fluid ATF',
+            partNumber: 'OIL-TRNS-ATF',
+            category: 'Lubricants',
+            type: 'consumable',
+            currentStock: 22,
+            minStock: 15,
+            maxStock: 85,
+            unitPrice: 16.75,
+            supplier: 'Auto Fluids Supply',
+            location: 'Warehouse B-2',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Cutting Oil Synthetic',
+            partNumber: 'OIL-CUT-SYN',
+            category: 'Lubricants',
+            type: 'consumable',
+            currentStock: 35,
+            minStock: 25,
+            maxStock: 150,
+            unitPrice: 12.50,
+            supplier: 'Metalworking Lubricants',
+            location: 'Warehouse B-2',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Compressor Oil 10W',
+            partNumber: 'OIL-COMP-10W',
+            category: 'Oils',
+            type: 'consumable',
+            currentStock: 28,
+            minStock: 20,
+            maxStock: 100,
+            unitPrice: 19.75,
+            supplier: 'Compressor Specialists',
+            location: 'Warehouse Q-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Transformer Oil',
+            partNumber: 'OIL-TRNSFRM',
+            category: 'Oils',
+            type: 'consumable',
+            currentStock: 15,
+            minStock: 10,
+            maxStock: 50,
+            unitPrice: 45.00,
+            supplier: 'Electrical Oils Ltd.',
+            location: 'Warehouse Q-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Silicone Oil 100cSt',
+            partNumber: 'OIL-SIL-100CST',
+            category: 'Oils',
+            type: 'consumable',
+            currentStock: 20,
+            minStock: 12,
+            maxStock: 75,
+            unitPrice: 28.50,
+            supplier: 'Specialty Oils Co.',
+            location: 'Warehouse Q-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'White Lithium Grease',
+            partNumber: 'GREASE-WHT-LITH',
+            category: 'Greases',
+            type: 'consumable',
+            currentStock: 40,
+            minStock: 25,
+            maxStock: 150,
+            unitPrice: 8.75,
+            supplier: 'Grease Manufacturers Inc.',
+            location: 'Warehouse R-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'High Temp Grease',
+            partNumber: 'GREASE-HT-500',
+            category: 'Greases',
+            type: 'consumable',
+            currentStock: 18,
+            minStock: 15,
+            maxStock: 60,
+            unitPrice: 24.00,
+            supplier: 'Industrial Greases Ltd.',
+            location: 'Warehouse R-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Food Grade Grease',
+            partNumber: 'GREASE-FOOD-H1',
+            category: 'Greases',
+            type: 'consumable',
+            currentStock: 12,
+            minStock: 8,
+            maxStock: 40,
+            unitPrice: 35.00,
+            supplier: 'Food Safe Lubricants',
+            location: 'Warehouse R-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Coolant Ethylene Glycol',
+            partNumber: 'COOL-ETH-GLYCOL',
+            category: 'Coolants',
+            type: 'consumable',
+            currentStock: 45,
+            minStock: 30,
+            maxStock: 180,
+            unitPrice: 14.25,
+            supplier: 'Cooling Solutions Inc.',
+            location: 'Warehouse S-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Coolant Propylene Glycol',
+            partNumber: 'COOL-PROP-GLYCOL',
+            category: 'Coolants',
+            type: 'consumable',
+            currentStock: 32,
+            minStock: 25,
+            maxStock: 120,
+            unitPrice: 16.50,
+            supplier: 'Cooling Solutions Inc.',
+            location: 'Warehouse S-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Isopropyl Alcohol 99%',
+            partNumber: 'CLN-IPA-99PCT',
+            category: 'Cleaning Agents',
+            type: 'consumable',
+            currentStock: 60,
+            minStock: 40,
+            maxStock: 200,
+            unitPrice: 12.00,
+            supplier: 'Chemical Cleaners Ltd.',
+            location: 'Warehouse T-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Degreaser Heavy Duty',
+            partNumber: 'CLN-DEGR-HD',
+            category: 'Cleaning Agents',
+            type: 'consumable',
+            currentStock: 25,
+            minStock: 15,
+            maxStock: 80,
+            unitPrice: 18.75,
+            supplier: 'Industrial Cleaners Co.',
+            location: 'Warehouse T-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Contact Cleaner Spray',
+            partNumber: 'CLN-CONTACT',
+            category: 'Cleaning Agents',
+            type: 'consumable',
+            currentStock: 40,
+            minStock: 25,
+            maxStock: 120,
+            unitPrice: 9.50,
+            supplier: 'Electronic Cleaners Inc.',
+            location: 'Warehouse T-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Epoxy Adhesive 5min',
+            partNumber: 'ADH-EPOXY-5MIN',
+            category: 'Adhesives',
+            type: 'consumable',
+            currentStock: 35,
+            minStock: 20,
+            maxStock: 100,
+            unitPrice: 15.25,
+            supplier: 'Adhesive Technologies',
+            location: 'Warehouse U-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Super Glue Gel',
+            partNumber: 'ADH-SUPER-GEL',
+            category: 'Adhesives',
+            type: 'consumable',
+            currentStock: 50,
+            minStock: 30,
+            maxStock: 150,
+            unitPrice: 6.50,
+            supplier: 'Fast Bond Adhesives',
+            location: 'Warehouse U-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Threadlocker Blue',
+            partNumber: 'ADH-THRD-BLUE',
+            category: 'Adhesives',
+            type: 'consumable',
+            currentStock: 28,
+            minStock: 15,
+            maxStock: 80,
+            unitPrice: 12.00,
+            supplier: 'Thread Sealing Solutions',
+            location: 'Warehouse U-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'RTV Silicone Sealant',
+            partNumber: 'SEAL-RTV-SIL',
+            category: 'Sealants',
+            type: 'consumable',
+            currentStock: 42,
+            minStock: 25,
+            maxStock: 120,
+            unitPrice: 8.75,
+            supplier: 'Sealant Specialists',
+            location: 'Warehouse V-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Gasket Maker Anaerobic',
+            partNumber: 'SEAL-GKT-ANA',
+            category: 'Sealants',
+            type: 'consumable',
+            currentStock: 18,
+            minStock: 12,
+            maxStock: 60,
+            unitPrice: 22.50,
+            supplier: 'Gasket Solutions Ltd.',
+            location: 'Warehouse V-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Pipe Thread Sealant',
+            partNumber: 'SEAL-PTHR-TAPE',
+            category: 'Sealants',
+            type: 'consumable',
+            currentStock: 65,
+            minStock: 40,
+            maxStock: 200,
+            unitPrice: 5.25,
+            supplier: 'Pipe Sealing Experts',
+            location: 'Warehouse V-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Spray Paint Black',
+            partNumber: 'PAINT-SPR-BLK',
+            category: 'Paints',
+            type: 'consumable',
+            currentStock: 30,
+            minStock: 15,
+            maxStock: 90,
+            unitPrice: 11.50,
+            supplier: 'Industrial Paints Co.',
+            location: 'Warehouse W-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Rust Preventive Spray',
+            partNumber: 'PAINT-RUST-PREV',
+            category: 'Paints',
+            type: 'consumable',
+            currentStock: 22,
+            minStock: 12,
+            maxStock: 70,
+            unitPrice: 16.75,
+            supplier: 'Corrosion Protection Ltd.',
+            location: 'Warehouse W-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Primer Metal',
+            partNumber: 'PAINT-PRIM-METAL',
+            category: 'Paints',
+            type: 'consumable',
+            currentStock: 15,
+            minStock: 10,
+            maxStock: 50,
+            unitPrice: 19.00,
+            supplier: 'Metal Primers Inc.',
+            location: 'Warehouse W-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Clear Coat Spray',
+            partNumber: 'COAT-CLEAR-SPR',
+            category: 'Coatings',
+            type: 'consumable',
+            currentStock: 25,
+            minStock: 15,
+            maxStock: 75,
+            unitPrice: 14.25,
+            supplier: 'Coating Specialists',
+            location: 'Warehouse X-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Anti-Corrosion Coating',
+            partNumber: 'COAT-ANTI-CORR',
+            category: 'Coatings',
+            type: 'consumable',
+            currentStock: 12,
+            minStock: 8,
+            maxStock: 40,
+            unitPrice: 28.50,
+            supplier: 'Corrosion Control Systems',
+            location: 'Warehouse X-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Acetone Technical Grade',
+            partNumber: 'CHEM-ACET-TECH',
+            category: 'Chemicals',
+            type: 'consumable',
+            currentStock: 20,
+            minStock: 10,
+            maxStock: 60,
+            unitPrice: 18.75,
+            supplier: 'Chemical Suppliers Ltd.',
+            location: 'Warehouse Y-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Methanol Pure',
+            partNumber: 'CHEM-METH-PURE',
+            category: 'Chemicals',
+            type: 'consumable',
+            currentStock: 15,
+            minStock: 8,
+            maxStock: 45,
+            unitPrice: 25.00,
+            supplier: 'Lab Chemicals Inc.',
+            location: 'Warehouse Y-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Sodium Hydroxide',
+            partNumber: 'CHEM-NAOH',
+            category: 'Chemicals',
+            type: 'consumable',
+            currentStock: 8,
+            minStock: 5,
+            maxStock: 25,
+            unitPrice: 32.50,
+            supplier: 'Industrial Chemicals Co.',
+            location: 'Warehouse Y-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Toluene Solvent',
+            partNumber: 'SOLV-TOLUENE',
+            category: 'Solvents',
+            type: 'consumable',
+            currentStock: 18,
+            minStock: 12,
+            maxStock: 55,
+            unitPrice: 21.25,
+            supplier: 'Solvent Specialists',
+            location: 'Warehouse Z-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Xylene Mix',
+            partNumber: 'SOLV-XYLENE',
+            category: 'Solvents',
+            type: 'consumable',
+            currentStock: 14,
+            minStock: 10,
+            maxStock: 45,
+            unitPrice: 19.75,
+            supplier: 'Paint Thinners Ltd.',
+            location: 'Warehouse Z-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Diesel Fuel Regular',
+            partNumber: 'FUEL-DIESEL-REG',
+            category: 'Fuels',
+            type: 'consumable',
+            currentStock: 120,
+            minStock: 80,
+            maxStock: 400,
+            unitPrice: 1.85,
+            supplier: 'Fuel Distributors Inc.',
+            location: 'Warehouse AA-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Gasoline Unleaded',
+            partNumber: 'FUEL-GAS-UNL',
+            category: 'Fuels',
+            type: 'consumable',
+            currentStock: 85,
+            minStock: 50,
+            maxStock: 300,
+            unitPrice: 1.95,
+            supplier: 'Petrol Station Supply',
+            location: 'Warehouse AA-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'AA Battery Pack',
+            partNumber: 'BAT-AA-PACK',
+            category: 'Batteries',
+            type: 'consumable',
+            currentStock: 60,
+            minStock: 30,
+            maxStock: 180,
+            unitPrice: 4.25,
+            supplier: 'Battery Wholesale Ltd.',
+            location: 'Warehouse BB-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: '9V Battery',
+            partNumber: 'BAT-9V',
+            category: 'Batteries',
+            type: 'consumable',
+            currentStock: 45,
+            minStock: 25,
+            maxStock: 150,
+            unitPrice: 2.75,
+            supplier: 'Battery Wholesale Ltd.',
+            location: 'Warehouse BB-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Cartridge Toner Black',
+            partNumber: 'CART-TONER-BLK',
+            category: 'Cartridges',
+            type: 'consumable',
+            currentStock: 12,
+            minStock: 8,
+            maxStock: 35,
+            unitPrice: 65.00,
+            supplier: 'Printer Supplies Co.',
+            location: 'Warehouse CC-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Ink Cartridge Color',
+            partNumber: 'CART-INK-COLOR',
+            category: 'Cartridges',
+            type: 'consumable',
+            currentStock: 18,
+            minStock: 12,
+            maxStock: 50,
+            unitPrice: 42.50,
+            supplier: 'Ink Cartridge Specialists',
+            location: 'Warehouse CC-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Duct Tape 2" x 50m',
+            partNumber: 'TAPE-DUCT-2X50',
+            category: 'Tapes',
+            type: 'consumable',
+            currentStock: 35,
+            minStock: 20,
+            maxStock: 100,
+            unitPrice: 8.50,
+            supplier: 'Tape Manufacturers Ltd.',
+            location: 'Warehouse DD-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Electrical Tape Black',
+            partNumber: 'TAPE-ELEC-BLK',
+            category: 'Tapes',
+            type: 'consumable',
+            currentStock: 50,
+            minStock: 30,
+            maxStock: 150,
+            unitPrice: 3.25,
+            supplier: 'Electrical Supplies Co.',
+            location: 'Warehouse DD-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Masking Tape 1"',
+            partNumber: 'TAPE-MASK-1IN',
+            category: 'Tapes',
+            type: 'consumable',
+            currentStock: 40,
+            minStock: 25,
+            maxStock: 120,
+            unitPrice: 2.75,
+            supplier: 'Painting Supplies Inc.',
+            location: 'Warehouse DD-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Hot Glue Sticks 7mm',
+            partNumber: 'GLUE-HOT-7MM',
+            category: 'Glues',
+            type: 'consumable',
+            currentStock: 75,
+            minStock: 40,
+            maxStock: 250,
+            unitPrice: 0.75,
+            supplier: 'Glue Gun Supplies',
+            location: 'Warehouse EE-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'PVC Cement Medium',
+            partNumber: 'GLUE-PVC-MED',
+            category: 'Glues',
+            type: 'consumable',
+            currentStock: 28,
+            minStock: 15,
+            maxStock: 80,
+            unitPrice: 12.50,
+            supplier: 'Pipe Cement Specialists',
+            location: 'Warehouse EE-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'Welding Rod 7018 1/8"',
+            partNumber: 'WELD-ROD-7018',
+            category: 'Welding Supplies',
+            type: 'consumable',
+            currentStock: 45,
+            minStock: 25,
+            maxStock: 150,
+            unitPrice: 5.25,
+            supplier: 'Welding Supply Co.',
+            location: 'Warehouse FF-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          },
+          {
+            name: 'MIG Welding Wire',
+            partNumber: 'WELD-WIRE-MIG',
+            category: 'Welding Supplies',
+            type: 'consumable',
+            currentStock: 30,
+            minStock: 20,
+            maxStock: 100,
+            unitPrice: 8.75,
+            supplier: 'Welding Supply Co.',
+            location: 'Warehouse FF-1',
+            pendingOrders: [],
+            pendingQuantity: 0
+          }
+        ];
+
+        // Inject random low stock and pending orders for dashboard liveliness
+        partsData.forEach(p => {
+          const rand = Math.random();
+          if (rand < 0.15) { // 15% chance of low stock
+            p.currentStock = Math.max(0, Math.floor(p.minStock * 0.5));
+          }
+          if (rand < 0.15) { // 15% chance of pending orders
+            p.pendingOrders.push({
+              quantity: Math.floor(Math.random() * 20) + 5,
+              status: 'ordered',
+              orderDate: new Date(),
+              expectedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            });
+            p.pendingQuantity = p.pendingOrders.reduce((acc, o) => acc + o.quantity, 0);
+          }
+        });
+
+        const createdParts = [];
+        let skippedCount = 0;
+
+        for (const partData of partsData) {
+          // Check uniqueness by partNumber AND factory
+          const existing = await Part.findOne({ partNumber: partData.partNumber, factory: factory._id });
+          if (existing) {
+            totalSkipped++;
+            continue;
+          }
+
+          const part = new Part({
+            ...partData,
+            factory: factory._id, // Assign to current factory
+            // Randomize stock slightly per factory to distinguish data
+            currentStock: Math.max(0, partData.currentStock + Math.floor(Math.random() * 10) - 5)
+          });
+
+          await part.save();
+          createdParts.push(part);
+          totalCreated++;
         }
-        const part = new Part(partData);
-        await part.save();
-        createdParts.push(part);
-        console.log(`Part created: ${part.name} (${part.partNumber})`);
-      }
+      } // End factory loop
 
-      console.log(`Parts seeding completed. Created: ${createdParts.length}, Skipped: ${skippedCount}`);
+      console.log(`Parts seeding completed. Created: ${totalCreated}, Skipped: ${totalSkipped}`);
 
       return {
         success: true,
-        message: `Parts seeding completed. Created: ${createdParts.length}, Skipped: ${skippedCount}`,
+        message: `Parts seeding completed. Created: ${totalCreated}, Skipped: ${totalSkipped}`,
         created: createdParts,
-        skipped: skippedCount
+        skipped: totalSkipped
       };
     } catch (error) {
       console.error('Error seeding parts:', error);
-      throw new Error(`Failed to seed parts: ${error.message}`);
+      throw new Error(`Failed to seed parts: ${error.message} `);
     }
   }
 
@@ -1991,27 +2122,27 @@ class SeedService {
       for (const brandData of brandsData) {
         const existing = await Brand.findOne({ name: brandData.name });
         if (existing) {
-          console.log(`Brand already exists: ${brandData.name}`);
+          console.log(`Brand already exists: ${brandData.name} `);
           skippedCount++;
           continue;
         }
         const brand = new Brand(brandData);
         await brand.save();
         createdBrands.push(brand);
-        console.log(`Brand created: ${brand.name}`);
+        console.log(`Brand created: ${brand.name} `);
       }
 
-      console.log(`Brands seeding completed. Created: ${createdBrands.length}, Skipped: ${skippedCount}`);
+      console.log(`Brands seeding completed.Created: ${createdBrands.length}, Skipped: ${skippedCount} `);
 
       return {
         success: true,
-        message: `Brands seeding completed. Created: ${createdBrands.length}, Skipped: ${skippedCount}`,
+        message: `Brands seeding completed.Created: ${createdBrands.length}, Skipped: ${skippedCount} `,
         created: createdBrands,
         skipped: skippedCount
       };
     } catch (error) {
       console.error('Error seeding brands:', error);
-      throw new Error(`Failed to seed brands: ${error.message}`);
+      throw new Error(`Failed to seed brands: ${error.message} `);
     }
   }
 
@@ -2067,6 +2198,7 @@ class SeedService {
           status: status,
           equipment: randomEquipment.model, // Legacy field
           equipmentId: randomEquipment._id,
+          factory: randomEquipment.factory, // Assign to same factory as equipment
           assignedTo: randomUser ? randomUser.email : 'Unassigned',
           description: `Generated ${type.toLowerCase()} intervention for ${randomEquipment.model}. Issue reported on ${createdDate.toLocaleDateString()}.`,
           createdDate: createdDate,
@@ -2094,17 +2226,17 @@ class SeedService {
         createdInterventions.push(intervention);
       }
 
-      console.log(`Interventions seeding completed. Created: ${createdInterventions.length}, Skipped: ${skippedCount}`);
+      console.log(`Interventions seeding completed.Created: ${createdInterventions.length}, Skipped: ${skippedCount} `);
 
       return {
         success: true,
-        message: `Interventions seeding completed. Created: ${createdInterventions.length}, Skipped: ${skippedCount}`,
+        message: `Interventions seeding completed.Created: ${createdInterventions.length}, Skipped: ${skippedCount} `,
         created: createdInterventions,
         skipped: skippedCount
       };
     } catch (error) {
       console.error('Error seeding interventions:', error);
-      throw new Error(`Failed to seed interventions: ${error.message}`);
+      throw new Error(`Failed to seed interventions: ${error.message} `);
     }
   }
 
@@ -2113,136 +2245,153 @@ class SeedService {
       console.log('Starting projects seeding...');
       const users = await User.find();
       const adminUser = users.find(u => u.role === 'admin') || users[0];
-
-      const projectsData = [
-        {
-          title: 'Equipment Modernization Phase 1',
-          description: 'Upgrading spinning machines with IoT sensors and predictive maintenance capabilities.',
-          status: 'In Progress',
-          budget: 450000,
-          startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 3 months ago
-          endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 3 months from now
-          progress: 65,
-          teamSize: 8,
-          createdBy: adminUser?._id
-        },
-        {
-          title: 'Equipment Modernization Phase 2',
-          description: 'Extending IoT integration to weaving looms and quality control systems.',
-          status: 'Planned',
-          budget: 550000,
-          startDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 2 months from now
-          endDate: new Date(Date.now() + 240 * 24 * 60 * 60 * 1000), // 8 months from now
-          progress: 0,
-          teamSize: 10,
-          createdBy: adminUser?._id
-        },
-        {
-          title: 'Equipment Modernization Phase 3',
-          description: 'Full automation of material handling between spinning and weaving sections.',
-          status: 'Planned',
-          budget: 750000,
-          startDate: new Date(Date.now() + 240 * 24 * 60 * 60 * 1000), // 8 months from now
-          endDate: new Date(Date.now() + 420 * 24 * 60 * 60 * 1000), // 14 months from now
-          progress: 0,
-          teamSize: 15,
-          createdBy: adminUser?._id
-        },
-        {
-          title: 'Warehouse Automation',
-          description: 'Implementing automated storage and retrieval system for spare parts inventory.',
-          status: 'In Progress',
-          budget: 1200000,
-          startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 1 month ago
-          endDate: new Date(Date.now() + 330 * 24 * 60 * 60 * 1000), // 11 months from now
-          progress: 15,
-          teamSize: 12,
-          createdBy: adminUser?._id
-        },
-        {
-          title: 'Energy Efficiency Overhaul',
-          description: 'Replacing legacy motors with high-efficiency units across process areas.',
-          status: 'Completed',
-          budget: 280000,
-          startDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000), // 6 months ago
-          endDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
-          progress: 100,
-          teamSize: 6,
-          createdBy: adminUser?._id
-        },
-        {
-          title: 'Solar Panel Installation',
-          description: 'Installation of 500kW solar array on factory roof to reduce energy costs.',
-          status: 'Completed',
-          budget: 600000,
-          startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 year ago
-          endDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000), // 2 months ago
-          progress: 100,
-          teamSize: 8,
-          createdBy: adminUser?._id
-        },
-        {
-          title: 'Safety Compliance Audit',
-          description: 'Comprehensive safety audit and implementation of new safety protocols.',
-          status: 'In Progress',
-          budget: 50000,
-          startDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
-          endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
-          progress: 45,
-          teamSize: 4,
-          createdBy: adminUser?._id
-        },
-        {
-          title: 'ERP Integration',
-          description: 'Integrating maintenance software with central ERP system.',
-          status: 'On Hold',
-          budget: 150000,
-          startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000), // 2 months ago
-          endDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000), // 4 months from now
-          progress: 30,
-          teamSize: 5,
-          createdBy: adminUser?._id
-        },
-        {
-          title: 'Staff Training Program',
-          description: 'Advanced technical training for maintenance staff on new equipment.',
-          status: 'In Progress',
-          budget: 25000,
-          startDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-          endDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
-          progress: 33,
-          teamSize: 20,
-          createdBy: adminUser?._id
-        },
-        {
-          title: 'Water Recycling Plant',
-          description: 'Construction of a new water recycling facility for the dyeing section.',
-          status: 'Planned',
-          budget: 850000,
-          startDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-          endDate: new Date(Date.now() + 450 * 24 * 60 * 60 * 1000),
-          progress: 0,
-          teamSize: 18,
-          createdBy: adminUser?._id
-        }
-      ];
+      const factories = await Factory.find();
+      console.log(`Found ${factories.length} factories for project seeding.`);
 
       const createdProjects = [];
       let skippedCount = 0;
 
-      for (const data of projectsData) {
-        const existing = await Project.findOne({ title: data.title });
-        if (existing) {
-          skippedCount++;
-          continue;
+      for (const factory of factories) {
+        const projectsData = [
+
+          {
+            title: 'Equipment Modernization Phase 1',
+            description: 'Upgrading spinning machines with IoT sensors and predictive maintenance capabilities.',
+            status: 'In Progress',
+            budget: 450000,
+            startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 3 months ago
+            endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 3 months from now
+            progress: 65,
+            teamSize: 8,
+            createdBy: adminUser?._id
+          },
+          {
+            title: 'Equipment Modernization Phase 2',
+            description: 'Extending IoT integration to weaving looms and quality control systems.',
+            status: 'Planned',
+            budget: 550000,
+            startDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 2 months from now
+            endDate: new Date(Date.now() + 240 * 24 * 60 * 60 * 1000), // 8 months from now
+            progress: 0,
+            teamSize: 10,
+            createdBy: adminUser?._id
+          },
+          {
+            title: 'Equipment Modernization Phase 3',
+            description: 'Full automation of material handling between spinning and weaving sections.',
+            status: 'Planned',
+            budget: 750000,
+            startDate: new Date(Date.now() + 240 * 24 * 60 * 60 * 1000), // 8 months from now
+            endDate: new Date(Date.now() + 420 * 24 * 60 * 60 * 1000), // 14 months from now
+            progress: 0,
+            teamSize: 15,
+            createdBy: adminUser?._id
+          },
+          {
+            title: 'Warehouse Automation',
+            description: 'Implementing automated storage and retrieval system for spare parts inventory.',
+            status: 'In Progress',
+            budget: 1200000,
+            startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 1 month ago
+            endDate: new Date(Date.now() + 330 * 24 * 60 * 60 * 1000), // 11 months from now
+            progress: 15,
+            teamSize: 12,
+            createdBy: adminUser?._id
+          },
+          {
+            title: 'Energy Efficiency Overhaul',
+            description: 'Replacing legacy motors with high-efficiency units across process areas.',
+            status: 'Completed',
+            budget: 280000,
+            startDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000), // 6 months ago
+            endDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
+            progress: 100,
+            teamSize: 6,
+            createdBy: adminUser?._id
+          },
+          {
+            title: 'Solar Panel Installation',
+            description: 'Installation of 500kW solar array on factory roof to reduce energy costs.',
+            status: 'Completed',
+            budget: 600000,
+            startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 year ago
+            endDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000), // 2 months ago
+            progress: 100,
+            teamSize: 8,
+            createdBy: adminUser?._id
+          },
+          {
+            title: 'Safety Compliance Audit',
+            description: 'Comprehensive safety audit and implementation of new safety protocols.',
+            status: 'In Progress',
+            budget: 50000,
+            startDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
+            endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
+            progress: 45,
+            teamSize: 4,
+            createdBy: adminUser?._id
+          },
+          {
+            title: 'ERP Integration',
+            description: 'Integrating maintenance software with central ERP system.',
+            status: 'On Hold',
+            budget: 150000,
+            startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000), // 2 months ago
+            endDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000), // 4 months from now
+            progress: 30,
+            teamSize: 5,
+            createdBy: adminUser?._id
+          },
+          {
+            title: 'Staff Training Program',
+            description: 'Advanced technical training for maintenance staff on new equipment.',
+            status: 'In Progress',
+            budget: 25000,
+            startDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+            endDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+            progress: 33,
+            teamSize: 20,
+            createdBy: adminUser?._id
+          },
+          {
+            title: 'Water Recycling Plant',
+            description: 'Construction of a new water recycling facility for the dyeing section.',
+            status: 'Planned',
+            budget: 850000,
+            startDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+            endDate: new Date(Date.now() + 450 * 24 * 60 * 60 * 1000),
+            progress: 0,
+            teamSize: 18,
+            createdBy: adminUser?._id
+          }
+        ];
+
+        const createdProjects = [];
+        let skippedCount = 0;
+
+        for (const data of projectsData) {
+          // Factory-specific title
+          const title = `[${factory.name}] ${data.title}`;
+
+          const existing = await Project.findOne({ title: title, factory: factory._id });
+          if (existing) {
+            skippedCount++;
+            continue;
+          }
+
+          const project = new Project({
+            ...data,
+            title: title,
+            factory: factory._id,
+            // Randomize progress/status per factory
+            progress: Math.floor(Math.random() * 100)
+          });
+          await project.save();
+          createdProjects.push(project);
         }
+      } // End factory loop
 
-        const project = new Project(data);
-        await project.save();
-        createdProjects.push(project);
-      }
-
-      console.log(`Projects seeding completed. Created: ${createdProjects.length}, Skipped: ${skippedCount}`);
+      console.log(`Projects seeding completed.Created: ${createdProjects.length}, Skipped: ${skippedCount} `);
       return {
         success: true,
         created: createdProjects,
@@ -2250,7 +2399,7 @@ class SeedService {
       };
     } catch (error) {
       console.error('Error seeding projects:', error);
-      throw new Error(`Failed to seed projects: ${error.message}`);
+      throw new Error(`Failed to seed projects: ${error.message} `);
     }
   }
 
@@ -2365,111 +2514,108 @@ class SeedService {
         }
       }
 
-      console.log(`Equipment parts seeding completed. Created: ${createdEquipmentParts.length}, Skipped: ${skippedCount}`);
+      console.log(`Equipment parts seeding completed.Created: ${createdEquipmentParts.length}, Skipped: ${skippedCount} `);
 
       return {
         success: true,
-        message: `Equipment parts seeding completed. Created: ${createdEquipmentParts.length}, Skipped: ${skippedCount}`,
+        message: `Equipment parts seeding completed.Created: ${createdEquipmentParts.length}, Skipped: ${skippedCount} `,
         created: createdEquipmentParts,
         skipped: skippedCount
       };
     } catch (error) {
       console.error('Error seeding equipment parts:', error);
-      throw new Error(`Failed to seed equipment parts: ${error.message}`);
+      throw new Error(`Failed to seed equipment parts: ${error.message} `);
     }
   }
   static async seedMaintenancePersonnel() {
     try {
-      console.log('Starting maintenance personnel seeding...');
-      const results = {
-        mechanics: { created: 0, skipped: 0 },
-        electricians: { created: 0, skipped: 0 },
-        workers: { created: 0, skipped: 0 },
-        machinists: { created: 0, skipped: 0 }
+      console.log('Seeding maintenance personnel...');
+
+      const factories = await Factory.find();
+      if (factories.length === 0) {
+        throw new Error('Factories must be seeded first');
+      }
+
+      await Promise.all([
+        Mechanic.deleteMany({}),
+        Electrician.deleteMany({}),
+        MaintenanceWorker.deleteMany({}),
+        Machinist.deleteMany({})
+      ]);
+
+      const createdPersonnel = {
+        mechanics: [],
+        electricians: [],
+        others: []
       };
 
-      // 1. Seed Mechanics
-      const mechanicsData = [
-        { matricule: 'MEC001', firstName: 'John', lastName: 'Doe', specialization: 'General Mechanics', certifications: ['Certified Master Mechanic'] },
-        { matricule: 'MEC002', firstName: 'Mike', lastName: 'Smith', specialization: 'Hydraulics', certifications: ['Hydraulic Systems Specialist'] },
-        { matricule: 'MEC003', firstName: 'David', lastName: 'Johnson', specialization: 'Pneumatics', certifications: [] },
-        { matricule: 'MEC004', firstName: 'Robert', lastName: 'Brown', specialization: 'Welding', certifications: ['AWS Certified Welder'] }
-      ];
+      for (const factory of factories) {
+        console.log(`Seeding personnel for factory: ${factory.name}`);
+        const factoryCode = factory.name.substring(0, 3).toUpperCase();
 
-      for (const data of mechanicsData) {
-        const existing = await Mechanic.findOne({ matricule: data.matricule });
-        if (existing) {
-          results.mechanics.skipped++;
-          continue;
+        // Mechanics (5 per factory)
+        for (let i = 1; i <= 5; i++) {
+          const mechanic = new Mechanic({
+            matricule: `MECH-${factoryCode}-${100 + i}`,
+            firstName: 'Jean',
+            lastName: `Mechanic ${i} (${factory.name})`,
+            specialization: i % 2 === 0 ? 'Hydraulics' : 'General Mechanics',
+            certifications: ['Safety Level 1', 'Hydraulic Systems'],
+            isActive: true,
+            factory: factory._id
+          });
+          await mechanic.save();
+          createdPersonnel.mechanics.push(mechanic);
         }
-        await Mechanic.create(data);
-        results.mechanics.created++;
+
+        // Electricians (3 per factory)
+        for (let i = 1; i <= 3; i++) {
+          const electrician = new Electrician({
+            matricule: `ELEC-${factoryCode}-${100 + i}`,
+            firstName: 'Pierre',
+            lastName: `Electrician ${i} (${factory.name})`,
+            specialization: 'Industrial Electrical',
+            certifications: ['High Voltage', 'Safety Level 2'],
+            isActive: true,
+            factory: factory._id
+          });
+          await electrician.save();
+          createdPersonnel.electricians.push(electrician);
+        }
+
+        // Maintenance Workers (3 per factory)
+        for (let i = 1; i <= 3; i++) {
+          const worker = new MaintenanceWorker({
+            matricule: `WORK-${factoryCode}-${100 + i}`,
+            firstName: 'Paul',
+            lastName: `Worker ${i} (${factory.name})`,
+            specialization: 'General Repairs',
+            isActive: true,
+            factory: factory._id
+          });
+          await worker.save();
+          createdPersonnel.others.push(worker);
+        }
+
+        // Machinists (2 per factory)
+        for (let i = 1; i <= 2; i++) {
+          const machinist = new Machinist({
+            matricule: `MACH-${factoryCode}-${100 + i}`,
+            firstName: 'Michel',
+            lastName: `Machinist ${i} (${factory.name})`,
+            isActive: true,
+            factory: factory._id
+          });
+          await machinist.save();
+          createdPersonnel.others.push(machinist);
+        }
       }
 
-      // 2. Seed Electricians
-      const electriciansData = [
-        { matricule: 'ELEC001', firstName: 'James', lastName: 'Wilson', specialization: 'Industrial Electrical', certifications: ['Master Electrician'] },
-        { matricule: 'ELEC002', firstName: 'Thomas', lastName: 'Anderson', specialization: 'Control Systems', certifications: ['PLC Programming'] },
-        { matricule: 'ELEC003', firstName: 'William', lastName: 'Taylor', specialization: 'Motor Repair', certifications: [] },
-        { matricule: 'ELEC004', firstName: 'Richard', lastName: 'Moore', specialization: 'Instrumentation', certifications: ['Instrumentation Tech'] }
-      ];
-
-      for (const data of electriciansData) {
-        const existing = await Electrician.findOne({ matricule: data.matricule });
-        if (existing) {
-          results.electricians.skipped++;
-          continue;
-        }
-        await Electrician.create(data);
-        results.electricians.created++;
-      }
-
-      // 3. Seed Maintenance Workers
-      const workersData = [
-        { matricule: 'WRK001', firstName: 'Joseph', lastName: 'Martin', specialization: 'General Repairs' },
-        { matricule: 'WRK002', firstName: 'Charles', lastName: 'Thompson', specialization: 'Facility Maintenance' },
-        { matricule: 'WRK003', firstName: 'Daniel', lastName: 'Garcia', specialization: 'Cleaning' },
-        { matricule: 'WRK004', firstName: 'Matthew', lastName: 'Martinez', specialization: 'Painting' }
-      ];
-
-      for (const data of workersData) {
-        const existing = await MaintenanceWorker.findOne({ matricule: data.matricule });
-        if (existing) {
-          results.workers.skipped++;
-          continue;
-        }
-        await MaintenanceWorker.create(data);
-        results.workers.created++;
-      }
-
-      // 4. Seed Machinists
-      const machinistsData = [
-        { matricule: 'MAC001', firstName: 'Paul', lastName: 'Robinson' },
-        { matricule: 'MAC002', firstName: 'Mark', lastName: 'Clark' },
-        { matricule: 'MAC003', firstName: 'Donald', lastName: 'Rodriguez' },
-        { matricule: 'MAC004', firstName: 'George', lastName: 'Lewis' }
-      ];
-
-      for (const data of machinistsData) {
-        const existing = await Machinist.findOne({ matricule: data.matricule });
-        if (existing) {
-          results.machinists.skipped++;
-          continue;
-        }
-        await Machinist.create(data);
-        results.machinists.created++;
-      }
-
-      console.log('Maintenance personnel seeding completed.');
-      return {
-        success: true,
-        message: 'Maintenance personnel seeded successfully',
-        results
-      };
-
+      console.log('Maintenance personnel seeded successfully.');
+      return createdPersonnel;
     } catch (error) {
       console.error('Error seeding maintenance personnel:', error);
-      throw new Error(`Failed to seed maintenance personnel: ${error.message}`);
+      throw error;
     }
   }
 }

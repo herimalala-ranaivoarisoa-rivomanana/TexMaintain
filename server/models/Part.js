@@ -11,6 +11,12 @@ const schema = new mongoose.Schema({
   unitPrice: { type: Number, default: 0 },
   supplier: { type: String, trim: true },
   location: { type: String, trim: true },
+  factory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Factory',
+    required: false, // Will be required after migration
+    index: true
+  },
   pendingOrders: [{
     quantity: { type: Number, default: 0 },
     status: {

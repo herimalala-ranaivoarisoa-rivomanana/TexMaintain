@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { getDashboardKPIs, getRecentActivities } from "@/api/dashboard"
 import { useToast } from "@/hooks/useToast"
+import { useFactory } from "@/contexts/FactoryContext"
 import { ReorderAlertsWidget } from "@/components/ReorderAlertsWidget"
 
 interface KPIs {
@@ -44,6 +45,7 @@ export function GeneralDashboard() {
     const [loading, setLoading] = useState(true)
     const { toast } = useToast()
     const navigate = useNavigate()
+    const { currentFactory } = useFactory()
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -68,7 +70,7 @@ export function GeneralDashboard() {
         }
 
         fetchDashboardData()
-    }, [toast])
+    }, [toast, currentFactory])
 
     if (loading) {
         return (

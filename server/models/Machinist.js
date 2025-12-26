@@ -22,6 +22,12 @@ const schema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  factory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Factory',
+    required: true,
+    index: true
+  },
   isActive: {
     type: Boolean,
     default: true,
@@ -40,14 +46,14 @@ const schema = new mongoose.Schema({
 });
 
 // Create full name before saving
-schema.pre('save', function(next) {
+schema.pre('save', function (next) {
   this.fullName = `${this.firstName} ${this.lastName}`;
   this.updatedAt = Date.now();
   next();
 });
 
 // Create full name before updating
-schema.pre('findOneAndUpdate', function(next) {
+schema.pre('findOneAndUpdate', function (next) {
   const update = this.getUpdate();
   if (update.firstName || update.lastName) {
     const firstName = update.firstName || this.getQuery().firstName;

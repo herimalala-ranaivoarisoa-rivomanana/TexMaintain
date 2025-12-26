@@ -18,12 +18,13 @@ import {
   Activity,
   TrendingUp,
   AlertCircle,
-  CheckCircle2,
+
   BarChart3,
   Package
 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
+import { useFactory } from "@/contexts/FactoryContext"
 import { getEquipmentTypes, createEquipmentType, updateEquipmentType, deleteEquipmentType } from "@/api/equipmentTypes"
 import { getEquipmentCategories } from "@/api/equipmentCategories"
 import { getEquipment } from "@/api/equipment"
@@ -82,11 +83,13 @@ export function EquipmentTypes() {
   })
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
   const { user } = useAuth()
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [currentFactory])
 
   const fetchData = async () => {
     try {

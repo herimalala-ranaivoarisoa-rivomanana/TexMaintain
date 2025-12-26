@@ -38,6 +38,7 @@ import { getElectricians } from "@/api/electricians"
 import { getMaintenanceWorkers } from "@/api/maintenanceWorkers"
 import { getMachinists } from "@/api/machinists"
 import { useAuth } from "@/contexts/AuthContext"
+import { useFactory } from "@/contexts/FactoryContext"
 import { useToast } from "@/hooks/useToast"
 import { useDebounce } from "@/hooks/useDebounce"
 import { saveAs } from "file-saver"
@@ -96,6 +97,7 @@ export function Interventions() {
   const [personnelList, setPersonnelList] = useState<any[]>([])
   const { toast } = useToast()
   const { user } = useAuth()
+  const { currentFactory } = useFactory()
   const [creating, setCreating] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -174,7 +176,7 @@ export function Interventions() {
 
     fetchInterventions()
     fetchResources()
-  }, [toast, page, statusFilter, limit, sort, order, debouncedSearchTerm])
+  }, [toast, page, statusFilter, limit, sort, order, debouncedSearchTerm, currentFactory])
 
   // Sync state to URL
   useEffect(() => {

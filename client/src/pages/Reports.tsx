@@ -12,6 +12,7 @@ import {
   FinancialMetrics
 } from "@/api/reports"
 import { toast } from "sonner"
+import { useFactory } from "@/contexts/FactoryContext"
 import {
   BarChart,
   Bar,
@@ -31,6 +32,7 @@ export function Reports() {
   const [stats, setStats] = useState<(ReportStats & { totalTCO?: number, totalAssetValue?: number }) | null>(null)
   const [maintenanceMetrics, setMaintenanceMetrics] = useState<MaintenanceMetrics | null>(null)
   const [financialMetrics, setFinancialMetrics] = useState<FinancialMetrics | null>(null)
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,7 +70,7 @@ export function Reports() {
     }
 
     fetchData()
-  }, [])
+  }, [currentFactory])
 
   if (loading) {
     return (

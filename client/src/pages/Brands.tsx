@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
+import { useFactory } from "@/contexts/FactoryContext"
 import { getBrands, createBrand, updateBrand, deleteBrand } from "@/api/brands"
 
 interface Brand {
@@ -36,11 +37,13 @@ export function Brands() {
   })
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
   const { user } = useAuth()
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     fetchBrands()
-  }, [])
+  }, [currentFactory])
 
   const fetchBrands = async () => {
     try {

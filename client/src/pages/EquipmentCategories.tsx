@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
+import { useFactory } from "@/contexts/FactoryContext"
 import { getEquipmentCategories, createEquipmentCategory, updateEquipmentCategory, deleteEquipmentCategory } from "@/api/equipmentCategories"
 
 interface Category {
@@ -36,11 +37,13 @@ export function EquipmentCategories() {
   })
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
   const { user } = useAuth()
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     fetchCategories()
-  }, [])
+  }, [currentFactory])
 
   const fetchCategories = async () => {
     try {

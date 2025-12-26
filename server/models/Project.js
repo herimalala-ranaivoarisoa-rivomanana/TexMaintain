@@ -41,6 +41,12 @@ const projectSchema = new mongoose.Schema({
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
+    },
+    factory: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Factory',
+        required: true,
+        index: true
     }
 }, {
     timestamps: true

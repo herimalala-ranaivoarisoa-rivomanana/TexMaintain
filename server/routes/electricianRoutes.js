@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { requireUser, requireRole } = require('./middleware/auth');
 const { Electrician } = require('../models/Electrician');
 
@@ -7,20 +8,25 @@ const router = express.Router();
 // GET /api/electricians - Get all electricians with pagination and filters
 router.get('/', requireUser, async (req, res) => {
   try {
+    const factoryId = req.header('x-factory-id');
+    if (!factoryId) {
+      return res.status(400).json({ message: 'Factory Header Missing' });
+    }
+
     const { page = 1, limit = 50, q, isActive, specialization } = req.query;
 
-    const query = {};
-    
+    const query = { factory: new mongoose.Types.ObjectId(factoryId) };
+
     // Filter by active status
     if (isActive !== undefined) {
       query.isActive = isActive === 'true';
     }
-    
+
     // Filter by specialization
     if (specialization) {
       query.specialization = specialization;
     }
-    
+
     // Search by name or matricule
     if (q) {
       query.$or = [
@@ -57,12 +63,17 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/electricians/:id - Get single electrician
 router.get('/:id', requireUser, async (req, res) => {
   try {
-    const electrician = await Electrician.findById(req.params.id).lean();
-    
+    const factoryId = req.header('x-factory-id');
+    const query = { _id: req.params.id };
+    if (factoryId) {
+      query.factory = new mongoose.Types.ObjectId(factoryId);
+    }
+    const electrician = await Electrician.findOne(query).lean();
+
     if (!electrician) {
       return res.status(404).json({ message: 'Electrician not found' });
     }
-    
+
     return res.status(200).json(electrician);
   } catch (error) {
     console.error('Get electrician error:', error);
@@ -73,6 +84,11 @@ router.get('/:id', requireUser, async (req, res) => {
 // POST /api/electricians - Create new electrician
 router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager']), async (req, res) => {
   try {
+    const factoryId = req.header('x-factory-id');
+    if (!factoryId) {
+      return res.status(400).json({ message: 'Factory Header Missing' });
+    }
+
     const { matricule, firstName, lastName, specialization, certifications, isActive } = req.body;
 
     // Validate required fields
@@ -81,9 +97,12 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
     }
 
     // Check if matricule already exists
-    const existing = await Electrician.findOne({ matricule });
+    const existing = await Electrician.findOne({
+      matricule,
+      factory: new mongoose.Types.ObjectId(factoryId)
+    });
     if (existing) {
-      return res.status(400).json({ message: 'An electrician with this matricule already exists' });
+      return res.status(400).json({ message: 'An electrician with this matricule already exists in this factory' });
     }
 
     const electrician = new Electrician({
@@ -92,7 +111,8 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
       lastName,
       specialization,
       certifications,
-      isActive: isActive !== undefined ? isActive : true
+      isActive: isActive !== undefined ? isActive : true,
+      factory: factoryId
     });
 
     await electrician.save();
@@ -107,16 +127,29 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
 // PUT /api/electricians/:id - Update electrician
 router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager']), async (req, res) => {
   try {
+    const factoryId = req.header('x-factory-id');
+
+    // Ensure electrician belongs to factory on update
+    const existingElectrician = await Electrician.findOne({
+      _id: req.params.id,
+      ...(factoryId && { factory: new mongoose.Types.ObjectId(factoryId) })
+    });
+
+    if (!existingElectrician) {
+      return res.status(404).json({ message: 'Electrician not found' });
+    }
+
     const { matricule, firstName, lastName, specialization, certifications, isActive } = req.body;
 
     // Check if matricule is being changed and if it already exists
     if (matricule) {
-      const existing = await Electrician.findOne({ 
-        matricule, 
-        _id: { $ne: req.params.id } 
+      const existing = await Electrician.findOne({
+        matricule,
+        _id: { $ne: req.params.id },
+        factory: existingElectrician.factory
       });
       if (existing) {
-        return res.status(400).json({ message: 'An electrician with this matricule already exists' });
+        return res.status(400).json({ message: 'An electrician with this matricule already exists in this factory' });
       }
     }
 
@@ -134,10 +167,6 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
       { new: true, runValidators: true }
     );
 
-    if (!electrician) {
-      return res.status(404).json({ message: 'Electrician not found' });
-    }
-
     return res.status(200).json(electrician);
   } catch (error) {
     console.error('Update electrician error:', error);
@@ -148,8 +177,14 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
 // DELETE /api/electricians/:id - Delete electrician (soft delete by setting isActive to false)
 router.delete('/:id', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   try {
-    const electrician = await Electrician.findByIdAndUpdate(
-      req.params.id,
+    const factoryId = req.header('x-factory-id');
+    const query = { _id: req.params.id };
+    if (factoryId) {
+      query.factory = new mongoose.Types.ObjectId(factoryId);
+    }
+
+    const electrician = await Electrician.findOneAndUpdate(
+      query,
       { isActive: false },
       { new: true }
     );

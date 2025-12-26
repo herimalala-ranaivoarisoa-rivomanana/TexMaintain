@@ -15,6 +15,7 @@ import { getProjectDetails, getProjectExpenses, createProjectExpense, consumePro
 import { getInventory, Part } from "@/api/inventory"
 import { toast } from "sonner"
 import { format } from "date-fns"
+import { useFactory } from "@/contexts/FactoryContext"
 
 export function ProjectDetailsPage() {
     const { id } = useParams<{ id: string }>()
@@ -23,6 +24,7 @@ export function ProjectDetailsPage() {
     const [details, setDetails] = useState<ProjectDetails | null>(null)
     const [expenses, setExpenses] = useState<ProjectExpense[]>([])
     const [parts, setParts] = useState<Part[]>([])
+    const { currentFactory } = useFactory()
 
     // Expense Form State
     const [isExpenseOpen, setIsExpenseOpen] = useState(false)
@@ -60,7 +62,7 @@ export function ProjectDetailsPage() {
 
     useEffect(() => {
         fetchData()
-    }, [id])
+    }, [id, currentFactory])
 
     const handleAddExpense = async () => {
         if (!id) return

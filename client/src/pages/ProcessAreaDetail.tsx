@@ -41,6 +41,7 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useFactory } from "@/contexts/FactoryContext"
 
 interface Department {
     _id: string
@@ -145,6 +146,7 @@ export function ProcessAreaDetail() {
     const [isStatsDialogOpen, setIsStatsDialogOpen] = useState(false)
     const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false)
     const [selectedDepartment, setSelectedDepartment] = useState<any>(null)
+    const { currentFactory } = useFactory()
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -157,7 +159,7 @@ export function ProcessAreaDetail() {
         if (id) {
             fetchData(id)
         }
-    }, [id])
+    }, [id, currentFactory])
 
     const fetchData = async (areaId: string) => {
         try {

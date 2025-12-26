@@ -14,6 +14,7 @@ import {
 import { useToast } from '@/hooks/useToast'
 import { getReorderAlerts, type ReorderAlert } from '@/api/equipmentParts'
 import { Link } from 'react-router-dom'
+import { useFactory } from "@/contexts/FactoryContext"
 
 export default function ReorderAlerts() {
   const [alerts, setAlerts] = useState<ReorderAlert[]>([])
@@ -23,11 +24,13 @@ export default function ReorderAlerts() {
   const [searchTerm, setSearchTerm] = useState('')
   const [urgencyFilter, setUrgencyFilter] = useState<'all' | 'critical' | 'warning'>('all')
   const [sortBy, setSortBy] = useState<'deficit' | 'name' | 'stock'>('deficit')
+
   const { toast } = useToast()
+  const { currentFactory } = useFactory()
 
   useEffect(() => {
     fetchAlerts()
-  }, [])
+  }, [currentFactory])
 
   useEffect(() => {
     filterAndSortAlerts()
@@ -316,11 +319,10 @@ export default function ReorderAlerts() {
               {filteredAlerts.map((alert) => (
                 <div
                   key={alert.part._id}
-                  className={`border rounded-lg p-4 ${
-                    alert.urgency === 'critical'
-                      ? 'bg-red-50 border-red-200'
-                      : 'bg-orange-50 border-orange-200'
-                  }`}
+                  className={`border rounded-lg p-4 ${alert.urgency === 'critical'
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-orange-50 border-orange-200'
+                    }`}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
