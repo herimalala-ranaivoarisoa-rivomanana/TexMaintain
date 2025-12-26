@@ -81,11 +81,21 @@ const schema = new mongoose.Schema({
     ref: 'ProcessDepartment',
     required: false
   },
+  site: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site',
+    required: false
+  },
+  assetClass: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'AssetClass',
+    required: false
+  },
+  // Deprecated: use `site` reference instead
   location: {
-    type: String, // Factory Name e.g. "Antsirabe-1"
-    required: true,
+    type: String,
+    required: false,
     trim: true,
-    default: 'Antsirabe-1'
   },
   manufacturer: {
     type: String,
@@ -101,9 +111,22 @@ const schema = new mongoose.Schema({
     sparse: true,
     trim: true,
   },
+  criticality: {
+    type: String,
+    enum: ['low', 'medium', 'high', 'critical'],
+    default: 'medium'
+  },
+  criticalityScore: {
+    type: Number,
+    min: 1,
+    max: 5,
+    default: 3
+  },
   chipNumber: {
     type: String,
     trim: true,
+    required: true,
+    unique: true,
   },
   brand: {
     type: mongoose.Schema.Types.ObjectId,
@@ -135,6 +158,10 @@ const schema = new mongoose.Schema({
     type: Number, // Hours
     default: 0
   },
+  lastDowntimeStart: {
+    type: Date,
+    default: null
+  },
   operatingTime: {
     type: Number, // Hours
     default: 0
@@ -154,6 +181,9 @@ const schema = new mongoose.Schema({
   lastBreakdownDescription: {
     type: String,
   },
+  scrappedReason: {
+    type: String,
+  },
   statusMedia: [{
     type: String,
     trim: true,
@@ -161,6 +191,10 @@ const schema = new mongoose.Schema({
   specifications: {
     type: mongoose.Schema.Types.Mixed,
     default: {},
+  },
+  lastServicingReport: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null,
   },
   // Financial Data
   purchasePrice: {
@@ -201,6 +235,15 @@ const schema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  // Site change audit trail (lightweight)
+  siteChangeHistory: [{
+    fromSite: { type: mongoose.Schema.Types.ObjectId, ref: 'Site' },
+    toSite: { type: mongoose.Schema.Types.ObjectId, ref: 'Site', required: true },
+    reason: { type: String, required: true, trim: true },
+    documents: [{ type: String, required: true }],
+    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    changedAt: { type: Date, default: Date.now }
+  }],
 }, {
   versionKey: false,
 });

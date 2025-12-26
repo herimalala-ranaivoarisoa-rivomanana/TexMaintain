@@ -31,6 +31,10 @@ const equipmentPartsRoutes = require("./routes/equipmentPartsRoutes");
 const reportsRoutes = require("./routes/reportsRoutes");
 const procurementRoutes = require("./routes/procurementRoutes");
 const projectRoutes = require("./routes/projectRoutes");
+const assetClassesRoutes = require("./routes/assetClassesRoutes");
+const businessUnitsRoutes = require("./routes/businessUnitsRoutes");
+const sitesRoutes = require("./routes/sitesRoutes");
+const subAssetsRoutes = require("./routes/subAssetsRoutes");
 const { connectDB } = require("./config/database");
 const backfillInterventions = require("./backfill_interventions_v2");
 const cors = require("cors");
@@ -153,6 +157,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/seed', seedRoutes);
 // Domain Routes
 app.use('/api/equipment', equipmentRoutes);
+app.use('/api/assets', equipmentRoutes);
 app.use('/api/equipment-categories', equipmentCategoriesRoutes);
 app.use('/api/equipment-types', equipmentTypesRoutes);
 app.use('/api/brands', brandsRoutes);
@@ -171,6 +176,10 @@ app.use('/api/media', require("./routes/mediaRoutes"));
 app.use('/api/reports', reportsRoutes);
 app.use('/api/procurement', procurementRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/asset-classes', assetClassesRoutes);
+app.use('/api/business-units', businessUnitsRoutes);
+app.use('/api/sites', sitesRoutes);
+app.use('/api/sub-assets', subAssetsRoutes);
 
 // If no routes handled the request, it's a 404
 app.use((req, res, next) => {

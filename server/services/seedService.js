@@ -14,9 +14,8 @@ const { MaintenanceWorker } = require('../models/MaintenanceWorker.js');
 const { Machinist } = require('../models/Machinist.js');
 const { ProductionLine } = require('../models/ProductionLine.js');
 const { ProductionSection } = require('../models/ProductionSection.js');
-const { ProcessArea } = require('../models/ProcessArea.js');
-const { ProcessDepartment } = require('../models/ProcessDepartment.js');
-const { Factory } = require('../models/Factory.js');
+const { AssetClass } = require('../models/AssetClass.js');
+const { Site } = require('../models/Site.js');
 
 class SeedService {
   static async clearDatabase() {
@@ -123,52 +122,52 @@ class SeedService {
     }
   }
 
-  static async seedFactories() {
+  static async seedSites() {
     try {
-      console.log('Starting factories seeding...');
+      console.log('Starting sites seeding...');
 
-      const factoriesData = [
-        { name: 'TANA', code: 'TANA', address: 'Antananarivo' },
-        { name: 'TANA WASH PLANT', code: 'TANA_WASH', address: 'Antananarivo' },
-        { name: 'ANTSIRABE-1', code: 'ANTSIRABE-1', address: 'Antsirabe' },
-        { name: 'ANTSIRABE-1 WHASH PLANT', code: 'ANTSIRABE-1_WASH', address: 'Antsirabe' },
-        { name: 'ANTSIRABE-2', code: 'ANTSIRABE-2', address: 'Antsirabe' },
-        { name: 'ANTSIRABE-2 WHASH PLANT', code: 'ANTSIRABE-2_WASH', address: 'Antsirabe' },
-        { name: 'DEEPING', code: 'DEEPING', address: 'Unknown' }
+      const sitesData = [
+        { name: 'TANA', code: 'TANA', city: 'Antananarivo', country: 'Madagascar' },
+        { name: 'TANA WASH PLANT', code: 'TANA-WASH_PLANT', city: 'Antananarivo', country: 'Madagascar' },
+        { name: 'ANTSIRABE 1', code: 'ANTSIRABE_1', city: 'Antsirabe', country: 'Madagascar' },
+        { name: 'ANTSIRABE 1 WASH PLANT', code: 'ANTSIRABE_1-WASH_PLANT', city: 'Antsirabe', country: 'Madagascar' },
+        { name: 'ANTSIRABE 2', code: 'ANTSIRABE_2', city: 'Antsirabe', country: 'Madagascar' },
+        { name: 'ANTSIRABE 2 WASH PLANT', code: 'ANTSIRABE_2-WASH_PLANT', city: 'Antsirabe', country: 'Madagascar' },
+        { name: 'DEEPING', code: 'DEEPING', city: 'Unknown', country: 'Unknown' }
       ];
 
-      const createdFactories = [];
+      // Clear existing sites to ensure only the requested list exists
+      console.log('Clearing existing sites...');
+      await Site.deleteMany({});
+      console.log('Existing sites cleared.');
+
+      const createdSites = [];
       let skippedCount = 0;
 
-      for (const fData of factoriesData) {
-        const existing = await Factory.findOne({ code: fData.code });
+      for (const siteData of sitesData) {
+        const existing = await Site.findOne({ code: siteData.code });
         if (existing) {
-          console.log(`Factory already exists: ${fData.name}`);
-          createdFactories.push(existing); // Keep existing ones in list for downstream use
+          console.log(`Site already exists: ${siteData.name}`);
           skippedCount++;
           continue;
         }
-
-        const factory = new Factory({
-          ...fData,
-          description: `Factory location for ${fData.name}`
-        });
-        await factory.save();
-        createdFactories.push(factory);
-        console.log(`Factory created: ${factory.name}`);
+        const site = new Site(siteData);
+        await site.save();
+        createdSites.push(site);
+        console.log(`Site created: ${site.name}`);
       }
 
-      console.log(`Factories seeding completed. Created: ${createdFactories.length - skippedCount}, Skipped: ${skippedCount}`);
+      console.log(`Sites seeding completed. Created: ${createdSites.length}, Skipped: ${skippedCount}`);
 
       return {
         success: true,
-        created: createdFactories,
+        message: `Sites seeding completed. Created: ${createdSites.length}, Skipped: ${skippedCount}`,
+        created: createdSites,
         skipped: skippedCount
       };
-
     } catch (error) {
-      console.error('Error seeding factories:', error);
-      throw new Error(`Failed to seed factories: ${error.message}`);
+      console.error('Error seeding sites:', error);
+      throw new Error(`Failed to seed sites: ${error.message}`);
     }
   }
 
@@ -327,7 +326,13 @@ class SeedService {
       const types = await EquipmentType.find();
       const brands = await Brand.find();
       const sections = await ProductionSection.find().populate('productionLine');
+      const sites = await Site.find();
       console.log(`Available sections for assignment: ${sections.length}`);
+      console.log(`Available sites for assignment: ${sites.length}`);
+
+      if (sites.length === 0) {
+        throw new Error('No sites found. Please seed sites first.');
+      }
 
 
       if (categories.length === 0 || types.length === 0 || brands.length === 0) {
@@ -478,9 +483,30 @@ class SeedService {
           if (rand > 0.90) status = 'breakdown';
           else if (rand > 0.80) status = 'scheduled_maintenance';
 
-          // Assign to a department in this factory
-          const assignedDept = factoryDepartments[deptIndex % factoryDepartments.length];
-          deptIndex++;
+          // Assign to a section
+          let location = 'Antsirabe-1';
+          let assignedSection = null;
+          let assignedLineId = null;
+
+          if (sections.length > 0) {
+            assignedSection = sections[sectionIndex % sections.length];
+            assignedLineId = assignedSection.productionLine ? assignedSection.productionLine._id : null;
+            // Assign site based on section or randomly if no logic
+            // For now, distribute randomly across sites
+            const randomSiteIndex = Math.floor(Math.random() * sites.length);
+            location = sites[randomSiteIndex].name;
+            sectionIndex++;
+          } else {
+            const randomSiteIndex = Math.floor(Math.random() * sites.length);
+            location = sites[randomSiteIndex].name;
+          }
+
+          // Find the site object to link
+          // We used location string above, but we also want the ID reference
+          // Let's refine the logic:
+          const randomSite = sites[Math.floor(Math.random() * sites.length)];
+          const siteId = randomSite._id;
+          location = randomSite.name; // Keep legacy string for now, or use address
 
           // Generate lifecycle
           const acquisitionDate = new Date(Date.now() - Math.floor(Math.random() * 1500 * 24 * 60 * 60 * 1000));
@@ -488,14 +514,14 @@ class SeedService {
 
           equipmentData.push({
             name: `${details.brandName} ${modelName}`,
-            code: `EQ-${factory.code}-${modelName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)}-${Math.floor(Math.random() * 9999)}`,
+            code: `EQ-${modelName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)}-${Math.floor(Math.random() * 99999)}`,
             category: category._id,
             type: type._id,
             status: status,
-            location: factory.name,
-            factory: factory._id,
-            processArea: assignedDept.processArea,
-            processDepartment: assignedDept._id,
+            location: location,
+            site: siteId,
+            productionLine: assignedLineId,
+            productionSection: assignedSection ? assignedSection._id : null,
             model: modelName,
             brand: brand._id,
             manufacturer: details.brandName,
@@ -2556,94 +2582,148 @@ class SeedService {
   }
   static async seedMaintenancePersonnel() {
     try {
-      console.log('Seeding maintenance personnel...');
-
-      const factories = await Factory.find();
-      if (factories.length === 0) {
-        throw new Error('Factories must be seeded first');
-      }
-
-      await Promise.all([
-        Mechanic.deleteMany({}),
-        Electrician.deleteMany({}),
-        MaintenanceWorker.deleteMany({}),
-        Machinist.deleteMany({})
-      ]);
-
-      const createdPersonnel = {
-        mechanics: [],
-        electricians: [],
-        others: []
+      console.log('Starting maintenance personnel seeding...');
+      const results = {
+        mechanics: { created: 0, skipped: 0 },
+        electricians: { created: 0, skipped: 0 },
+        workers: { created: 0, skipped: 0 },
+        machinists: { created: 0, skipped: 0 }
       };
 
-      for (const factory of factories) {
-        console.log(`Seeding personnel for factory: ${factory.name}`);
-        // Use factory code directly to ensure uniqueness (assuming factory codes are unique like 'TANA', 'MAJ', etc.)
-        const factoryCode = factory.code || factory.name.substring(0, 3).toUpperCase();
+      // 1. Seed Mechanics
+      const mechanicsData = [
+        { matricule: 'MEC001', firstName: 'John', lastName: 'Doe', specialization: 'General Mechanics', certifications: ['Certified Master Mechanic'] },
+        { matricule: 'MEC002', firstName: 'Mike', lastName: 'Smith', specialization: 'Hydraulics', certifications: ['Hydraulic Systems Specialist'] },
+        { matricule: 'MEC003', firstName: 'David', lastName: 'Johnson', specialization: 'Pneumatics', certifications: [] },
+        { matricule: 'MEC004', firstName: 'Robert', lastName: 'Brown', specialization: 'Welding', certifications: ['AWS Certified Welder'] }
+      ];
 
-        // Mechanics (5 per factory)
-        for (let i = 1; i <= 5; i++) {
-          const mechanic = new Mechanic({
-            matricule: `MECH-${factoryCode}-${100 + i}`,
-            firstName: 'Jean',
-            lastName: `Mechanic ${i} (${factory.name})`,
-            specialization: i % 2 === 0 ? 'Hydraulics' : 'General Mechanics',
-            certifications: ['Safety Level 1', 'Hydraulic Systems'],
-            isActive: true,
-            factory: factory._id
-          });
-          await mechanic.save();
-          createdPersonnel.mechanics.push(mechanic);
+      for (const data of mechanicsData) {
+        const existing = await Mechanic.findOne({ matricule: data.matricule });
+        if (existing) {
+          results.mechanics.skipped++;
+          continue;
         }
-
-        // Electricians (3 per factory)
-        for (let i = 1; i <= 3; i++) {
-          const electrician = new Electrician({
-            matricule: `ELEC-${factoryCode}-${100 + i}`,
-            firstName: 'Pierre',
-            lastName: `Electrician ${i} (${factory.name})`,
-            specialization: 'Industrial Electrical',
-            certifications: ['High Voltage', 'Safety Level 2'],
-            isActive: true,
-            factory: factory._id
-          });
-          await electrician.save();
-          createdPersonnel.electricians.push(electrician);
-        }
-
-        // Maintenance Workers (3 per factory)
-        for (let i = 1; i <= 3; i++) {
-          const worker = new MaintenanceWorker({
-            matricule: `WORK-${factoryCode}-${100 + i}`,
-            firstName: 'Paul',
-            lastName: `Worker ${i} (${factory.name})`,
-            specialization: 'General Repairs',
-            isActive: true,
-            factory: factory._id
-          });
-          await worker.save();
-          createdPersonnel.others.push(worker);
-        }
-
-        // Machinists (2 per factory)
-        for (let i = 1; i <= 2; i++) {
-          const machinist = new Machinist({
-            matricule: `MACH-${factoryCode}-${100 + i}`,
-            firstName: 'Michel',
-            lastName: `Machinist ${i} (${factory.name})`,
-            isActive: true,
-            factory: factory._id
-          });
-          await machinist.save();
-          createdPersonnel.others.push(machinist);
-        }
+        await Mechanic.create(data);
+        results.mechanics.created++;
       }
 
-      console.log('Maintenance personnel seeded successfully.');
-      return createdPersonnel;
+      // 2. Seed Electricians
+      const electriciansData = [
+        { matricule: 'ELEC001', firstName: 'James', lastName: 'Wilson', specialization: 'Industrial Electrical', certifications: ['Master Electrician'] },
+        { matricule: 'ELEC002', firstName: 'Thomas', lastName: 'Anderson', specialization: 'Control Systems', certifications: ['PLC Programming'] },
+        { matricule: 'ELEC003', firstName: 'William', lastName: 'Taylor', specialization: 'Motor Repair', certifications: [] },
+        { matricule: 'ELEC004', firstName: 'Richard', lastName: 'Moore', specialization: 'Instrumentation', certifications: ['Instrumentation Tech'] }
+      ];
+
+      for (const data of electriciansData) {
+        const existing = await Electrician.findOne({ matricule: data.matricule });
+        if (existing) {
+          results.electricians.skipped++;
+          continue;
+        }
+        await Electrician.create(data);
+        results.electricians.created++;
+      }
+
+      // 3. Seed Maintenance Workers
+      const workersData = [
+        { matricule: 'WRK001', firstName: 'Joseph', lastName: 'Martin', specialization: 'General Repairs' },
+        { matricule: 'WRK002', firstName: 'Charles', lastName: 'Thompson', specialization: 'Facility Maintenance' },
+        { matricule: 'WRK003', firstName: 'Daniel', lastName: 'Garcia', specialization: 'Cleaning' },
+        { matricule: 'WRK004', firstName: 'Matthew', lastName: 'Martinez', specialization: 'Painting' }
+      ];
+
+      for (const data of workersData) {
+        const existing = await MaintenanceWorker.findOne({ matricule: data.matricule });
+        if (existing) {
+          results.workers.skipped++;
+          continue;
+        }
+        await MaintenanceWorker.create(data);
+        results.workers.created++;
+      }
+
+      // 4. Seed Machinists
+      const machinistsData = [
+        { matricule: 'MAC001', firstName: 'Paul', lastName: 'Robinson' },
+        { matricule: 'MAC002', firstName: 'Mark', lastName: 'Clark' },
+        { matricule: 'MAC003', firstName: 'Donald', lastName: 'Rodriguez' },
+        { matricule: 'MAC004', firstName: 'George', lastName: 'Lewis' }
+      ];
+
+      for (const data of machinistsData) {
+        const existing = await Machinist.findOne({ matricule: data.matricule });
+        if (existing) {
+          results.machinists.skipped++;
+          continue;
+        }
+        await Machinist.create(data);
+        results.machinists.created++;
+      }
+
+      console.log('Maintenance personnel seeding completed.');
+      return {
+        success: true,
+        message: 'Maintenance personnel seeded successfully',
+        results
+      };
+
     } catch (error) {
       console.error('Error seeding maintenance personnel:', error);
-      throw error;
+      throw new Error(`Failed to seed maintenance personnel: ${error.message}`);
+    }
+  }
+
+  static async seedAssetClasses() {
+    try {
+      console.log('Starting asset classes seeding...');
+      const items = [
+        { name: 'Production Equipment', code: 'PRD', description: 'Production equipment' },
+        { name: 'Utilities', code: 'UTL', description: 'Utilities: air, steam, power, water' },
+        { name: 'Facilities & Buildings', code: 'FAC', description: 'Facilities, buildings, HVAC' },
+        { name: 'Infrastructure & IT', code: 'INF', description: 'Infrastructure, networks, IT' },
+        { name: 'Safety & Environment', code: 'SAF', description: 'Safety, environment' },
+        { name: 'Material Handling Equipment', code: 'MHE', description: 'Forklifts, conveyors, handling' }
+      ];
+
+      const created = [];
+      let skipped = 0;
+      for (const it of items) {
+        const exists = await AssetClass.findOne({ code: it.code });
+        if (exists) { skipped++; continue; }
+        const doc = await AssetClass.create(it);
+        created.push(doc);
+      }
+
+      return { success: true, message: 'Asset classes seeding completed', created, skipped };
+    } catch (error) {
+      console.error('Error seeding asset classes:', error);
+      throw new Error(`Failed to seed asset classes: ${error.message}`);
+    }
+  }
+
+  static async seedSites() {
+    try {
+      console.log('Starting sites seeding...');
+      const items = [
+        { name: 'Factory A – Antananarivo', code: 'TANA', country: 'MG', city: 'Antananarivo', timezone: 'Africa/Nairobi' },
+        { name: 'Factory B – Tamatave', code: 'TMV', country: 'MG', city: 'Toamasina', timezone: 'Africa/Nairobi' }
+      ];
+
+      const created = [];
+      let skipped = 0;
+      for (const it of items) {
+        const exists = await Site.findOne({ code: it.code });
+        if (exists) { skipped++; continue; }
+        const doc = await Site.create(it);
+        created.push(doc);
+      }
+
+      return { success: true, message: 'Sites seeding completed', created, skipped };
+    } catch (error) {
+      console.error('Error seeding sites:', error);
+      throw new Error(`Failed to seed sites: ${error.message}`);
     }
   }
 }

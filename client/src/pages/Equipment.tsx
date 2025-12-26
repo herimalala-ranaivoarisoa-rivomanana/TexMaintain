@@ -38,9 +38,12 @@ import { getMaintenanceWorkers } from "@/api/maintenanceWorkers"
 import { uploadBreakdownMedia } from "@/api/breakdownMedia"
 import { getEquipmentCategories } from "@/api/equipmentCategories"
 import { getEquipmentTypes } from "@/api/equipmentTypes"
+import { listSites } from "@/api/sites"
+import { listAssetClasses } from "@/api/assetClasses"
 import { useToast } from "@/hooks/useToast"
 import { useFactory } from "@/contexts/FactoryContext"
 import { useAuth } from "@/contexts/AuthContext"
+import { useSite } from "@/contexts/SiteContext"
 import { EQUIPMENT_STATUSES, EquipmentStatus, StatusMetadata, getStatusColor, getStatusLabel } from "@/types/equipment"
 
 
@@ -107,6 +110,8 @@ export function Equipment() {
   const [categories, setCategories] = useState<Category[]>([])
   const [types, setTypes] = useState<EquipmentType[]>([])
   const [brands, setBrands] = useState<{ _id: string; name: string }[]>([])
+  const [sites, setSites] = useState<any[]>([])
+  const [assetClasses, setAssetClasses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [searchParams] = useSearchParams()
@@ -120,6 +125,7 @@ export function Equipment() {
   const { toast } = useToast()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const { user } = useAuth()
+  const { currentSite } = useSite()
   const navigate = useNavigate()
 
   const [form, setForm] = useState<any>({
@@ -132,6 +138,10 @@ export function Equipment() {
     acquisitionDate: "",
     status: "offline",
     location: "",
+    site: "",
+    assetClass: "",
+    criticality: "medium",
+    criticalityScore: 3,
     machinistId: "",
     mechanicId: "",
     electricianId: "",
@@ -158,6 +168,9 @@ export function Equipment() {
   const [selectedMechanicId, setSelectedMechanicId] = useState<string>("")
   const [selectedElectricianId, setSelectedElectricianId] = useState<string>("")
   const [selectedMaintenanceWorkerId, setSelectedMaintenanceWorkerId] = useState<string>("")
+  // Site change justification state
+  const [siteChangeReason, setSiteChangeReason] = useState<string>("")
+  const [siteChangeDocuments, setSiteChangeDocuments] = useState<string>("")
 
   // Breakdown state
   const [breakdownType, setBreakdownType] = useState<string>("")
@@ -176,7 +189,8 @@ export function Equipment() {
         order,
         q: searchTerm,
         status: statusFilter !== 'all' ? statusFilter : undefined,
-        category: categoryFilter !== 'all' ? categoryFilter : undefined
+        category: categoryFilter !== 'all' ? categoryFilter : undefined,
+        site: currentSite ? currentSite._id : undefined
       })
       setEquipment(data.equipment || [])
       setTotal(data.total)
@@ -196,7 +210,7 @@ export function Equipment() {
 
   useEffect(() => {
     fetchEquipment()
-  }, [page, limit, sort, order, searchTerm, statusFilter, categoryFilter, currentFactory])
+  }, [page, limit, sort, order, searchTerm, statusFilter, categoryFilter, currentSite])
 
   /* REMOVED: getStockStatus and helper functions - Now using backend provided stockStatus */
   const [statusMetadata, setStatusMetadata] = useState<Record<string, StatusMetadata>>({})
@@ -206,7 +220,7 @@ export function Equipment() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [categoriesData, typesData, brandsData, machinistsData, mechanicsData, electriciansData, workersData, metadataRes] = await Promise.all([
+        const [categoriesData, typesData, brandsData, machinistsData, mechanicsData, electriciansData, workersData, sitesRes, classesRes, metadataRes] = await Promise.all([
           getEquipmentCategories(),
           getEquipmentTypes(),
           getBrands(),
@@ -214,6 +228,8 @@ export function Equipment() {
           getMechanics(),
           getElectricians(),
           getMaintenanceWorkers(),
+          listSites(),
+          listAssetClasses(),
           getStatusMetadata()
         ])
         setCategories(categoriesData.categories || categoriesData)
@@ -223,6 +239,8 @@ export function Equipment() {
         setMechanics(mechanicsData.mechanics || [])
         setElectricians(electriciansData.electricians || [])
         setMaintenanceWorkers(workersData.workers || [])
+        setSites((sitesRes as any).sites || [])
+        setAssetClasses((classesRes as any).assetClasses || [])
 
         if (metadataRes && metadataRes.success) {
           setStatusMetadata(metadataRes.statuses)
@@ -283,6 +301,7 @@ export function Equipment() {
       acquisitionDate: "",
       status: "offline",
       location: "",
+      site: currentSite ? currentSite._id : "",
       machinistId: "",
       mechanicId: "",
       electricianId: "",
@@ -299,6 +318,8 @@ export function Equipment() {
     setBreakdownDescription("")
     setBreakdownMedia([])
     setBreakdownMediaPreviews([])
+    setSiteChangeReason("")
+    setSiteChangeDocuments("")
     setIsDialogOpen(true)
   }
 
@@ -314,6 +335,10 @@ export function Equipment() {
       acquisitionDate: item.acquisitionDate ? item.acquisitionDate.split('T')[0] : "",
       status: item.status || "offline",
       location: item.location || "",
+      site: (item as any).site?._id || "",
+      assetClass: (item as any).assetClass?._id || "",
+      criticality: (item as any).criticality || "medium",
+      criticalityScore: (item as any).criticalityScore || 3,
       machinistId: item.machinistId || "",
       mechanicId: item.mechanicId || "",
       electricianId: item.electricianId || "",
@@ -429,6 +454,12 @@ export function Equipment() {
       }
     }
 
+    // Require chipNumber
+    if (!form.chipNumber || !String(form.chipNumber).trim()) {
+      toast({ title: 'Chip Number requis', description: 'Veuillez saisir un Chip Number unique', variant: 'destructive' })
+      return
+    }
+
     try {
       setIsSaving(true)
       if (editingItem) {
@@ -436,7 +467,6 @@ export function Equipment() {
         const optimistic = equipment.map((e) => e._id === editingItem._id ? {
           ...e,
           status: form.status,
-          location: form.location,
           model: form.model,
           serialNumber: form.serialNumber,
           chipNumber: form.chipNumber,
@@ -464,12 +494,31 @@ export function Equipment() {
 
             // Step 2: Update other fields (excluding status to avoid conflicts)
             const { status, ...otherFields } = form
-            if (Object.keys(otherFields).length > 0) {
-              await updateEquipment(editingItem._id, otherFields)
+            const payload2: any = { ...otherFields }
+            const originalSiteId = (editingItem as any).site?._id || ''
+            if (payload2.site && String(payload2.site) !== String(originalSiteId)) {
+              const docs = siteChangeDocuments.split(',').map(s => s.trim()).filter(Boolean)
+              if (!siteChangeReason.trim() || docs.length === 0) {
+                throw new Error('Site change requires a non-empty reason and at least one document reference')
+              }
+              payload2.siteChangeJustification = { reason: siteChangeReason.trim(), documents: docs }
+            }
+            if (Object.keys(payload2).length > 0) {
+              await updateEquipment(editingItem._id, payload2)
             }
           } else {
-            // No status change, just update all fields
-            await updateEquipment(editingItem._id, form)
+            // No status change, build payload and include site change justification if needed
+            const payload: any = { ...form }
+            const originalSiteId = (editingItem as any).site?._id || ''
+            if (payload.site && String(payload.site) !== String(originalSiteId)) {
+              const docs = siteChangeDocuments.split(',').map(s => s.trim()).filter(Boolean)
+              if (!siteChangeReason.trim() || docs.length === 0) {
+                toast({ title: 'Justification requise', description: 'Changement de site: motif et au moins une référence de document sont requis.', variant: 'destructive' })
+                throw new Error('Missing site change justification')
+              }
+              payload.siteChangeJustification = { reason: siteChangeReason.trim(), documents: docs }
+            }
+            await updateEquipment(editingItem._id, payload)
           }
 
           // Step 3: Upload media if there are files
@@ -527,11 +576,10 @@ export function Equipment() {
         const tempType = types.find(t => t._id === form.type) || { _id: form.type, name: 'Loading...', category: tempCategory }
         const tempItem: Equipment = {
           _id: tempId,
-          name: 'New Equipment',
+          name: 'New Asset',
           category: tempCategory,
           type: tempType,
           status: form.status,
-          location: form.location,
           model: form.model,
           serialNumber: form.serialNumber,
           chipNumber: form.chipNumber,
@@ -556,8 +604,8 @@ export function Equipment() {
           toast({ title: "Created", description: "Equipment created successfully" })
 
           // Show QR Code dialog for new equipment
-          if (created && created._id) {
-            setCreatedEquipmentId(created._id)
+          if (created && (created.chipNumber || created._id)) {
+            setCreatedEquipmentId(created.chipNumber || created._id)
 
             // Upload breakdown media if needed
             if (breakdownMedia.length > 0) {
@@ -698,17 +746,17 @@ export function Equipment() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Equipment Management
+            Assets Management
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Monitor and manage all factory equipment
+            Monitor and manage all factory assets
           </p>
         </div>
         <div className="flex gap-2">
           {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
             <Button onClick={openAddDialog} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
               <Plus className="mr-2 h-4 w-4" />
-              Add Equipment
+              Add Asset
             </Button>
           )}
         </div>
@@ -831,10 +879,10 @@ export function Equipment() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-slate-500">Location</p>
+                  <p className="text-slate-500">Site</p>
                   <p className="text-slate-900 flex items-center">
                     <MapPin className="mr-1 h-3 w-3" />
-                    {item.location}
+                    {(item as any).site?.code || (item as any).site?.name || '-'}
                   </p>
                 </div>
                 <div>
@@ -1019,10 +1067,10 @@ export function Equipment() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="type">Type</Label>
+              <Label htmlFor="type">Sub-category</Label>
               <Select value={form.type} onValueChange={(value) => setForm({ ...form, type: value })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
+                  <SelectValue placeholder="Select sub-category" />
                 </SelectTrigger>
                 <SelectContent>
                   {types.filter(type => type.category._id === form.category).map((type) => (
@@ -1030,6 +1078,73 @@ export function Equipment() {
                       {type.name}
                     </SelectItem>
                   )) || <SelectItem value="" disabled>No types available</SelectItem>}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="site">Site</Label>
+              <Select value={form.site} onValueChange={(value) => setForm({ ...form, site: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select site" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sites.map((s) => (
+                    <SelectItem key={s._id} value={s._id}>
+                      {s.code || s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {editingItem && form.site && String(form.site) !== String((editingItem as any).site?._id || '') ? (
+              <div className="grid gap-2 border rounded p-3 bg-yellow-50">
+                <Label htmlFor="siteReason">Motif du changement de site *</Label>
+                <Textarea id="siteReason" value={siteChangeReason} onChange={(e) => setSiteChangeReason(e.target.value)} placeholder="Expliquer la raison du transfert" />
+                <Label htmlFor="siteDocs">Références de documents (séparées par des virgules) *</Label>
+                <Input id="siteDocs" value={siteChangeDocuments} onChange={(e) => setSiteChangeDocuments(e.target.value)} placeholder="Ex: DOC-123, TRANSFER-2025-01" />
+              </div>
+            ) : null}
+            <div className="grid gap-2">
+              <Label htmlFor="assetClass">Asset Class</Label>
+              <Select value={form.assetClass} onValueChange={(value) => setForm({ ...form, assetClass: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select asset class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assetClasses.map((c) => (
+                    <SelectItem key={c._id} value={c._id}>
+                      {c.code || c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="criticality">Criticality</Label>
+              <Select value={form.criticality} onValueChange={(value) => setForm({ ...form, criticality: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select criticality" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="criticalityScore">Criticality Score (1..5)</Label>
+              <Select value={String(form.criticalityScore)} onValueChange={(value) => setForm({ ...form, criticalityScore: parseInt(value, 10) })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select score" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="3">3</SelectItem>
+                  <SelectItem value="4">4</SelectItem>
+                  <SelectItem value="5">5</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1311,10 +1426,7 @@ export function Equipment() {
               </div>
             )}
 
-            <div className="grid gap-2">
-              <Label htmlFor="location">Location</Label>
-              <Input id="location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Enter location" />
-            </div>
+            {/* Location removed: using Site only */}
             <div className="grid gap-2">
               <Label htmlFor="model">Model</Label>
               <Input id="model" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="Enter model" />

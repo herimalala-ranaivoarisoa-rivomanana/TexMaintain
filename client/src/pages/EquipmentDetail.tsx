@@ -5,10 +5,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getEquipmentById, getStatusMetadata } from "@/api/equipment"
-import { MapPin, Calendar, ArrowLeft, QrCode, History, Info } from "lucide-react"
+import { MapPin, Calendar, ArrowLeft, QrCode, History, Info, Boxes } from "lucide-react"
 import type { StatusMetadata } from "@/types/equipment"
 
 import { QRCodeGenerator } from "@/components/QRCodeGenerator"
+import { SubAssetsList } from "@/components/SubAssetsList"
 import { EquipmentTimeline } from "@/components/EquipmentTimeline"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useFactory } from "@/contexts/FactoryContext"
@@ -159,7 +160,7 @@ export function EquipmentDetail() {
       <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
 
       <Tabs defaultValue="details" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-2xl">
           <TabsTrigger value="details" className="flex items-center gap-2">
             <Info className="h-4 w-4" />
             Details
@@ -167,6 +168,10 @@ export function EquipmentDetail() {
           <TabsTrigger value="history" className="flex items-center gap-2">
             <History className="h-4 w-4" />
             Complete History
+          </TabsTrigger>
+          <TabsTrigger value="subassets" className="flex items-center gap-2">
+            <Boxes className="h-4 w-4" />
+            Sub-assets
           </TabsTrigger>
         </TabsList>
 
@@ -191,7 +196,7 @@ export function EquipmentDetail() {
                             <DialogTitle>Equipment QR Code</DialogTitle>
                           </DialogHeader>
                           <div className="flex items-center justify-center p-6">
-                            <QRCodeGenerator value={data._id} />
+                            <QRCodeGenerator value={(data as any).chipNumber || data._id} />
                           </div>
                         </DialogContent>
                       </Dialog>
@@ -225,6 +230,14 @@ export function EquipmentDetail() {
                     <div>
                       <p className="text-sm text-slate-500">Chip Number</p>
                       <p className="text-slate-900">{data.chipNumber || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">Site</p>
+                      <p className="text-slate-900">{(data as any).site?.code || (data as any).site?.name || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">Asset Class</p>
+                      <p className="text-slate-900">{(data as any).assetClass?.code || (data as any).assetClass?.name || '-'}</p>
                     </div>
                   </div>
 
@@ -336,6 +349,9 @@ export function EquipmentDetail() {
 
         <TabsContent value="history">
           <EquipmentTimeline equipmentId={id || ''} limit={100} />
+        </TabsContent>
+        <TabsContent value="subassets">
+          <SubAssetsList equipmentId={id || ''} />
         </TabsContent>
       </Tabs>
     </div>

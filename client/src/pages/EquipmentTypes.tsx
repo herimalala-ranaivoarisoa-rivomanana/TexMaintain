@@ -237,16 +237,16 @@ export function EquipmentTypes() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Equipment Types
+            Sub-categories
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Manage equipment types within categories
+            Manage sub-categories within categories
           </p>
         </div>
         {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
           <Button onClick={openAddDialog} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
             <Plus className="mr-2 h-4 w-4" />
-            Add Type
+            Add Sub-category
           </Button>
         )}
       </div>
@@ -255,7 +255,7 @@ export function EquipmentTypes() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="pb-3">
-            <CardDescription className="text-blue-700 font-medium">Total Types</CardDescription>
+            <CardDescription className="text-blue-700 font-medium">Total Sub-categories</CardDescription>
             <CardTitle className="text-3xl text-blue-900">{globalStats.totalTypes}</CardTitle>
           </CardHeader>
           <CardContent>
@@ -314,7 +314,7 @@ export function EquipmentTypes() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Search types by name or category..."
+                placeholder="Search sub-categories by name or category..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -353,7 +353,7 @@ export function EquipmentTypes() {
 
               <div className="flex items-center gap-2 text-sm text-slate-600">
                 <BarChart3 className="h-4 w-4" />
-                <span>Showing {processedTypes.length} of {types.length} types</span>
+                <span>Showing {processedTypes.length} of {types.length} sub-categories</span>
               </div>
             </div>
           </div>
@@ -366,7 +366,7 @@ export function EquipmentTypes() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-xl">Equipment Statistics by Type</CardTitle>
+                <CardTitle className="text-xl">Equipment Statistics by Sub-category</CardTitle>
                 <CardDescription>Performance metrics and status distribution</CardDescription>
               </div>
               <Badge variant="outline" className="text-sm">
@@ -379,7 +379,7 @@ export function EquipmentTypes() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Type</TableHead>
+                  <TableHead>Sub-category</TableHead>
                   <TableHead className="text-center">Total</TableHead>
                   <TableHead className="text-center">Online</TableHead>
                   <TableHead className="text-center">Maintenance</TableHead>
@@ -445,7 +445,7 @@ export function EquipmentTypes() {
                   <CardTitle className="text-lg">{type.name}</CardTitle>
                   <Badge variant="secondary">
                     <Wrench className="h-3 w-3 mr-1" />
-                    Type
+                    Sub-category
                   </Badge>
                 </div>
                 <CardDescription className="flex items-center text-slate-600">
@@ -566,13 +566,13 @@ export function EquipmentTypes() {
         <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
           <CardContent className="p-12 text-center">
             <Wrench className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No equipment types found</h3>
+            <h3 className="text-lg font-medium text-slate-900 mb-2">No sub-categories found</h3>
             <p className="text-slate-600 mb-4">
               {searchTerm
-                ? `No types match "${searchTerm}". Try a different search term.`
+                ? `No sub-categories match "${searchTerm}". Try a different search term.`
                 : categoryFilter === "all"
-                  ? "Start by adding your first equipment type."
-                  : "No types found for the selected category. Try selecting a different category or add a new type."
+                  ? "Start by adding your first sub-category."
+                  : "No sub-categories found for the selected category. Try selecting a different category or add a new sub-category."
               }
             </p>
             {(searchTerm || categoryFilter !== 'all') && (
@@ -594,12 +594,12 @@ export function EquipmentTypes() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[500px] bg-white">
           <DialogHeader>
-            <DialogTitle>{editingItem ? 'Edit Equipment Type' : 'Add Equipment Type'}</DialogTitle>
+            <DialogTitle>{editingItem ? 'Edit Sub-category' : 'Add Sub-category'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter type name" />
+              <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter sub-category name" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="category">Category</Label>
@@ -618,7 +618,7 @@ export function EquipmentTypes() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Description (Optional)</Label>
-              <Textarea id="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Enter type description" />
+              <Textarea id="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Enter sub-category description" />
             </div>
           </div>
           <DialogFooter>

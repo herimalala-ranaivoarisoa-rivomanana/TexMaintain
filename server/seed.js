@@ -8,8 +8,7 @@
  */
 
 const mongoose = require('mongoose');
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config({ path: __dirname + '/.env' });
 
 const SeedService = require('./services/seedService');
 
@@ -41,6 +40,15 @@ async function runSeeder() {
       console.log(`   Password: ${results.admin.credentials?.password}\n`);
     } catch (error) {
       console.log('⚠️  Admin user seeding skipped (may already exist):', error.message + '\n');
+    }
+
+    // Seed sites (New)
+    console.log('🏭 Seeding sites...');
+    try {
+      results.sites = await SeedService.seedSites();
+      console.log(`✅ Sites seeded: ${results.sites.created} created, ${results.sites.skipped} skipped\n`);
+    } catch (error) {
+      console.error('❌ Error seeding sites:', error.message + '\n');
     }
 
     // Seed maintenance personnel
@@ -141,6 +149,7 @@ async function runSeeder() {
     console.log('\n📊 Summary:');
     console.log(`   - Admin User: ${results.admin?.success ? 'Created' : 'Skipped'}`);
     console.log(`   - Personnel: ${results.personnel?.results ? 'Created' : 'Skipped'}`);
+    console.log(`   - Sites: ${results.sites?.created || 0} created`);
     console.log(`   - Categories: ${results.categories?.created || 0} created`);
     console.log(`   - Types: ${results.types?.created || 0} created`);
     console.log(`   - Brands: ${results.brands?.created || 0} created`);

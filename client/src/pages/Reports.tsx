@@ -253,7 +253,7 @@ export function Reports() {
         {/* TCO by Category Chart */}
         <Card className="lg:col-span-2 bg-white/60 backdrop-blur-sm border-slate-200/60">
           <CardHeader>
-            <CardTitle>TCO by Equipment Category</CardTitle>
+            <CardTitle>TCO by Category</CardTitle>
             <CardDescription>Which categories are costing the most?</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
