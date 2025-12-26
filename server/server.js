@@ -50,9 +50,10 @@ app.enable('json spaces');
 app.enable('strict routing');
 
 // Secure CORS configuration
+const defaultOrigins = ['http://localhost:5173', 'http://localhost:3000', 'http://172.19.144.1:5173'];
 const allowedOrigins = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(',')
-  : ['http://localhost:5173', 'http://localhost:3000'];
+  ? [...process.env.FRONTEND_URL.split(','), ...defaultOrigins]
+  : defaultOrigins;
 
 app.use(cors({
   origin: function (origin, callback) {
