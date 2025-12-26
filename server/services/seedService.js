@@ -2551,7 +2551,8 @@ class SeedService {
 
       for (const factory of factories) {
         console.log(`Seeding personnel for factory: ${factory.name}`);
-        const factoryCode = factory.name.substring(0, 3).toUpperCase();
+        // Use factory code directly to ensure uniqueness (assuming factory codes are unique like 'TANA', 'MAJ', etc.)
+        const factoryCode = factory.code || factory.name.substring(0, 3).toUpperCase();
 
         // Mechanics (5 per factory)
         for (let i = 1; i <= 5; i++) {
