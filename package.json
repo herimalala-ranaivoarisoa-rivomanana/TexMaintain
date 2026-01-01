@@ -1,5 +1,5 @@
 {
-  "name": "Computerized Maintenance Management System for AQUARELLE ANTSIRABE-1",
+  "name": "texmaintain-cmms",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
