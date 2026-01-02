@@ -77,19 +77,21 @@ const allowedOrigins = process.env.FRONTEND_URL
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        console.warn(`CORS: Blocked request from origin: ${origin}`);
-        callback(new Error("Not allowed by CORS"));
+      if (!origin) return callback(null, true); // Postman, curl, etc.
+      
+      const isAllowed = allowedOrigins.some(o => origin.startsWith(o));
+      if (isAllowed) {
+        return callback(null, true);
       }
+
+      console.warn(`CORS: Blocked request from origin: ${origin}`);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     exposedHeaders: ["Content-Range", "X-Content-Range"],
-    maxAge: 600, // 10 minutes
+    maxAge: 600,
   })
 );
 
