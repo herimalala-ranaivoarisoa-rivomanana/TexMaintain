@@ -40,11 +40,11 @@ export function Login() {
       })
       navigate("/")
     } catch (error) {
-      console.error("Login error:", error.message)
+      console.error("Login error:", error)
       toast({
         variant: "destructive",
         title: "Error",
-        description: error?.message,
+        description: `${error}`
       })
     } finally {
       setLoading(false)
