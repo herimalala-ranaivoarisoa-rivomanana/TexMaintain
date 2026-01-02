@@ -56,13 +56,38 @@ class SeedService {
       const adminEmail = 'admin@texmaintain.com';
       const adminPassword = 'admin123';
 
+      // Get all factories to assign to admin
+      const factories = await Factory.find();
+      const factoryIds = factories.map(f => f._id);
+
+      if (factories.length === 0) {
+        console.warn('⚠️ No factories found when seeding admin user. Admin will not have factory access.');
+      }
+
       // Check if admin user already exists
       const existingAdmin = await User.findOne({ email: adminEmail });
+
       if (existingAdmin) {
         console.log(`Admin user already exists with email: ${adminEmail}`);
+
+        // Update existing admin with factories if needed
+        let updated = false;
+        if (!existingAdmin.factories || existingAdmin.factories.length === 0 || existingAdmin.factories.length !== factoryIds.length) {
+          existingAdmin.factories = factoryIds;
+
+          if (factoryIds.length > 0) {
+            if (!existingAdmin.defaultFactory) existingAdmin.defaultFactory = factoryIds[0];
+            if (!existingAdmin.activeFactory) existingAdmin.activeFactory = factoryIds[0];
+          }
+
+          await existingAdmin.save();
+          console.log('✅ Updated existing admin user with all factories');
+          updated = true;
+        }
+
         return {
           success: true,
-          message: 'Admin user already exists',
+          message: 'Admin user already exists' + (updated ? ' (factories updated)' : ''),
           user: existingAdmin
         };
       }
@@ -74,11 +99,14 @@ class SeedService {
         password: hashedPassword,
         role: 'admin',
         isActive: true,
-        lastLoginAt: new Date()
+        lastLoginAt: new Date(),
+        factories: factoryIds,
+        defaultFactory: factoryIds[0], // Set first factory as default
+        activeFactory: factoryIds[0]   // Set first factory as active
       });
 
       await adminUser.save();
-      console.log(`Admin user created successfully with email: ${adminEmail}`);
+      console.log(`Admin user created successfully with email: ${adminEmail} and access to ${factoryIds.length} factories`);
 
       return {
         success: true,
