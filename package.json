@@ -15,7 +15,7 @@
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f mongo",
     "db:ps": "docker compose ps",
-    "seed": "node server/seed.js"
+    "seed": "node server/reseed_complete.js"
   },
   "author": "",
   "license": "ISC",
