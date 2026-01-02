@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import { ThemeProvider } from "./components/ui/theme-provider"
 import { Toaster } from "./components/ui/toaster"
 import { AuthProvider } from "./contexts/AuthContext"
-import { SiteProvider } from "./contexts/SiteContext"
+import { FactoryProvider } from "./contexts/FactoryContext"
 import { Login } from "./pages/Login"
 import { Register } from "./pages/Register"
 import { ProtectedRoute } from "./components/ProtectedRoute"
@@ -40,7 +40,7 @@ import AssetClassesPage from "./pages/AssetClasses"
 function App() {
   return (
     <AuthProvider>
-      <SiteProvider>
+      <FactoryProvider>
         <ThemeProvider defaultTheme="light" storageKey="ui-theme">
           <Router>
             <Routes>
@@ -81,7 +81,7 @@ function App() {
           </Router>
           <Toaster />
         </ThemeProvider>
-      </SiteProvider>
+      </FactoryProvider>
     </AuthProvider>
   )
 }
