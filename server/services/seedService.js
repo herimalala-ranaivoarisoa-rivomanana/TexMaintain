@@ -16,6 +16,9 @@ const { ProductionLine } = require('../models/ProductionLine.js');
 const { ProductionSection } = require('../models/ProductionSection.js');
 const { AssetClass } = require('../models/AssetClass.js');
 const { Site } = require('../models/Site.js');
+const { Factory } = require('../models/Factory.js');
+const { ProcessArea } = require('../models/ProcessArea.js');
+const { ProcessDepartment } = require('../models/ProcessDepartment.js');
 
 class SeedService {
   static async clearDatabase() {
@@ -45,6 +48,44 @@ class SeedService {
     } catch (error) {
       console.error('❌ Error clearing database:', error);
       throw error;
+    }
+  }
+
+  static async seedFactories() {
+    try {
+      console.log('Starting factories seeding...');
+
+      const factoriesData = [
+        { name: 'Aquarelle Antsirabe 1', code: 'ANTSIRABE_1', address: 'Antsirabe, Madagascar' },
+        { name: 'Aquarelle Antsirabe 2', code: 'ANTSIRABE_2', address: 'Antsirabe, Madagascar' },
+        { name: 'Aquarelle Tana', code: 'TANA', address: 'Antananarivo, Madagascar' }
+      ];
+
+      // Note: We don't clear factories by default in clearDatabase, 
+      // but here we might want to ensure they exist or update them.
+      // For safety, let's check existing or create.
+
+      const createdFactories = [];
+      let skippedCount = 0;
+
+      for (const factoryData of factoriesData) {
+        const existing = await Factory.findOne({ code: factoryData.code });
+        if (existing) {
+          console.log(`Factory already exists: ${factoryData.name}`);
+          skippedCount++;
+          continue;
+        }
+        const factory = new Factory(factoryData);
+        await factory.save();
+        createdFactories.push(factory);
+        console.log(`Factory created: ${factory.name}`);
+      }
+
+      console.log(`Factories seeding completed. Created: ${createdFactories.length}, Skipped: ${skippedCount}`);
+      return { success: true, created: createdFactories, skipped: skippedCount };
+    } catch (error) {
+      console.error('Error seeding factories:', error);
+      throw new Error(`Failed to seed factories: ${error.message}`);
     }
   }
 
@@ -459,6 +500,7 @@ class SeedService {
         }
 
         let deptIndex = 0;
+        let sectionIndex = 0;
 
         // Generate a subset of equipment for this factory
         const factoryModels = SPECIFIC_MODELS.filter(() => Math.random() > 0.5); // 50% of models per factory
@@ -482,6 +524,9 @@ class SeedService {
           const rand = Math.random();
           if (rand > 0.90) status = 'breakdown';
           else if (rand > 0.80) status = 'scheduled_maintenance';
+
+          const assignedDept = factoryDepartments[deptIndex % factoryDepartments.length];
+          deptIndex++;
 
           // Assign to a section
           let location = 'Antsirabe-1';
@@ -520,12 +565,14 @@ class SeedService {
             status: status,
             location: location,
             site: siteId,
+            factory: factory._id, // Assign to current factory
             productionLine: assignedLineId,
             productionSection: assignedSection ? assignedSection._id : null,
             model: modelName,
             brand: brand._id,
             manufacturer: details.brandName,
             serialNumber: serialNumber,
+            chipNumber: `CHIP-${Math.floor(Math.random() * 1000000000)}`,
             acquisitionDate: acquisitionDate,
             lastMaintenance: new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)),
             nextMaintenance: new Date(Date.now() + Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)),
@@ -2590,6 +2637,12 @@ class SeedService {
         machinists: { created: 0, skipped: 0 }
       };
 
+      const factories = await Factory.find();
+      if (!factories || factories.length === 0) {
+        throw new Error('No factories found. Cannot seed maintenance personnel.');
+      }
+      const defaultFactoryId = factories[0]._id;
+
       // 1. Seed Mechanics
       const mechanicsData = [
         { matricule: 'MEC001', firstName: 'John', lastName: 'Doe', specialization: 'General Mechanics', certifications: ['Certified Master Mechanic'] },
@@ -2604,7 +2657,7 @@ class SeedService {
           results.mechanics.skipped++;
           continue;
         }
-        await Mechanic.create(data);
+        await Mechanic.create({ ...data, factory: defaultFactoryId });
         results.mechanics.created++;
       }
 
@@ -2622,7 +2675,7 @@ class SeedService {
           results.electricians.skipped++;
           continue;
         }
-        await Electrician.create(data);
+        await Electrician.create({ ...data, factory: defaultFactoryId });
         results.electricians.created++;
       }
 
@@ -2640,7 +2693,7 @@ class SeedService {
           results.workers.skipped++;
           continue;
         }
-        await MaintenanceWorker.create(data);
+        await MaintenanceWorker.create({ ...data, factory: defaultFactoryId });
         results.workers.created++;
       }
 
@@ -2658,7 +2711,7 @@ class SeedService {
           results.machinists.skipped++;
           continue;
         }
-        await Machinist.create(data);
+        await Machinist.create({ ...data, factory: defaultFactoryId });
         results.machinists.created++;
       }
 

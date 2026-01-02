@@ -33,6 +33,7 @@ const seedDatabase = async () => {
         await SeedService.seedProjects(); // Now per-factory
         await SeedService.seedMaintenancePersonnel();
         await SeedService.seedInterventions(); // Now linked to equipment factory
+        await SeedService.seedAdminUser();
 
         console.log('✅✅ FULL RESET AND RESEED COMPLETED SUCCESSFULLY! ✅✅');
         process.exit(0);

@@ -9,6 +9,7 @@ const mongoose = require("mongoose");
 const express = require('express'); // Force restart 1
 const session = require("express-session");
 const MongoStore = require('connect-mongo');
+require('./models/Factory'); // Register Factory model explicitly
 const basicRoutes = require("./routes/index");
 const healthRoutes = require("./routes/healthRoutes");
 const authRoutes = require("./routes/authRoutes");

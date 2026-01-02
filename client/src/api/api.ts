@@ -8,6 +8,9 @@ import JSONbig from 'json-bigint';
 
 
 
+const apiURL = import.meta.env.VITE_API_URL;
+console.log('Environment VITE_API_URL:', apiURL);
+
 const localApi = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '',
   headers: {
