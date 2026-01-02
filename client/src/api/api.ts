@@ -9,7 +9,7 @@ import JSONbig from 'json-bigint';
 
 
 const localApi = axios.create({
-  baseURL: 'https://texmaintain.onrender.com',
+  baseURL: import.meta.env.VITE_API_URL || '',
   headers: {
     'Content-Type': 'application/json',
   },
