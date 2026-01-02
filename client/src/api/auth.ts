@@ -1,6 +1,5 @@
 import api from './api';
 import { AxiosError } from 'axios';
-import { AxiosError } from 'axios';
 
 // Description: Login user functionality
 // Endpoint: POST /api/auth/login
@@ -8,7 +7,7 @@ import { AxiosError } from 'axios';
 // Response: { _id: string, email: string, role: string, accessToken: string, refreshToken: string, createdAt: string, lastLoginAt: string, isActive: boolean }
 export const login = async (email: string, password: string) => {
   try {
-    const response = await api.post('https://texmaintain.onrender.com/api/auth/login', { email, password });
+    const response = await api.post('/api/auth/login', { email, password });
     return response.data;
   } catch (error: unknown) {
     const err = error as AxiosError<{ message?: string }>;
@@ -19,15 +18,7 @@ export const login = async (email: string, password: string) => {
       err.message ||
       'Login failed'
     );
-  } catch (error: unknown) {
-    const err = error as AxiosError<{ message?: string }>;
-    console.error('Login error:', err);
-
-    throw new Error(
-      err.response?.data?.message ||
-      err.message ||
-      'Login failed'
-    );
+  } 
   } 
 };
 
@@ -95,14 +86,14 @@ export const getCurrentUser = async () => {
 // Response: { success: boolean, message: string }
 export const logout = async () => {
   try {
-    const response = await api.post('/api/auth/logout');
-    return response.data;
+    return await api.post('/api/auth/logout');
   } catch (error: unknown) {
     const err = error as AxiosError<{ message?: string }>;
 
     throw new Error(
       err.response?.data?.message ||
       err.message ||
+      'Unable to logout'
       'Unable to logout'
     );
   }
