@@ -62,7 +62,12 @@ app.enable("strict routing");
 
 // ================== CORS ==================
 const defaultOrigins = [
-  "*"
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://172.19.144.1:5173",
+  "https://hoppscotch.io",
+  "https://tex-maintain.vercel.app"
+
 ];
 
 const allowedOrigins = process.env.FRONTEND_URL
