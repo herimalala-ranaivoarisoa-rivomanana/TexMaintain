@@ -16,7 +16,7 @@ import JSONbig from 'json-bigint';
    Axios instances
 ========================= */
 
-const BASE_URL = 'https://texmaintain.onrender.com';
+const BASE_URL = '/';
 
 /**
  * API principale (avec interceptors)

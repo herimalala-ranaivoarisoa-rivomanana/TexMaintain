@@ -7,7 +7,7 @@ import { AxiosError } from 'axios';
 // Response: { _id: string, email: string, role: string, accessToken: string, refreshToken: string, createdAt: string, lastLoginAt: string, isActive: boolean }
 export const login = async (email: string, password: string) => {
   try {
-    const response = await api.post('/api/auth/login', { email, password });
+    const response = await api.post('https://texmaintain.onrender.com/api/auth/login', { email, password });
     return response.data;
   } catch (error: unknown) {
     const err = error as AxiosError<{ message?: string }>;
