@@ -8,9 +8,9 @@ const router = express.Router();
 // GET /api/maintenance-workers - Get all maintenance workers with pagination and filters
 router.get('/', requireUser, async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId;
     if (!factoryId) {
-      return res.status(400).json({ message: 'Factory Header Missing' });
+      return res.status(400).json({ message: 'Factory Context Missing' });
     }
 
     const { page = 1, limit = 50, q, isActive, specialization } = req.query;
@@ -63,7 +63,7 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/maintenance-workers/:id - Get single maintenance worker
 router.get('/:id', requireUser, async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId;
     const query = { _id: req.params.id };
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);
@@ -84,9 +84,9 @@ router.get('/:id', requireUser, async (req, res) => {
 // POST /api/maintenance-workers - Create new maintenance worker
 router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId;
     if (!factoryId) {
-      return res.status(400).json({ message: 'Factory Header Missing' });
+      return res.status(400).json({ message: 'Factory Context Missing' });
     }
 
     const { matricule, firstName, lastName, specialization, certifications, isActive } = req.body;
@@ -127,7 +127,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
 // PUT /api/maintenance-workers/:id - Update maintenance worker
 router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId;
 
     // Ensure worker belongs to factory on update
     const existingWorker = await MaintenanceWorker.findOne({
@@ -177,7 +177,7 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
 // DELETE /api/maintenance-workers/:id - Delete maintenance worker (soft delete by setting isActive to false)
 router.delete('/:id', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId;
     const query = { _id: req.params.id };
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);

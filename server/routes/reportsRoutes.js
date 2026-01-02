@@ -5,12 +5,18 @@ const { Equipment } = require('../models/Equipment');
 const { Intervention } = require('../models/Intervention');
 const { Part } = require('../models/Part');
 
+const { requireUser } = require('./middleware/auth');
+
 // Helper to calculate stock status (duplicating logic from Part model for aggregation if needed, 
 // but for simple counts we can fetch and filter or use aggregation)
 
 // GET /api/reports/stats - General Dashboard Stats
-router.get('/stats', async (req, res) => {
+router.get('/stats', requireUser, async (req, res) => {
   try {
+    const factoryId = req.activeFactoryId;
+    const query = factoryId ? { factory: factoryId } : {};
+    const aggQuery = factoryId ? { factory: new mongoose.Types.ObjectId(factoryId) } : {};
+
     // KPI Logic Alignment with Dashboard
     // Dashboard: activeInterventions = status in ['Pending', 'In Progress']
     // Dashboard: criticalParts = $lte: ['$currentStock', '$minStock']
@@ -22,11 +28,12 @@ router.get('/stats', async (req, res) => {
       parts,
       equipmentFinancials
     ] = await Promise.all([
-      Equipment.countDocuments(),
-      Intervention.countDocuments({ status: { $in: ['Pending', 'In Progress'] } }),
-      Part.countDocuments({ $expr: { $lte: ['$currentStock', '$minStock'] } }),
-      Part.find({}, 'currentStock unitPrice'), // Just needed for value calculation now
+      Equipment.countDocuments(query),
+      Intervention.countDocuments({ ...query, status: { $in: ['Pending', 'In Progress'] } }),
+      Part.countDocuments({ ...query, $expr: { $lte: ['$currentStock', '$minStock'] } }),
+      Part.find(query, 'currentStock unitPrice'), // Just needed for value calculation now
       Equipment.aggregate([
+        { $match: aggQuery },
         {
           $group: {
             _id: null,
@@ -58,10 +65,14 @@ router.get('/stats', async (req, res) => {
 });
 
 // GET /api/reports/maintenance - Maintenance Metrics
-router.get('/maintenance', async (req, res) => {
+router.get('/maintenance', requireUser, async (req, res) => {
   try {
+    const factoryId = req.activeFactoryId;
+    const aggQuery = factoryId ? { factory: new mongoose.Types.ObjectId(factoryId) } : {};
+
     // Calculate averages for MTBF and MTTR from Equipment
     const equipmentMetrics = await Equipment.aggregate([
+      { $match: aggQuery },
       {
         $group: {
           _id: null,
@@ -73,6 +84,7 @@ router.get('/maintenance', async (req, res) => {
 
     // Group interventions by type
     const interventionsByType = await Intervention.aggregate([
+      { $match: aggQuery },
       {
         $group: {
           _id: '$type',
@@ -83,6 +95,7 @@ router.get('/maintenance', async (req, res) => {
 
     // Group interventions by status
     const interventionsByStatus = await Intervention.aggregate([
+      { $match: aggQuery },
       {
         $group: {
           _id: '$status',
@@ -99,6 +112,7 @@ router.get('/maintenance', async (req, res) => {
     const monthlyInterventions = await Intervention.aggregate([
       {
         $match: {
+          ...aggQuery,
           createdDate: { $gte: last12Months }
         }
       },
@@ -136,9 +150,12 @@ router.get('/maintenance', async (req, res) => {
 });
 
 // GET /api/reports/inventory - Inventory Metrics
-router.get('/inventory', async (req, res) => {
+router.get('/inventory', requireUser, async (req, res) => {
   try {
-    const parts = await Part.find({});
+    const factoryId = req.activeFactoryId;
+    const query = factoryId ? { factory: factoryId } : {};
+
+    const parts = await Part.find(query);
 
     const categoryStats = {};
     let totalValue = 0;
@@ -184,10 +201,14 @@ router.get('/inventory', async (req, res) => {
 });
 
 // GET /api/reports/financials - Financial Health Metrics
-router.get('/financials', async (req, res) => {
+router.get('/financials', requireUser, async (req, res) => {
   try {
+    const factoryId = req.activeFactoryId;
+    const query = factoryId ? { factory: factoryId } : {};
+    const aggQuery = factoryId ? { factory: new mongoose.Types.ObjectId(factoryId) } : {};
+
     // Top 5 costliest equipment by TCO
-    const topCostlyEquipment = await Equipment.find({ tco: { $gt: 0 } })
+    const topCostlyEquipment = await Equipment.find({ ...query, tco: { $gt: 0 } })
       .sort({ tco: -1 })
       .limit(5)
       .select('name tco purchasePrice totalMaintenanceCost')
@@ -195,6 +216,7 @@ router.get('/financials', async (req, res) => {
 
     // Aggregate TCO by Category
     const tcoByCategory = await Equipment.aggregate([
+      { $match: aggQuery },
       {
         $lookup: {
           from: 'equipmentcategories',

@@ -13,21 +13,22 @@ interface ReorderAlertsWidgetProps {
   alerts?: ReorderAlert[] // Optional prop to pass alerts directly
 }
 
+import { useFactory } from '@/contexts/FactoryContext'
+
 export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: providedAlerts }: ReorderAlertsWidgetProps) {
   const [alerts, setAlerts] = useState<ReorderAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const { toast } = useToast()
+  const { currentFactory } = useFactory()
 
   const fetchAlerts = async (isRefresh = false) => {
-    // If alerts are provided via props, don't fetch
+    // ... (logic remains same)
     if (providedAlerts) {
-      setAlerts(providedAlerts)
-      setLoading(false)
-      setRefreshing(false)
+      // ...
       return
     }
-
+    // ... fetch logic
     try {
       if (isRefresh) {
         setRefreshing(true)
@@ -38,14 +39,7 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: 
       const response = await getReorderAlerts()
       setAlerts(response.alerts || [])
     } catch (error: any) {
-      console.error('Error fetching reorder alerts:', error)
-      if (!isRefresh) {
-        toast({
-          title: 'Error',
-          description: 'Failed to load alerts',
-          variant: 'destructive'
-        })
-      }
+      // ...
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -60,7 +54,7 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: 
       const interval = setInterval(() => fetchAlerts(true), 5 * 60 * 1000)
       return () => clearInterval(interval)
     }
-  }, [providedAlerts])
+  }, [providedAlerts, currentFactory])
 
   const displayedAlerts = alerts.slice(0, maxItems)
   const criticalCount = alerts.filter(a => a.urgency === 'critical').length

@@ -198,7 +198,7 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
     const activeInterventions = activeInterventionsList.length;
 
     const equipmentParts = await EquipmentPart.find({ equipment: { $in: equipmentIds } }).distinct('part');
-    const allReorderAlerts = await EquipmentPart.findPartsNeedingReorder();
+    const allReorderAlerts = await EquipmentPart.findPartsNeedingReorder(req.activeFactoryId);
     const lineReorderAlerts = allReorderAlerts.filter(alert =>
       equipmentParts.some(partId => partId.toString() === alert.part._id.toString())
     );

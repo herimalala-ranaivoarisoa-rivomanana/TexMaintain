@@ -73,7 +73,11 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/equipment/:id
 router.get('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
-  const equipment = await Equipment.findById(id)
+
+  const query = { _id: id };
+  if (req.activeFactoryId) query.factory = req.activeFactoryId;
+
+  const equipment = await Equipment.findOne(query)
     .populate('category')
     .populate('type')
     .populate('brand')
@@ -431,7 +435,10 @@ router.patch('/:id', requireUser, requireRole(['admin', 'maintenance_manager', '
 
     // If status is being changed, use the status service
     if (updates.status) {
-      const equipment = await Equipment.findById(id);
+      const equipmentQuery = { _id: id };
+      if (req.activeFactoryId) equipmentQuery.factory = req.activeFactoryId;
+
+      const equipment = await Equipment.findOne(equipmentQuery);
       if (!equipment) return res.status(404).json({ message: 'Equipment not found' });
 
       // Extract status change details
@@ -483,7 +490,10 @@ router.patch('/:id', requireUser, requireRole(['admin', 'maintenance_manager', '
     }
 
     // Regular update without status change
-    const updated = await Equipment.findByIdAndUpdate(id, updates, { new: true })
+    const updateQuery = { _id: id };
+    if (req.activeFactoryId) updateQuery.factory = req.activeFactoryId;
+
+    const updated = await Equipment.findOneAndUpdate(updateQuery, updates, { new: true })
       .populate('category')
       .populate('type')
       .populate('brand')
@@ -501,7 +511,11 @@ router.patch('/:id', requireUser, requireRole(['admin', 'maintenance_manager', '
 // DELETE /api/equipment/:id
 router.delete('/:id', requireUser, requireRole('admin'), async (req, res) => {
   const { id } = req.params;
-  const deleted = await Equipment.findByIdAndDelete(id).lean();
+
+  const query = { _id: id };
+  if (req.activeFactoryId) query.factory = req.activeFactoryId;
+
+  const deleted = await Equipment.findOneAndDelete(query).lean();
   if (!deleted) return res.status(404).json({ message: 'Equipment not found' });
   return res.status(200).json({ success: true });
 });

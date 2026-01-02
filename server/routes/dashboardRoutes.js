@@ -12,9 +12,9 @@ const router = express.Router();
 // GET /api/dashboard/kpis
 router.get('/kpis', requireUser, async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId;
     if (!factoryId) {
-      return res.status(400).json({ message: 'Factory Header Missing' });
+      return res.status(400).json({ message: 'Factory Context Missing' });
     }
 
     const factoryQuery = { factory: new mongoose.Types.ObjectId(factoryId) };
@@ -200,14 +200,15 @@ router.get('/kpis', requireUser, async (req, res) => {
 // GET /api/dashboard/activities (last 10 changes based on creation dates)
 router.get('/activities', requireUser, async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId;
     if (!factoryId) {
-      return res.status(400).json({ message: 'Factory Header Missing' });
+      return res.status(400).json({ message: 'Factory Context Missing' });
     }
     const factoryQuery = { factory: new mongoose.Types.ObjectId(factoryId) };
 
     const recentInterventions = await Intervention.find(factoryQuery).sort({ createdDate: -1 }).limit(5).lean();
     const recentParts = await Part.find(factoryQuery).sort({ updatedAt: -1 }).limit(3).lean();
+
     const recentEquipment = await Equipment.find(factoryQuery).sort({ updatedAt: -1 }).limit(2).lean();
 
     const activities = [

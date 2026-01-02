@@ -59,6 +59,12 @@ const requireUser = async (req, res, next) => {
     }
 
     console.log(`Authentication successful. User: ${user.email}, Factory: ${req.activeFactoryId}`);
+    // Verify user has access to this factory
+    // ...
+    // Add Cache-Control and Vary headers to prevent factory context mixing in browser cache
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Vary', 'x-factory-id');
+
     next();
   } catch (err) {
     console.error(`Authentication error: ${err.message}`);

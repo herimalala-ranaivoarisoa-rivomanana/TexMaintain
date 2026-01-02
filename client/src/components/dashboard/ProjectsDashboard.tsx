@@ -13,11 +13,14 @@ import {
 import { getProjectStats, getProjects, Project, ProjectStats } from "@/api/projects"
 import { useToast } from "@/hooks/useToast"
 
+import { useFactory } from "@/contexts/FactoryContext"
+
 export function ProjectsDashboard() {
     const [stats, setStats] = useState<ProjectStats | null>(null)
     const [recentProjects, setRecentProjects] = useState<Project[]>([])
     const [loading, setLoading] = useState(true)
     const { toast } = useToast()
+    const { currentFactory } = useFactory()
 
     useEffect(() => {
         const fetchData = async () => {
@@ -41,7 +44,7 @@ export function ProjectsDashboard() {
         }
 
         fetchData()
-    }, [toast])
+    }, [toast, currentFactory])
 
     if (loading) {
         return (

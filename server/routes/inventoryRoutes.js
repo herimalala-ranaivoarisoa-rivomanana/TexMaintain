@@ -2,6 +2,7 @@ const express = require('express');
 const { requireUser, requireRole } = require('./middleware/auth');
 const { Part } = require('../models/Part');
 const { EquipmentPart } = require('../models/EquipmentPart');
+const mongoose = require('mongoose');
 
 const router = express.Router();
 
@@ -9,7 +10,12 @@ const router = express.Router();
 router.get('/', requireUser, async (req, res) => {
   const { page = 1, limit = 50, category, q, sort = 'updatedAt', order = 'desc', type } = req.query || {};
   const and = [];
-  if (req.activeFactoryId) and.push({ factory: req.activeFactoryId }); // Filter by Factory
+
+  if (req.activeFactoryId) {
+    // Cast to ObjectId for aggregation compatibility
+    and.push({ factory: new mongoose.Types.ObjectId(req.activeFactoryId) });
+  }
+
   if (category) and.push({ category });
   let tFilter = null;
   if (typeof type === 'string') {
@@ -43,13 +49,16 @@ router.get('/', requireUser, async (req, res) => {
   const safePage = Math.min(requestedPage, totalPages);
   const skip = (safePage - 1) * lmt;
 
-  // Get paginated results and GLOBAL statistics based on ALL parts
+  // Get paginated results and scoped statistics based on ACTIVE FACTORY parts
+  const statsQuery = req.activeFactoryId ? { factory: req.activeFactoryId } : {};
+
   const [partsRaw, globalStats, allCount] = await Promise.all([
     Part.find(query).sort(sortSpec).skip(skip).limit(lmt).lean(),
     Part.aggregate([
+      { $match: statsQuery },
       { $group: { _id: '$type', count: { $sum: 1 } } }
     ]),
-    Part.countDocuments({})
+    Part.countDocuments(statsQuery)
   ]);
 
   // Attach stock status ensuring backend SSOT
@@ -138,6 +147,12 @@ router.put('/:id/stock', requireUser, requireRole(['admin', 'maintenance_manager
   const { quantity, type } = req.body || {};
   const part = await Part.findById(id);
   if (!part) return res.status(404).json({ message: 'Part not found' });
+
+  // Verify factory ownership
+  if (req.activeFactoryId && part.factory && part.factory.toString() !== req.activeFactoryId) {
+    return res.status(403).json({ message: 'Access denied: Part belongs to another factory' });
+  }
+
   const delta = type === 'in' ? Math.abs(quantity || 0) : -Math.abs(quantity || 0);
   part.currentStock = Math.max(0, (part.currentStock || 0) + delta);
   await part.save();
@@ -175,16 +190,32 @@ router.post('/', requireUser, requireRole('admin'), async (req, res) => {
 router.patch('/:id', requireUser, requireRole(['admin', 'procurement_manager']), async (req, res) => {
   const { id } = req.params;
   const updates = req.body || {};
+
+  const part = await Part.findById(id);
+  if (!part) return res.status(404).json({ message: 'Part not found' });
+
+  // Verify factory ownership
+  if (req.activeFactoryId && part.factory && part.factory.toString() !== req.activeFactoryId) {
+    return res.status(403).json({ message: 'Access denied: Part belongs to another factory' });
+  }
+
   const updated = await Part.findByIdAndUpdate(id, updates, { new: true }).lean();
-  if (!updated) return res.status(404).json({ message: 'Part not found' });
   return res.status(200).json({ success: true, part: updated });
 });
 
 // DELETE /api/inventory/:id
 router.delete('/:id', requireUser, requireRole('admin'), async (req, res) => {
   const { id } = req.params;
-  const deleted = await Part.findByIdAndDelete(id).lean();
-  if (!deleted) return res.status(404).json({ message: 'Part not found' });
+
+  const part = await Part.findById(id);
+  if (!part) return res.status(404).json({ message: 'Part not found' });
+
+  // Verify factory ownership
+  if (req.activeFactoryId && part.factory && part.factory.toString() !== req.activeFactoryId) {
+    return res.status(403).json({ message: 'Access denied: Part belongs to another factory' });
+  }
+
+  await Part.findByIdAndDelete(id);
   return res.status(200).json({ success: true });
 });
 

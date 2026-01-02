@@ -9,7 +9,7 @@ const router = express.Router();
 // GET /api/interventions (with basic pagination & filters)
 router.get('/', requireUser, async (req, res) => {
   const { page = 1, limit = 50, status, type, priority, q, sort = 'createdDate', order = 'desc' } = req.query || {};
-  const factoryId = req.headers['x-factory-id'];
+  const factoryId = req.activeFactoryId;
   const query = {};
 
   if (factoryId) {
@@ -54,7 +54,11 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/interventions/:id
 router.get('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
-  const intervention = await Intervention.findById(id)
+
+  const query = { _id: id };
+  if (req.activeFactoryId) query.factory = req.activeFactoryId;
+
+  const intervention = await Intervention.findOne(query)
     .populate({
       path: 'equipmentId',
       select: 'location status category type',
@@ -86,15 +90,15 @@ const interventionSchema = z.object({
 });
 
 router.post('/', requireUser, async (req, res) => {
-  if (!req.headers['x-factory-id']) {
-    return res.status(400).json({ message: 'Factory context required (x-factory-id header missing)' });
+  if (!req.activeFactoryId) {
+    return res.status(400).json({ message: 'Factory context required' });
   }
   const parse = interventionSchema.safeParse(req.body || {});
   if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
 
   const data = {
     ...parse.data,
-    factory: req.headers['x-factory-id']
+    factory: req.activeFactoryId
   };
   try {
     // If equipmentId provided, validate and backfill equipment string
@@ -160,7 +164,10 @@ router.patch('/:id', requireUser, async (req, res) => {
       }
     }
 
-    const updated = await Intervention.findByIdAndUpdate(id, updates, { new: true })
+    const query = { _id: id };
+    if (req.activeFactoryId) query.factory = req.activeFactoryId;
+
+    const updated = await Intervention.findOneAndUpdate(query, updates, { new: true })
       .populate({
         path: 'equipmentId',
         select: 'location status category type',
@@ -202,7 +209,11 @@ router.patch('/:id', requireUser, async (req, res) => {
 // DELETE /api/interventions/:id
 router.delete('/:id', requireUser, require('../routes/middleware/auth').requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager', 'foreman']), async (req, res) => {
   const { id } = req.params;
-  const deleted = await Intervention.findByIdAndDelete(id).lean();
+
+  const query = { _id: id };
+  if (req.activeFactoryId) query.factory = req.activeFactoryId;
+
+  const deleted = await Intervention.findOneAndDelete(query).lean();
   if (!deleted) return res.status(404).json({ message: 'Intervention not found' });
 
   // Trigger metric recalculation

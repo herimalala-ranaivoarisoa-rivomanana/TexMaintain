@@ -25,13 +25,12 @@ import {
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
 import { useFactory } from "@/contexts/FactoryContext"
-import { getEquipmentTypes, createEquipmentType, updateEquipmentType, deleteEquipmentType } from "@/api/equipmentTypes"
+import { getEquipmentTypes, createEquipmentType, updateEquipmentType, deleteEquipmentType, getEquipmentTypeStats } from "@/api/equipmentTypes"
 import { getEquipmentCategories } from "@/api/equipmentCategories"
-import { getEquipment } from "@/api/equipment"
+// import { getEquipment } from "@/api/equipment" // Removed
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Progress } from "@/components/ui/progress"
 
-import { EQUIPMENT_STATUSES } from "@/types/equipment"
 
 interface Category {
   _id: string
@@ -93,20 +92,17 @@ export function EquipmentTypes() {
 
   const fetchData = async () => {
     try {
-      const [typesResponse, categoriesResponse, equipmentResponse] = await Promise.all([
+      const [typesResponse, categoriesResponse, statsResponse] = await Promise.all([
         getEquipmentTypes(),
         getEquipmentCategories(),
-        getEquipment({ limit: 1000 }) // Get all equipment for stats
+        getEquipmentTypeStats()
       ])
       const typesData = typesResponse.types || []
-      const equipmentData = (equipmentResponse as any).equipment || []
 
       setTypes(typesData)
       setCategories(categoriesResponse.categories || [])
+      setStats(statsResponse.stats || []) // Use server-side stats directly
 
-      // Calculate statistics
-      const calculatedStats = calculateEquipmentStats(typesData, equipmentData)
-      setStats(calculatedStats)
     } catch (error) {
       console.error('Error fetching data:', error)
       toast({
@@ -119,54 +115,8 @@ export function EquipmentTypes() {
     }
   }
 
-  const calculateEquipmentStats = (typesData: EquipmentType[], equipmentData: any[]): EquipmentStats[] => {
-    return typesData.map(type => {
-      const typeEquipment = equipmentData.filter(eq => eq.type?._id === type._id)
-      const totalEquipment = typeEquipment.length
+  // calculateEquipmentStats removed
 
-      const byStatus = {
-        online: typeEquipment.filter(eq => [
-          EQUIPMENT_STATUSES.IN_PRODUCTION,
-          EQUIPMENT_STATUSES.SETUP_ADJUSTMENT,
-          EQUIPMENT_STATUSES.CHANGEOVER,
-          EQUIPMENT_STATUSES.PAUSED_BY_OPERATOR
-        ].includes(eq.status as any)).length,
-        maintenance: typeEquipment.filter(eq => [
-          EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE,
-          EQUIPMENT_STATUSES.UNDER_REPAIR,
-          EQUIPMENT_STATUSES.IN_WORKSHOP,
-          EQUIPMENT_STATUSES.WAITING_SPARE_PARTS,
-          EQUIPMENT_STATUSES.TESTING_AFTER_REPAIR,
-          EQUIPMENT_STATUSES.UNDER_INSPECTION,
-          EQUIPMENT_STATUSES.PENDING_VALIDATION
-        ].includes(eq.status as any)).length,
-        breakdown: typeEquipment.filter(eq => eq.status === EQUIPMENT_STATUSES.BREAKDOWN).length,
-        offline: typeEquipment.filter(eq => [
-          EQUIPMENT_STATUSES.OFFLINE,
-          EQUIPMENT_STATUSES.STORED
-        ].includes(eq.status as any)).length,
-        scrapped: typeEquipment.filter(eq => eq.status === EQUIPMENT_STATUSES.SCRAPPED).length,
-      }
-
-      const avgMtbf = totalEquipment > 0 ? typeEquipment.reduce((sum, eq) => sum + (eq.mtbf || 0), 0) / totalEquipment : 0
-      const avgMttr = totalEquipment > 0 ? typeEquipment.reduce((sum, eq) => sum + (eq.mttr || 0), 0) / totalEquipment : 0
-
-      // Calculate availability: (online + maintenance) / total * 100
-      const operational = byStatus.online + byStatus.maintenance
-      const availability = totalEquipment > 0 ? (operational / totalEquipment) * 100 : 0
-
-      return {
-        typeId: type._id,
-        typeName: type.name,
-        categoryName: type.category.name,
-        totalEquipment,
-        byStatus,
-        avgMtbf: Math.round(avgMtbf * 100) / 100,
-        avgMttr: Math.round(avgMttr * 100) / 100,
-        availability: Math.round(availability * 100) / 100
-      }
-    })
-  }
 
   const filteredTypes = categoryFilter === "all"
     ? types

@@ -1,10 +1,120 @@
 const express = require('express');
 const { requireUser, requireRole } = require('./middleware/auth');
+const { Equipment } = require('../models/Equipment');
 const { EquipmentType } = require('../models/EquipmentType');
+const mongoose = require('mongoose');
 
 const router = express.Router();
 
-// GET /api/equipment-types (with optional category filter)
+/**
+ * GET /api/equipment-types/stats
+ * Returns aggregated statistics for equipment types scoped to the active factory.
+ */
+router.get('/stats', requireUser, async (req, res) => {
+  try {
+    const factoryId = req.activeFactoryId;
+    if (!factoryId) {
+      return res.status(400).json({ message: 'Factory context required' });
+    }
+
+    // Aggregate stats from Equipment collection
+    const stats = await Equipment.aggregate([
+      { $match: { factory: new mongoose.Types.ObjectId(factoryId) } },
+      {
+        $group: {
+          _id: "$type",
+          totalEquipment: { $sum: 1 },
+          online: {
+            $sum: {
+              $cond: [
+                { $in: ["$status", ["in_production", "setup_adjustment", "changeover", "paused_by_operator"]] },
+                1,
+                0
+              ]
+            }
+          },
+          maintenance: {
+            $sum: {
+              $cond: [
+                { $in: ["$status", ["scheduled_maintenance", "under_repair", "in_workshop", "waiting_spare_parts", "testing_after_repair", "under_inspection", "pending_validation"]] },
+                1,
+                0
+              ]
+            }
+          },
+          breakdown: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "breakdown"] }, 1, 0]
+            }
+          },
+          offline: {
+            $sum: {
+              $cond: [{ $in: ["$status", ["offline", "stored"]] }, 1, 0]
+            }
+          },
+          scrapped: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "scrapped"] }, 1, 0]
+            }
+          },
+          avgMtbf: { $avg: "$mtbf" },
+          avgMttr: { $avg: "$mttr" }
+        }
+      },
+      // Lookup Type details
+      {
+        $lookup: {
+          from: "equipmenttypes",
+          localField: "_id",
+          foreignField: "_id",
+          as: "typeDetails"
+        }
+      },
+      { $unwind: "$typeDetails" },
+      // Lookup Category details
+      {
+        $lookup: {
+          from: "equipmentcategories",
+          localField: "typeDetails.category",
+          foreignField: "_id",
+          as: "categoryDetails"
+        }
+      },
+      { $unwind: "$categoryDetails" },
+      {
+        $project: {
+          typeId: "$_id",
+          typeName: "$typeDetails.name",
+          categoryName: "$categoryDetails.name",
+          totalEquipment: 1,
+          byStatus: {
+            online: "$online",
+            maintenance: "$maintenance",
+            breakdown: "$breakdown",
+            offline: "$offline",
+            scrapped: "$scrapped"
+          },
+          avgMtbf: { $ifNull: ["$avgMtbf", 0] },
+          avgMttr: { $ifNull: ["$avgMttr", 0] },
+          // Availability Calculation: (Online + Maintenance) / Total * 100
+          availability: {
+            $multiply: [
+              { $divide: [{ $add: ["$online", "$maintenance"] }, "$totalEquipment"] },
+              100
+            ]
+          }
+        }
+      }
+    ]);
+
+    return res.status(200).json({ stats });
+  } catch (error) {
+    console.error('Error calculating equipment type stats:', error);
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+// GET /api/equipment-types (Existing)
 router.get('/', requireUser, async (req, res) => {
   const { category } = req.query;
   const query = category ? { category } : {};
@@ -17,7 +127,7 @@ const { z } = require('zod');
 const typeSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  category: z.string().min(1), // ObjectId as string
+  category: z.string().min(1),
 });
 
 router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {

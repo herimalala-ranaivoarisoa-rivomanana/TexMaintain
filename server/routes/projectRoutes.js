@@ -9,7 +9,7 @@ const { Part } = require('../models/Part');
 // GET /api/projects - List all projects
 router.get('/', requireUser, async (req, res) => {
     try {
-        const factoryId = req.headers['x-factory-id'];
+        const factoryId = req.activeFactoryId;
         const query = factoryId ? { factory: factoryId } : {};
 
         const projects = await Project.find(query).sort({ startDate: -1 });
@@ -23,7 +23,7 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/projects/stats - Get project statistics
 router.get('/stats', requireUser, async (req, res) => {
     try {
-        const factoryId = req.headers['x-factory-id'];
+        const factoryId = req.activeFactoryId;
         const query = factoryId ? { factory: new mongoose.Types.ObjectId(factoryId) } : {};
         const countQuery = factoryId ? { factory: factoryId } : {};
 
@@ -74,7 +74,7 @@ router.post('/', requireUser, async (req, res) => {
             teamSize,
             status: status || 'Planned',
             createdBy: req.user._id,
-            factory: req.headers['x-factory-id']
+            factory: req.activeFactoryId
         });
 
         await project.save();

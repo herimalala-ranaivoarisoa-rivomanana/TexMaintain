@@ -8,9 +8,9 @@ const router = express.Router();
 // GET /api/machinists - Get all machinists with pagination and filters
 router.get('/', requireUser, async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId;
     if (!factoryId) {
-      return res.status(400).json({ message: 'Factory Header Missing' });
+      return res.status(400).json({ message: 'Factory Context Missing' });
     }
 
     const { page = 1, limit = 50, q, isActive } = req.query;
@@ -58,7 +58,7 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/machinists/:id - Get single machinist
 router.get('/:id', requireUser, async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId;
     const query = { _id: req.params.id };
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);
@@ -79,9 +79,9 @@ router.get('/:id', requireUser, async (req, res) => {
 // POST /api/machinists - Create new machinist
 router.post('/', requireUser, requireRole(['admin', 'production_manager', 'line_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId;
     if (!factoryId) {
-      return res.status(400).json({ message: 'Factory Header Missing' });
+      return res.status(400).json({ message: 'Factory Context Missing' });
     }
 
     const { matricule, firstName, lastName, isActive } = req.body;
@@ -120,7 +120,7 @@ router.post('/', requireUser, requireRole(['admin', 'production_manager', 'line_
 // PUT /api/machinists/:id - Update machinist
 router.put('/:id', requireUser, requireRole(['admin', 'production_manager', 'line_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId;
 
     // Ensure machinist belongs to factory on update
     const existingMachinist = await Machinist.findOne({
@@ -168,7 +168,7 @@ router.put('/:id', requireUser, requireRole(['admin', 'production_manager', 'lin
 // DELETE /api/machinists/:id - Delete machinist (soft delete by setting isActive to false)
 router.delete('/:id', requireUser, requireRole(['admin', 'production_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId;
     const query = { _id: req.params.id };
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);

@@ -7,9 +7,10 @@ const { requireUser } = require('./middleware/auth');
 router.get('/orders', requireUser, async (req, res) => {
     try {
         // Find all parts that have pending orders
-        const parts = await Part.find({
-            'pendingOrders.0': { $exists: true }
-        }).lean();
+        const query = { 'pendingOrders.0': { $exists: true } };
+        if (req.activeFactoryId) query.factory = req.activeFactoryId;
+
+        const parts = await Part.find(query).lean();
 
         const orders = [];
 
@@ -46,14 +47,17 @@ router.get('/orders', requireUser, async (req, res) => {
 // GET /api/procurement/stats - Get procurement statistics
 router.get('/stats', requireUser, async (req, res) => {
     try {
-        const parts = await Part.find({
-            'pendingOrders.0': { $exists: true }
-        }).lean();
+        const query = { 'pendingOrders.0': { $exists: true } };
+        if (req.activeFactoryId) query.factory = req.activeFactoryId;
+
+        const parts = await Part.find(query).lean();
 
         let pendingCount = 0;
         let activeCount = 0;
         let completedCount = 0;
+        let overdueCount = 0;
         const suppliers = new Set();
+        const now = new Date();
 
         parts.forEach(part => {
             if (part.supplier) suppliers.add(part.supplier);
@@ -63,7 +67,13 @@ router.get('/stats', requireUser, async (req, res) => {
                     if (order.supplier) suppliers.add(order.supplier);
 
                     if (order.status === 'pending') pendingCount++;
-                    else if (['ordered', 'in_transit'].includes(order.status)) activeCount++;
+                    else if (['ordered', 'in_transit'].includes(order.status)) {
+                        activeCount++;
+                        // Check for overdue
+                        if (order.expectedDate && new Date(order.expectedDate) < now) {
+                            overdueCount++;
+                        }
+                    }
                     else if (order.status === 'received') completedCount++;
                 });
             }
@@ -73,6 +83,7 @@ router.get('/stats', requireUser, async (req, res) => {
             pendingRequests: pendingCount,
             activeOrders: activeCount,
             completedOrders: completedCount,
+            overdueOrders: overdueCount,
             totalSuppliers: suppliers.size
         });
     } catch (error) {

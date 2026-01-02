@@ -43,7 +43,37 @@ router.get('/', requireUser, async (req, res) => {
     const { equipment, part, criticality, page = 1, limit = 50 } = req.query;
 
     const filter = {};
-    if (equipment) filter.equipment = equipment;
+
+    // Explicitly filter by factory-owned equipment
+    if (req.activeFactoryId) {
+      // We need to find all equipment belonging to this factory
+      // This might be expensive if many equipment, but it's safe.
+      // Alternatively, we could aggregate.
+      // For now, fetching equipment IDs is safest.
+      const factoryEquipment = await Equipment.find({ factory: req.activeFactoryId }).select('_id');
+      const factoryEquipmentIds = factoryEquipment.map(e => e._id);
+
+      // If filter.equipment was already provided, we must intersect it
+      if (equipment) {
+        // If user requested specific equipment, verify it belongs to factory
+        if (!factoryEquipmentIds.some(id => id.toString() === equipment)) {
+          // Requested equipment not in factory -> return empty
+          return res.status(200).json({
+            success: true,
+            associations: [],
+            pagination: { page: parseInt(page), limit: parseInt(limit), total: 0, pages: 0 }
+          });
+        }
+        filter.equipment = equipment;
+      } else {
+        // No specific equipment requested, return matching any in factory
+        filter.equipment = { $in: factoryEquipmentIds };
+      }
+    } else if (equipment) {
+      // If no active factory ID (shouldn't happen with middleware), use query param
+      filter.equipment = equipment;
+    }
+
     if (part) filter.part = part;
     if (criticality) filter.criticality = criticality;
 
@@ -83,6 +113,14 @@ router.get('/', requireUser, async (req, res) => {
 router.get('/equipment/:equipmentId', requireUser, async (req, res) => {
   try {
     const { equipmentId } = req.params;
+
+    // Verify equipment belongs to factory
+    if (req.activeFactoryId) {
+      const equipment = await Equipment.findOne({ _id: equipmentId, factory: req.activeFactoryId });
+      if (!equipment) {
+        return res.status(404).json({ message: 'Equipment not found in this factory' });
+      }
+    }
 
     const associations = await EquipmentPart.find({ equipment: equipmentId })
       .populate('part', 'name partNumber category type currentStock minStock maxStock unitPrice supplier')
@@ -134,7 +172,7 @@ router.get('/part/:partId/global-stock', requireUser, async (req, res) => {
   try {
     const { partId } = req.params;
 
-    const globalStock = await EquipmentPart.calculateGlobalStock(partId);
+    const globalStock = await EquipmentPart.calculateGlobalStock(partId, req.activeFactoryId);
 
     // Récupérer aussi le stock actuel de la pièce
     const part = await Part.findById(partId).lean();
@@ -163,7 +201,7 @@ router.get('/part/:partId/global-stock', requireUser, async (req, res) => {
  */
 router.get('/reorder-alerts', requireUser, async (req, res) => {
   try {
-    const alerts = await EquipmentPart.findPartsNeedingReorder();
+    const alerts = await EquipmentPart.findPartsNeedingReorder(req.activeFactoryId);
 
     return res.status(200).json({
       success: true,
@@ -224,15 +262,21 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
     const data = parse.data;
     const { duplicateToSameType = true } = req.body; // Par défaut: true
 
-    // Vérifier que l'équipement et la pièce existent
-    const equipment = await Equipment.findById(data.equipment).populate('type');
+    // Vérifier que l'équipement et la pièce existent et appartiennent à l'usine
+    const equipmentQuery = { _id: data.equipment };
+    if (req.activeFactoryId) equipmentQuery.factory = req.activeFactoryId;
+
+    const equipment = await Equipment.findOne(equipmentQuery).populate('type');
     if (!equipment) {
-      return res.status(404).json({ message: 'Equipment not found' });
+      return res.status(404).json({ message: 'Equipment not found in this factory' });
     }
 
-    const part = await Part.findById(data.part);
+    const partQuery = { _id: data.part };
+    if (req.activeFactoryId) partQuery.factory = req.activeFactoryId;
+
+    const part = await Part.findOne(partQuery);
     if (!part) {
-      return res.status(404).json({ message: 'Part not found' });
+      return res.status(404).json({ message: 'Part not found in this factory' });
     }
 
     // Vérifier qu'il n'existe pas déjà une association

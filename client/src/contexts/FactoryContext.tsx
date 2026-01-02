@@ -22,11 +22,9 @@ export const FactoryProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Helper to safely set factory and persist ID
     const setCurrentFactory = (factory: Factory) => {
-        setCurrentFactoryState(factory);
+        // Update localStorage FIRST so that any immediate API calls from re-rendering components use the new ID
         localStorage.setItem('activeFactoryId', factory._id);
-        // Reload window to ensure all API calls use new header? 
-        // Or just rely on context updates if axios interceptor is dynamic.
-        // Ideally axios interceptor reads from localStorage dynamically.
+        setCurrentFactoryState(factory);
     };
 
     const refreshFactories = async () => {

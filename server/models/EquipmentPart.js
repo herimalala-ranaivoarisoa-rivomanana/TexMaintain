@@ -246,8 +246,17 @@ schema.methods.getConsumptionStats = function () {
 /**
  * Calcule le stock global nécessaire pour une pièce sur tous les équipements
  */
-schema.statics.calculateGlobalStock = async function (partId) {
-  const associations = await this.find({ part: partId })
+schema.statics.calculateGlobalStock = async function (partId, factoryId) {
+  let query = { part: partId };
+
+  if (factoryId) {
+    const { Equipment } = require('./Equipment');
+    const equipmentList = await Equipment.find({ factory: factoryId }).select('_id');
+    const equipmentIds = equipmentList.map(e => e._id);
+    query.equipment = { $in: equipmentIds };
+  }
+
+  const associations = await this.find(query)
     .populate('equipment', 'model serialNumber')
     .lean();
 
@@ -318,11 +327,24 @@ schema.statics.calculateGlobalStock = async function (partId) {
 /**
  * Trouve les pièces nécessitant un réapprovisionnement
  */
-schema.statics.findPartsNeedingReorder = async function () {
+schema.statics.findPartsNeedingReorder = async function (factoryId) {
   const { Part } = require('./Part');
+  const { Equipment } = require('./Equipment'); // Ensure Equipment model is available
+
+  let matchStage = {};
+  if (factoryId) {
+    const equipmentList = await Equipment.find({ factory: factoryId }).select('_id');
+    const equipmentIds = equipmentList.map(e => e._id);
+    matchStage = { equipment: { $in: equipmentIds } };
+  } else {
+    // If no factory provided, return empty to prevent leakage unless explicitly intended
+    // But for safety, let's just Log warning and return empty
+    console.warn('findPartsNeedingReorder called without factoryId - returning empty result to prevent leakage');
+    return [];
+  }
 
   // Récupérer toutes les associations
-  const associations = await this.find().populate('part').lean();
+  const associations = await this.find(matchStage).populate('part').lean();
 
   // Grouper par pièce
   const partMap = new Map();
@@ -345,7 +367,8 @@ schema.statics.findPartsNeedingReorder = async function () {
   const results = [];
 
   for (const [partId, data] of partMap) {
-    const globalStock = await this.calculateGlobalStock(partId);
+    // Pass factoryId to narrow down stock calculation to the current factory only
+    const globalStock = await this.calculateGlobalStock(partId, factoryId);
     const currentStock = data.part.currentStock || 0;
 
     if (currentStock <= globalStock.globalReorderPoint) {

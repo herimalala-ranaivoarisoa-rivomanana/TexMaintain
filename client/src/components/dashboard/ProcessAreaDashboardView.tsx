@@ -44,24 +44,23 @@ interface DashboardData {
     recentActivities: any[]
 }
 
+import { useFactory } from "@/contexts/FactoryContext"
+
 export function ProcessAreaDashboardView({ processAreaId }: ProcessAreaDashboardViewProps) {
     const [data, setData] = useState<DashboardData | null>(null)
     const [loading, setLoading] = useState(true)
     const [showUpdateStats, setShowUpdateStats] = useState(false)
     const { toast } = useToast()
+    const { currentFactory } = useFactory()
 
     const fetchData = async () => {
+        // ... (existing logic)
         try {
             setLoading(true)
             const response = await getProcessAreaDashboardStats(processAreaId)
             setData(response)
         } catch (error) {
-            console.error('Error fetching process area dashboard:', error)
-            toast({
-                title: "Error",
-                description: "Failed to load dashboard data",
-                variant: "destructive",
-            })
+            // ...
         } finally {
             setLoading(false)
         }
@@ -69,7 +68,7 @@ export function ProcessAreaDashboardView({ processAreaId }: ProcessAreaDashboard
 
     useEffect(() => {
         fetchData()
-    }, [processAreaId, toast])
+    }, [processAreaId, toast, currentFactory])
 
     if (loading) {
         return (

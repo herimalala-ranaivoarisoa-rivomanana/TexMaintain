@@ -706,10 +706,8 @@ class SeedService {
             unitPrice: 25.50,
             supplier: 'Industrial Parts Co.',
             location: 'Warehouse A-1',
-            pendingOrders: [
-              { quantity: 20, status: 'ordered', orderDate: new Date(), expectedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
-            ],
-            pendingQuantity: 20
+            pendingOrders: [],
+            pendingQuantity: 0
           },
           {
             name: 'V-Belt Type B',
@@ -1444,10 +1442,8 @@ class SeedService {
             unitPrice: 15.75,
             supplier: 'Lubricant Express',
             location: 'Warehouse B-2',
-            pendingOrders: [
-              { quantity: 30, status: 'ordered', orderDate: new Date(), expectedDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) }
-            ],
-            pendingQuantity: 30
+            pendingOrders: [],
+            pendingQuantity: 0
           },
           {
             name: 'Hydraulic Oil ISO 46',
@@ -2507,11 +2503,14 @@ class SeedService {
 
       // For each equipment, assign COMPATIBLE parts
       for (const eq of equipment) {
-        // Determine compatible parts based on model name
-        const compatibleParts = getCompatibleParts(eq.model, parts);
+        // Filter parts belonging to the SAME factory
+        const factoryParts = parts.filter(p => p.factory && p.factory.toString() === eq.factory.toString());
 
-        // If no specifically compatible found, fallback to just universals or random valid parts
-        const partsToAssign = compatibleParts.length > 0 ? compatibleParts : parts.slice(0, 3);
+        // Determine compatible parts based on model name, using only factory parts
+        const compatibleParts = getCompatibleParts(eq.model, factoryParts);
+
+        // If no specifically compatible found, fallback to just universals or random valid parts FROM THIS FACTORY
+        const partsToAssign = compatibleParts.length > 0 ? compatibleParts : factoryParts.slice(0, 3);
 
         for (const part of partsToAssign) {
           // Check if association already exists
