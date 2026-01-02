@@ -1,5 +1,6 @@
 import api from './api';
 import { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
 
 // Description: Login user functionality
 // Endpoint: POST /api/auth/login
@@ -9,6 +10,15 @@ export const login = async (email: string, password: string) => {
   try {
     const response = await api.post('/api/auth/login', { email, password });
     return response.data;
+  } catch (error: unknown) {
+    const err = error as AxiosError<{ message?: string }>;
+    console.error('Login error:', err);
+
+    throw new Error(
+      err.response?.data?.message ||
+      err.message ||
+      'Login failed'
+    );
   } catch (error: unknown) {
     const err = error as AxiosError<{ message?: string }>;
     console.error('Login error:', err);
@@ -30,7 +40,17 @@ export const register = async (
   password: string,
   role?: string
 ) => {
+export const register = async (
+  email: string,
+  password: string,
+  role?: string
+) => {
   try {
+    const response = await api.post('/api/auth/register', {
+      email,
+      password,
+      role,
+    });
     const response = await api.post('/api/auth/register', {
       email,
       password,
@@ -43,6 +63,7 @@ export const register = async (
     throw new Error(
       err.response?.data?.message ||
       err.message ||
+      'Registration failed'
       'Registration failed'
     );
   }
@@ -63,6 +84,7 @@ export const getCurrentUser = async () => {
       err.response?.data?.message ||
       err.message ||
       'Unable to fetch user'
+      'Unable to fetch user'
     );
   }
 };
@@ -73,7 +95,8 @@ export const getCurrentUser = async () => {
 // Response: { success: boolean, message: string }
 export const logout = async () => {
   try {
-    return await api.post('/api/auth/logout');
+    const response = await api.post('/api/auth/logout');
+    return response.data;
   } catch (error: unknown) {
     const err = error as AxiosError<{ message?: string }>;
 
@@ -84,3 +107,4 @@ export const logout = async () => {
     );
   }
 };
+
