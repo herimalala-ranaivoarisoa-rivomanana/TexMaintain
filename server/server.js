@@ -142,16 +142,6 @@ app.use(mongoSanitize({
 // Serve static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Database connection
-connectDB().then(() => {
-  // Run backfill/migration logic on startup
-  backfillInterventions().catch(err => console.error('Startup backfill failed:', err));
-
-  app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-  });
-});
-
 app.on("error", (error) => {
   console.error(`Server error: ${error.message}`);
   console.error(error.stack);
@@ -203,4 +193,12 @@ app.use((err, req, res, next) => {
   res.status(500).send("There was an error serving your request.");
 });
 
-// Forced restart for KPI fix
+// Database connection
+connectDB().then(() => {
+  // Run backfill/migration logic on startup
+  backfillInterventions().catch(err => console.error('Startup backfill failed:', err));
+
+  app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+  });
+});
