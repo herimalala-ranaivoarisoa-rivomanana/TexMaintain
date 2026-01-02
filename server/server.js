@@ -67,7 +67,7 @@ const corsOptions = {
     const allowedOrigins = [
       'https://tex-maintain.vercel.app',
       'https://tex-maintain-ii0g8dolf.vercel.app',
-      /^https:\/\/tex-maintain-.*\.vercel\.app$/, // Tous les previews Vercel
+      /^https:\/\/tex-main-.*\.vercel\.app$/, // Tous les previews Vercel
       'http://localhost:5173',
       'http://localhost:3000',
       'http://localhost:5000'
