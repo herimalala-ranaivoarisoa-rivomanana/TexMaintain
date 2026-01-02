@@ -73,7 +73,7 @@ const allowedOrigins = process.env.FRONTEND_URL
 
 app.use(
   cors({
-    origin: function (origin, callback) {
+/*     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
@@ -81,7 +81,8 @@ app.use(
         console.warn(`CORS: Blocked request from origin: ${origin}`);
         callback(new Error("Not allowed by CORS"));
       }
-    },
+    }, */
+    origin: true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
