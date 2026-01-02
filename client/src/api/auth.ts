@@ -8,8 +8,7 @@ import { AxiosError } from 'axios';
 export const login = async (email: string, password: string) => {
   try {
     const response = await api.post('/api/auth/login', { email, password });
-    return JSON.stringify({response:'success'});
-    //return response.data;
+    return response.data;
   } catch (error: unknown) {
     const err = error as AxiosError<{ message?: string }>;
     console.error('Login error:', err);

@@ -16,16 +16,18 @@ import JSONbig from 'json-bigint';
    Axios instances
 ========================= */
 
-const BASE_URL = '/';
+const BASE_URL = process.env.VITE_API_URL || 'https://texmaintain.onrender.com';
 
 /**
  * API principale (avec interceptors)
  */
 const apiInstance = axios.create({
   baseURL: BASE_URL,
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
   transformResponse: [
     (data) => {
       if (!data || typeof data !== 'string') return data;

@@ -66,7 +66,8 @@ const defaultOrigins = [
   "http://localhost:3000",
   "http://172.19.144.1:5173",
   "https://hoppscotch.io",
-  "https://tex-maintain-lcs17rn61.vercel.app"
+  'https://tex-maintain.vercel.app',
+  'https://tex-maintain-*.vercel.app', 
 
 ];
 
