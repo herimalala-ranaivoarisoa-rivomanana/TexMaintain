@@ -61,42 +61,52 @@ app.enable("json spaces");
 app.enable("strict routing");
 
 // ================== CORS ==================
-const defaultOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "http://172.19.144.1:5173",
-  "https://hoppscotch.io",
-  'https://tex-maintain.vercel.app',
-  'https://tex-maintain-*.vercel.app', 
-
-];
-
-const allowedOrigins = process.env.FRONTEND_URL
-  ? [...process.env.FRONTEND_URL.split(","), ...defaultOrigins]
-  : defaultOrigins;
-
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // Postman, curl, etc.
-      
-      const normalizedOrigin = origin.toLowerCase().replace(/\/$/, "");
-      const isAllowed = allowedOrigins.some(o => normalizedOrigin === o.toLowerCase());
-      
-      if (isAllowed) {
-        return callback(null, true);
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Liste des origines autorisées
+    const allowedOrigins = [
+      'https://tex-maintain.vercel.app',
+      'https://tex-maintain-ii0g8dolf.vercel.app',
+      /^https:\/\/tex-maintain-.*\.vercel\.app$/, // Tous les previews Vercel
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://localhost:5000'
+    ];
+    
+    // Autoriser les requêtes sans origine (Postman, mobile apps, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Vérifier si l'origine est autorisée
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed instanceof RegExp) {
+        return allowed.test(origin);
       }
+      return allowed === origin;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.log('❌ Origin blocked by CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // Important pour les cookies/sessions
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'x-factory-id',
+    'X-Requested-With',
+    'Accept'
+  ],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 86400 // Cache preflight 24h
+};
 
-      console.warn(`CORS: Blocked request from origin: ${origin}`);
-      return callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    exposedHeaders: ["Content-Range", "X-Content-Range"],
-    maxAge: 600,
-  })
-);
+app.use(cors(corsOptions));
 
 // ================== Security ==================
 app.use(helmet());
