@@ -16,7 +16,11 @@ import JSONbig from 'json-bigint';
    Axios instances
 ========================= */
 
-const BASE_URL = process.env.VITE_API_URL || 'https://texmaintain.onrender.com';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://texmaintain.onrender.com';
+
+// Debug : Vérifier quelle valeur est utilisée
+console.log('🔍 API BASE_URL:', BASE_URL);
+console.log('🔍 VITE_API_URL:', import.meta.env.VITE_API_URL);
 
 /**
  * API principale (avec interceptors)
