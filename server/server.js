@@ -79,7 +79,9 @@ app.use(
     origin: function (origin, callback) {
       if (!origin) return callback(null, true); // Postman, curl, etc.
       
-      const isAllowed = allowedOrigins.some(o => origin.startsWith(o));
+      const normalizedOrigin = origin.toLowerCase().replace(/\/$/, "");
+      const isAllowed = allowedOrigins.some(o => normalizedOrigin === o.toLowerCase());
+      
       if (isAllowed) {
         return callback(null, true);
       }
