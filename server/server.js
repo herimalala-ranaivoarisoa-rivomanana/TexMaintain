@@ -54,7 +54,12 @@ app.enable('json spaces');
 app.enable('strict routing');
 
 // Secure CORS configuration
-const defaultOrigins = ['http://localhost:5173', 'http://localhost:3000', 'http://172.19.144.1:5173'];
+const defaultOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://172.19.144.1:5173',
+  'https://tex-maintain.vercel.app'
+];
 const allowedOrigins = process.env.FRONTEND_URL
   ? [...process.env.FRONTEND_URL.split(','), ...defaultOrigins]
   : defaultOrigins;
