@@ -1,15 +1,19 @@
+// ================== server.js ==================
+
 // Load environment variables
 require("dotenv").config();
 
-// Validate environment variables first
+// Validate environment variables
 const { validateEnv } = require("./config/validateEnv");
 validateEnv();
 
+const express = require("express");
 const mongoose = require("mongoose");
-const express = require('express'); // Force restart 1
 const session = require("express-session");
-const MongoStore = require('connect-mongo');
-require('./models/Factory'); // Register Factory model explicitly
+const MongoStore = require("connect-mongo");
+require("./models/Factory"); // Register Factory model explicitly
+
+// Routes
 const basicRoutes = require("./routes/index");
 const healthRoutes = require("./routes/healthRoutes");
 const authRoutes = require("./routes/authRoutes");
@@ -36,169 +40,171 @@ const assetClassesRoutes = require("./routes/assetClassesRoutes");
 const businessUnitsRoutes = require("./routes/businessUnitsRoutes");
 const sitesRoutes = require("./routes/sitesRoutes");
 const subAssetsRoutes = require("./routes/subAssetsRoutes");
-const { connectDB } = require("./config/database");
 const backfillInterventions = require("./backfill_interventions_v2");
+
+// Config
+const { connectDB } = require("./config/database");
 const cors = require("cors");
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const compression = require('compression');
-const mongoSanitize = require('express-mongo-sanitize');
-const pino = require('pino');
-const pinoHttp = require('pino-http');
-const path = require('path');
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const compression = require("compression");
+const mongoSanitize = require("express-mongo-sanitize");
+const pino = require("pino");
+const pinoHttp = require("pino-http");
+const path = require("path");
 
 const app = express();
 const port = process.env.PORT || 3000;
-// Pretty-print JSON responses
-app.enable('json spaces');
-// We want to be consistent with URL paths, so we enable strict routing
-app.enable('strict routing');
 
-// Secure CORS configuration
+// Pretty-print JSON responses
+app.enable("json spaces");
+app.enable("strict routing");
+
+// ================== CORS ==================
 const defaultOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://172.19.144.1:5173',
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://172.19.144.1:5173",
 ];
+
 const allowedOrigins = process.env.FRONTEND_URL
-  ? [...process.env.FRONTEND_URL.split(','), ...defaultOrigins]
+  ? [...process.env.FRONTEND_URL.split(","), ...defaultOrigins]
   : defaultOrigins;
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Liste des origines autorisées
-    const allowedOrigins = [
-      'https://tex-maintain.vercel.app',
-      'https://tex-maintain-ii0g8dolf.vercel.app',
-      /^https:\/\/tex-main-.*\.vercel\.app$/, // Tous les previews Vercel
-      'http://localhost:5175',
-      'http://localhost:3000',
-      'http://localhost:5000'
-    ];
-    
-    // Autoriser les requêtes sans origine (Postman, mobile apps, etc.)
-    if (!origin) {
-      return callback(null, true);
-    }
-    
-    // Vérifier si l'origine est autorisée
-    const isAllowed = allowedOrigins.some(allowed => {
-      if (allowed instanceof RegExp) {
-        return allowed.test(origin);
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.warn(`CORS: Blocked request from origin: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
       }
-      return allowed === origin;
-    });
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.log('❌ Origin blocked by CORS:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true, // Important pour les cookies/sessions
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'x-factory-id',
-    'X-Requested-With',
-    'Accept'
-  ],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 86400 // Cache preflight 24h
-};
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Content-Range", "X-Content-Range"],
+    maxAge: 600, // 10 minutes
+  })
+);
 
-app.use(cors(corsOptions));
+// ================== Security ==================
 app.use(helmet());
-
-// Compress all responses
 app.use(compression());
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 1000,
+    standardHeaders: true,
+    legacyHeaders: false,
+  })
+);
 
-// Rate limiting
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000,
-  standardHeaders: true,
-  legacyHeaders: false,
-}));
-
-// Structured request logging
-const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
+// Logging
+const logger = pino({ level: process.env.LOG_LEVEL || "info" });
 app.use(pinoHttp({ logger }));
 
 // Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Sanitize data to prevent NoSQL injection
-app.use(mongoSanitize({
-  replaceWith: '_',
-  onSanitize: ({ req, key }) => {
-    logger.warn(`Sanitized potentially malicious input: ${key}`);
-  }
-}));
+// Sanitize to prevent NoSQL injection
+app.use(
+  mongoSanitize({
+    replaceWith: "_",
+    onSanitize: ({ req, key }) => {
+      logger.warn(`Sanitized potentially malicious input: ${key}`);
+    },
+  })
+);
 
-// Serve static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static uploads
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-app.on("error", (error) => {
-  console.error(`Server error: ${error.message}`);
-  console.error(error.stack);
+// ================== Routes ==================
+
+// Root / health check
+app.get("/", (req, res) => {
+  res.json({
+    name: "TexMaintain API",
+    status: "running",
+    env: process.env.NODE_ENV || "development",
+    timestamp: new Date(),
+  });
 });
 
-// Basic Routes
+// Basic routes
 app.use(basicRoutes);
-// Health Check Routes (no auth required)
-app.use('/api', healthRoutes);
-// Authentication Routes
-app.use('/api/auth', authRoutes);
-// Seed Routes
-app.use('/api/seed', seedRoutes);
-// Domain Routes
-app.use('/api/equipment', equipmentRoutes);
-app.use('/api/assets', equipmentRoutes);
-app.use('/api/equipment-categories', equipmentCategoriesRoutes);
-app.use('/api/equipment-types', equipmentTypesRoutes);
-app.use('/api/brands', brandsRoutes);
-app.use('/api/interventions', interventionsRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/process-areas', processAreasRoutes);
-app.use('/api/process-departments', processDepartmentsRoutes);
-app.use('/api/machinists', machinistRoutes);
-app.use('/api/mechanics', mechanicRoutes);
-app.use('/api/electricians', electricianRoutes);
-app.use('/api/maintenance-workers', maintenanceWorkerRoutes);
-app.use('/api/breakdown-media', breakdownMediaRoutes);
-app.use('/api/equipment-parts', equipmentPartsRoutes);
-app.use('/api/media', require("./routes/mediaRoutes"));
-app.use('/api/reports', reportsRoutes);
-app.use('/api/procurement', procurementRoutes);
-app.use('/api/projects', projectRoutes);
-app.use('/api/asset-classes', assetClassesRoutes);
-app.use('/api/business-units', businessUnitsRoutes);
-app.use('/api/sites', sitesRoutes);
-app.use('/api/sub-assets', subAssetsRoutes);
 
-// If no routes handled the request, it's a 404
-app.use((req, res, next) => {
-  res.status(404).send("Page not found.");
+// Health check
+app.use("/api", healthRoutes);
+
+// Authentication
+app.use("/api/auth", authRoutes);
+
+// Seed
+app.use("/api/seed", seedRoutes);
+
+// Domain routes
+app.use("/api/equipment", equipmentRoutes);
+app.use("/api/assets", equipmentRoutes);
+app.use("/api/equipment-categories", equipmentCategoriesRoutes);
+app.use("/api/equipment-types", equipmentTypesRoutes);
+app.use("/api/brands", brandsRoutes);
+app.use("/api/interventions", interventionsRoutes);
+app.use("/api/inventory", inventoryRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/process-areas", processAreasRoutes);
+app.use("/api/process-departments", processDepartmentsRoutes);
+app.use("/api/machinists", machinistRoutes);
+app.use("/api/mechanics", mechanicRoutes);
+app.use("/api/electricians", electricianRoutes);
+app.use("/api/maintenance-workers", maintenanceWorkerRoutes);
+app.use("/api/breakdown-media", breakdownMediaRoutes);
+app.use("/api/equipment-parts", equipmentPartsRoutes);
+app.use("/api/media", require("./routes/mediaRoutes"));
+app.use("/api/reports", reportsRoutes);
+app.use("/api/procurement", procurementRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/asset-classes", assetClassesRoutes);
+app.use("/api/business-units", businessUnitsRoutes);
+app.use("/api/sites", sitesRoutes);
+app.use("/api/sub-assets", subAssetsRoutes);
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found", path: req.originalUrl });
 });
 
-// Error handling
+// Error handler
 app.use((err, req, res, next) => {
   console.error(`Unhandled application error: ${err.message}`);
   console.error(err.stack);
-  res.status(500).send("There was an error serving your request.");
+  res.status(500).json({ error: "Internal server error" });
 });
 
-// Database connection
-connectDB().then(() => {
-  // Run backfill/migration logic on startup
-  backfillInterventions().catch(err => console.error('Startup backfill failed:', err));
+// ================== Database & Server ==================
+connectDB()
+  .then(() => {
+    // Run backfill / migrations
+    backfillInterventions().catch((err) =>
+      console.error("Startup backfill failed:", err)
+    );
 
-  app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+    // Start server
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
+  })
+  .catch((err) => {
+    console.error("Failed to connect to MongoDB:", err);
+    process.exit(1);
   });
+
+// ================== Error listener ==================
+app.on("error", (error) => {
+  console.error(`Server error: ${error.message}`);
+  console.error(error.stack);
 });
