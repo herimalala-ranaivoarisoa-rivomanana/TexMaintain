@@ -1,4 +1,5 @@
 import api from './api';
+import { AxiosError } from 'axios';
 
 // Description: Login user functionality
 // Endpoint: POST /api/auth/login
@@ -8,9 +9,15 @@ export const login = async (email: string, password: string) => {
   try {
     const response = await api.post('/api/auth/login', { email, password });
     return response.data;
-  } catch (error) {
-    console.error('Login error:', error);
-    throw new Error(error?.response?.data?.message || error.message);
+  } catch (error: unknown) {
+    const err = error as AxiosError<{ message?: string }>;
+    console.error('Login error:', err);
+
+    throw new Error(
+      err.response?.data?.message ||
+      err.message ||
+      'Login failed'
+    );
   }
 };
 
@@ -22,8 +29,15 @@ export const register = async (email: string, password: string, role?: string) =
   try {
     const response = await api.post('/api/auth/register', { email, password, role });
     return response.data;
-  } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+  } catch (error: unknown) {
+    const err = error as AxiosError<{ message?: string }>;
+    console.error('Register error:', err);
+
+    throw new Error(
+      err.response?.data?.message ||
+      err.message ||
+      'Register failed'
+    );
   }
 };
 
@@ -35,8 +49,15 @@ export const getCurrentUser = async () => {
   try {
     const response = await api.get('/api/auth/me');
     return response.data;
-  } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+  } catch (error: unknown) {
+    const err = error as AxiosError<{ message?: string }>;
+    console.error('Get current user error:', err);
+
+    throw new Error(
+      err.response?.data?.message ||
+      err.message ||
+      'Get current user failed'
+    );
   }
 };
 
@@ -47,7 +68,14 @@ export const getCurrentUser = async () => {
 export const logout = async () => {
   try {
     return await api.post('/api/auth/logout');
-  } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+  }   catch (error: unknown) {
+    const err = error as AxiosError<{ message?: string }>;
+    console.error('Logout error:', err);
+
+    throw new Error(
+      err.response?.data?.message ||
+      err.message ||
+      'Logout failed'
+    );
   }
 };
