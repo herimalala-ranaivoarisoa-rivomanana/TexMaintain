@@ -1,114 +1,150 @@
-import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig, AxiosInstance } from 'axios';
+import axios, {
+  AxiosRequestConfig,
+  AxiosError,
+  InternalAxiosRequestConfig,
+  AxiosInstance,
+} from 'axios';
 import JSONbig from 'json-bigint';
 
+/* =========================
+   Axios instances
+========================= */
 
+const BASE_URL = import.meta.env.VITE_API_URL;
 
-const localApi = axios.create({
+// Debug : Vérifier quelle valeur est utilisée
+console.log('🔍 API BASE_URL:', BASE_URL);
+console.log('🔍 VITE_API_URL:', import.meta.env.VITE_API_URL);
+
+/**
+ * API principale (avec interceptors)
+ */
+const apiInstance = axios.create({
+  baseURL: BASE_URL,
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
-  validateStatus: (status) => {
-    return status >= 200 && status < 300;
-  },
+  withCredentials: true,
   transformResponse: [
     (data) => {
-      if (!data) return data;
+      if (!data || typeof data !== 'string') return data;
       try {
         return JSONbig.parse(data);
-      } catch (_err) {
+      } catch {
         return data;
       }
-    }
-  ]
+    },
+  ],
 });
 
+/**
+ * API dédiée au refresh token (SANS interceptors)
+ */
+const refreshApi = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
+/* =========================
+   Utils
+========================= */
 
 let accessToken: string | null = null;
 
-const getApiInstance = (_url: string) => {
-  return localApi;
+const normalizeUrl = (url: string): string => {
+  if (!url.startsWith('/')) return `/${url}`;
+  return url;
 };
 
+const isRefreshTokenEndpoint = (url: string): boolean =>
+  url.includes('/api/auth/refresh');
 
+/* =========================
+   Interceptors
+========================= */
 
-// Check if the URL is for the refresh token endpoint to avoid infinite loops
-const isRefreshTokenEndpoint = (url: string): boolean => {
-  return url.includes("/api/auth/refresh");
-};
+const setupInterceptors = (instance: AxiosInstance) => {
+  instance.interceptors.request.use(
+    (config: InternalAxiosRequestConfig) => {
+      // Normalise URL
+      if (config.url) {
+        config.url = normalizeUrl(config.url);
+      }
 
-const setupInterceptors = (apiInstance: AxiosInstance) => {
-  apiInstance.interceptors.request.use(
-    (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
-      // Skip attaching Authorization for refresh endpoint to avoid stale header issues
+      // Skip auth header for refresh endpoint
       if (config.url && isRefreshTokenEndpoint(config.url)) {
         return config;
       }
+
+      // Access token
       if (!accessToken) {
         accessToken = localStorage.getItem('accessToken');
       }
-      if (accessToken && config.headers) {
+
+      if (accessToken) {
         config.headers.Authorization = `Bearer ${accessToken}`;
       }
 
-      // Add Factory context
+      // Factory context
       const activeFactoryId = localStorage.getItem('activeFactoryId');
+      const isAuthRequest =
+        config.url?.includes('/auth/login') ||
+        config.url?.includes('/auth/me');
 
-      // Do not send factory ID when fetching user details (deadlock prevention) or during auth
-      const isAuthRequest = config.url && (config.url.includes('/auth/me') || config.url.includes('/auth/login'));
-
-      if (activeFactoryId && config.headers && !isAuthRequest) {
+      if (activeFactoryId && !isAuthRequest) {
         config.headers['x-factory-id'] = activeFactoryId;
       }
 
       return config;
     },
-    (error: AxiosError): Promise<AxiosError> => Promise.reject(error)
+    (error: AxiosError) => Promise.reject(error)
   );
 
-  apiInstance.interceptors.response.use(
+  instance.interceptors.response.use(
     (response) => response,
-    async (error: AxiosError): Promise<any> => {
-      const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    async (error: AxiosError) => {
+      const originalRequest =
+        error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-      // Only refresh token when we get a 401/403 error (token is invalid/expired)
-      if (error.response?.status && [401, 403].includes(error.response.status) &&
+      if (
+        error.response?.status &&
+        [401, 403].includes(error.response.status) &&
         !originalRequest._retry &&
-        originalRequest.url && !isRefreshTokenEndpoint(originalRequest.url)) {
+        originalRequest.url &&
+        !isRefreshTokenEndpoint(originalRequest.url)
+      ) {
         originalRequest._retry = true;
 
         try {
           const refreshToken = localStorage.getItem('refreshToken');
           if (!refreshToken) {
-            throw new Error('No refresh token available');
+            throw new Error('No refresh token');
           }
 
-          const response = await localApi.post(`/api/auth/refresh`, {
+          const response = await refreshApi.post('/api/auth/refresh', {
             refreshToken,
           });
 
-          if (response.data.data) {
-            const newAccessToken = response.data.data.accessToken;
-            const newRefreshToken = response.data.data.refreshToken;
+          const newAccessToken = response.data?.data?.accessToken;
+          const newRefreshToken = response.data?.data?.refreshToken;
 
-            localStorage.setItem('accessToken', newAccessToken);
-            localStorage.setItem('refreshToken', newRefreshToken);
-            accessToken = newAccessToken;
-
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-            }
-          } else {
-            throw new Error('Invalid response from refresh token endpoint');
+          if (!newAccessToken || !newRefreshToken) {
+            throw new Error('Invalid refresh response');
           }
 
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          }
-          return getApiInstance(originalRequest.url || '')(originalRequest);
+          localStorage.setItem('accessToken', newAccessToken);
+          localStorage.setItem('refreshToken', newRefreshToken);
+          accessToken = newAccessToken;
+
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+          return apiInstance(originalRequest);
         } catch (err) {
-          localStorage.removeItem('refreshToken');
           localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
           accessToken = null;
           window.location.href = '/login';
           return Promise.reject(err);
@@ -120,35 +156,34 @@ const setupInterceptors = (apiInstance: AxiosInstance) => {
   );
 };
 
-setupInterceptors(localApi);
+setupInterceptors(apiInstance);
 
-
+/* =========================
+   API wrapper
+========================= */
 
 const api = {
   request: (config: AxiosRequestConfig) => {
-    const apiInstance = getApiInstance(config.url || '');
+    if (config.url) {
+      config.url = normalizeUrl(config.url);
+    }
     return apiInstance(config);
   },
-  get: (url: string, config?: AxiosRequestConfig) => {
-    const apiInstance = getApiInstance(url);
-    return apiInstance.get(url, config);
-  },
-  post: (url: string, data?: any, config?: AxiosRequestConfig) => {
-    const apiInstance = getApiInstance(url);
-    return apiInstance.post(url, data, config);
-  },
-  put: (url: string, data?: any, config?: AxiosRequestConfig) => {
-    const apiInstance = getApiInstance(url);
-    return apiInstance.put(url, data, config);
-  },
-  patch: (url: string, data?: any, config?: AxiosRequestConfig) => {
-    const apiInstance = getApiInstance(url);
-    return apiInstance.patch(url, data, config);
-  },
-  delete: (url: string, config?: AxiosRequestConfig) => {
-    const apiInstance = getApiInstance(url);
-    return apiInstance.delete(url, config);
-  },
+
+  get: (url: string, config?: AxiosRequestConfig) =>
+    apiInstance.get(normalizeUrl(url), config),
+
+  post: (url: string, data?: any, config?: AxiosRequestConfig) =>
+    apiInstance.post(normalizeUrl(url), data, config),
+
+  put: (url: string, data?: any, config?: AxiosRequestConfig) =>
+    apiInstance.put(normalizeUrl(url), data, config),
+
+  patch: (url: string, data?: any, config?: AxiosRequestConfig) =>
+    apiInstance.patch(normalizeUrl(url), data, config),
+
+  delete: (url: string, config?: AxiosRequestConfig) =>
+    apiInstance.delete(normalizeUrl(url), config),
 };
 
 export default api;

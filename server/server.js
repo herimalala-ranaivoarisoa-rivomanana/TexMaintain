@@ -49,31 +49,53 @@ app.enable('json spaces');
 // We want to be consistent with URL paths, so we enable strict routing
 app.enable('strict routing');
 
-// Secure CORS configuration
-const defaultOrigins = ['http://localhost:5173', 'http://localhost:3000', 'http://172.19.144.1:5173'];
-const allowedOrigins = process.env.FRONTEND_URL
-  ? [...process.env.FRONTEND_URL.split(','), ...defaultOrigins]
-  : defaultOrigins;
-
-app.use(cors({
+// ================== CORS ==================
+const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Liste des origines autorisées
+    const allowedOrigins = [
+      'https://tex-maintain.vercel.app',
+      'https://tex-maintain-ii0g8dolf.vercel.app',
+      /^https:\/\/tex-main-.*\.vercel\.app$/, // Tous les previews Vercel
+      'http://localhost:5175',
+      'http://localhost:3000',
+      'http://localhost:5000'
+    ];
+    
+    // Autoriser les requêtes sans origine (Postman, mobile apps, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Vérifier si l'origine est autorisée
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return allowed === origin;
+    });
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
-      console.warn(`CORS: Blocked request from origin: ${origin}`);
+      console.log('❌ Origin blocked by CORS:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true, // Important pour les cookies/sessions
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'x-factory-id',
+    'X-Requested-With',
+    'Accept'
+  ],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 600 // 10 minutes
-}));
+  maxAge: 86400 // Cache preflight 24h
+};
 
+app.use(cors(corsOptions));
 app.use(helmet());
 
 // Compress all responses

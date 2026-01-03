@@ -18,25 +18,32 @@ export const login = async (email: string, password: string) => {
       err.message ||
       'Login failed'
     );
-  }
+  } 
 };
 
 // Description: Register user functionality
 // Endpoint: POST /api/auth/register
 // Request: { email: string, password: string, role?: string }
 // Response: { _id: string, email: string, role: string, createdAt: string, lastLoginAt: string, isActive: boolean }
-export const register = async (email: string, password: string, role?: string) => {
+export const register = async (
+  email: string,
+  password: string,
+  role?: string
+) => {
   try {
-    const response = await api.post('/api/auth/register', { email, password, role });
+    const response = await api.post('/api/auth/register', {
+      email,
+      password,
+      role,
+    });
     return response.data;
   } catch (error: unknown) {
     const err = error as AxiosError<{ message?: string }>;
-    console.error('Register error:', err);
 
     throw new Error(
       err.response?.data?.message ||
       err.message ||
-      'Register failed'
+      'Registration failed'
     );
   }
 };
@@ -51,12 +58,11 @@ export const getCurrentUser = async () => {
     return response.data;
   } catch (error: unknown) {
     const err = error as AxiosError<{ message?: string }>;
-    console.error('Get current user error:', err);
 
     throw new Error(
       err.response?.data?.message ||
       err.message ||
-      'Get current user failed'
+      'Unable to fetch user'
     );
   }
 };
@@ -68,14 +74,13 @@ export const getCurrentUser = async () => {
 export const logout = async () => {
   try {
     return await api.post('/api/auth/logout');
-  }   catch (error: unknown) {
+  } catch (error: unknown) {
     const err = error as AxiosError<{ message?: string }>;
-    console.error('Logout error:', err);
 
     throw new Error(
       err.response?.data?.message ||
       err.message ||
-      'Logout failed'
+      'Unable to logout'
     );
   }
 };
