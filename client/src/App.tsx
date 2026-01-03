@@ -3,6 +3,7 @@ import { ThemeProvider } from "./components/ui/theme-provider"
 import { Toaster } from "./components/ui/toaster"
 import { AuthProvider } from "./contexts/AuthContext"
 import { FactoryProvider } from "./contexts/FactoryContext"
+import { SiteProvider } from "./contexts/SiteContext"
 import { Login } from "./pages/Login"
 import { Register } from "./pages/Register"
 import { ProtectedRoute } from "./components/ProtectedRoute"
@@ -41,6 +42,7 @@ function App() {
   return (
     <AuthProvider>
       <FactoryProvider>
+        <SiteProvider>
         <ThemeProvider defaultTheme="light" storageKey="ui-theme">
           <Router>
             <Routes>
@@ -81,6 +83,7 @@ function App() {
           </Router>
           <Toaster />
         </ThemeProvider>
+        </SiteProvider>
       </FactoryProvider>
     </AuthProvider>
   )
