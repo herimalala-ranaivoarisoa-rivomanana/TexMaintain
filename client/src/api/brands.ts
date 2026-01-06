@@ -8,6 +8,13 @@ export const getBrands = async () => {
   return response.data;
 };
 
+// Description: Get brand statistics
+// Endpoint: GET /api/brands/statistics
+export const getBrandStatistics = async () => {
+  const response = await api.get('/api/brands/statistics');
+  return response.data;
+};
+
 // Description: Create new brand (admin, maintenance_manager)
 // Endpoint: POST /api/brands
 export const createBrand = async (data: { name: string; description?: string }) => {

@@ -31,6 +31,7 @@ const equipmentPartsRoutes = require("./routes/equipmentPartsRoutes");
 const reportsRoutes = require("./routes/reportsRoutes");
 const procurementRoutes = require("./routes/procurementRoutes");
 const projectRoutes = require("./routes/projectRoutes");
+const personnelRoutes = require("./routes/personnelRoutes");
 const { connectDB } = require("./config/database");
 const backfillInterventions = require("./backfill_interventions_v2");
 const cors = require("cors");
@@ -149,6 +150,7 @@ app.use('/api/media', require("./routes/mediaRoutes"));
 app.use('/api/reports', reportsRoutes);
 app.use('/api/procurement', procurementRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/personnel', personnelRoutes);
 
 // If no routes handled the request, it's a 404
 app.use((req, res, next) => {

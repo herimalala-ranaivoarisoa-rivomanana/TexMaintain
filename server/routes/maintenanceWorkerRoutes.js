@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { requireUser, requireRole } = require('./middleware/auth');
-const { MaintenanceWorker } = require('../models/MaintenanceWorker');
+const { Personnel } = require('../models/Personnel');
 
 const router = express.Router();
 
@@ -15,7 +15,7 @@ router.get('/', requireUser, async (req, res) => {
 
     const { page = 1, limit = 50, q, isActive, specialization } = req.query;
 
-    const query = { factory: new mongoose.Types.ObjectId(factoryId) };
+    const query = { factory: new mongoose.Types.ObjectId(factoryId), role: 'MaintenanceWorker' };
 
     // Filter by active status
     if (isActive !== undefined) {
@@ -40,12 +40,12 @@ router.get('/', requireUser, async (req, res) => {
     const skip = (Number(page) - 1) * Number(limit);
 
     const [workers, total] = await Promise.all([
-      MaintenanceWorker.find(query)
+      Personnel.find(query)
         .sort({ lastName: 1, firstName: 1 })
         .skip(skip)
         .limit(Number(limit))
         .lean(),
-      MaintenanceWorker.countDocuments(query)
+      Personnel.countDocuments(query)
     ]);
 
     return res.status(200).json({
@@ -68,7 +68,7 @@ router.get('/:id', requireUser, async (req, res) => {
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);
     }
-    const worker = await MaintenanceWorker.findOne(query).lean();
+    const worker = await Personnel.findOne({ ...query, role: 'MaintenanceWorker' }).lean();
 
     if (!worker) {
       return res.status(404).json({ message: 'Maintenance worker not found' });
@@ -97,22 +97,24 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
     }
 
     // Check if matricule already exists
-    const existing = await MaintenanceWorker.findOne({
+    const existing = await Personnel.findOne({
       matricule,
-      factory: new mongoose.Types.ObjectId(factoryId)
+      factory: new mongoose.Types.ObjectId(factoryId),
+      role: 'MaintenanceWorker'
     });
     if (existing) {
       return res.status(400).json({ message: 'A maintenance worker with this matricule already exists in this factory' });
     }
 
-    const worker = new MaintenanceWorker({
+    const worker = new Personnel({
       matricule,
       firstName,
       lastName,
       specialization,
       certifications,
       isActive: isActive !== undefined ? isActive : true,
-      factory: factoryId
+      factory: factoryId,
+      role: 'MaintenanceWorker'
     });
 
     await worker.save();
@@ -130,8 +132,9 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
     const factoryId = req.header('x-factory-id');
 
     // Ensure worker belongs to factory on update
-    const existingWorker = await MaintenanceWorker.findOne({
+    const existingWorker = await Personnel.findOne({
       _id: req.params.id,
+      role: 'MaintenanceWorker',
       ...(factoryId && { factory: new mongoose.Types.ObjectId(factoryId) })
     });
 
@@ -143,10 +146,11 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
 
     // Check if matricule is being changed and if it already exists
     if (matricule) {
-      const existing = await MaintenanceWorker.findOne({
+      const existing = await Personnel.findOne({
         matricule,
         _id: { $ne: req.params.id },
-        factory: existingWorker.factory
+        factory: existingWorker.factory,
+        role: 'MaintenanceWorker'
       });
       if (existing) {
         return res.status(400).json({ message: 'A maintenance worker with this matricule already exists in this factory' });
@@ -161,7 +165,7 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
     if (certifications !== undefined) updateData.certifications = certifications;
     if (isActive !== undefined) updateData.isActive = isActive;
 
-    const worker = await MaintenanceWorker.findByIdAndUpdate(
+    const worker = await Personnel.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true, runValidators: true }
@@ -183,8 +187,8 @@ router.delete('/:id', requireUser, requireRole(['admin', 'maintenance_manager'])
       query.factory = new mongoose.Types.ObjectId(factoryId);
     }
 
-    const worker = await MaintenanceWorker.findOneAndUpdate(
-      query,
+    const worker = await Personnel.findOneAndUpdate(
+      { ...query, role: 'MaintenanceWorker' },
       { isActive: false },
       { new: true }
     );

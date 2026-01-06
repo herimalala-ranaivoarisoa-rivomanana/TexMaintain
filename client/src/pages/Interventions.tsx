@@ -30,8 +30,8 @@ import {
   X
 } from "lucide-react"
 import { Link } from "react-router-dom"
-import { getInterventions, createIntervention, updateIntervention, deleteIntervention } from "@/api/interventions"
-import { getEquipment, changeEquipmentStatus } from "@/api/equipment"
+import { getInterventions, createIntervention, updateIntervention, deleteIntervention, startIntervention, completeIntervention } from "@/api/interventions"
+import { getEquipment } from "@/api/equipment"
 import { EQUIPMENT_STATUSES, STATUS_METADATA, getStatusLabel, EQUIPMENT_STATUS_CATEGORIES } from "@/types/equipment"
 import { getMechanics } from "@/api/mechanics"
 import { getElectricians } from "@/api/electricians"
@@ -353,24 +353,11 @@ export function Interventions() {
     try {
       setIsStarting(true)
 
-      // 1. Change Equipment Status to UNDER_REPAIR
-      await changeEquipmentStatus(selectedIntervention.equipmentId._id, {
-        status: EQUIPMENT_STATUSES.UNDER_REPAIR,
+      // Atomic Start Operation
+      await startIntervention(selectedIntervention._id, {
         mechanicId: selectedMechanicId || undefined,
         electricianId: selectedElectricianId || undefined,
-        maintenanceWorkerId: selectedMaintenanceWorkerId || undefined,
-        interventionId: selectedIntervention._id
-      })
-
-      // 2. Update Intervention Status to In Progress
-      await updateIntervention(selectedIntervention._id, {
-        status: 'In Progress',
-        // Update assignedTo with selected names
-        assignedTo: [
-          personnelList.find(p => p._id === selectedMechanicId)?.firstName,
-          personnelList.find(p => p._id === selectedElectricianId)?.firstName,
-          personnelList.find(p => p._id === selectedMaintenanceWorkerId)?.firstName
-        ].filter(Boolean).join(', ')
+        maintenanceWorkerId: selectedMaintenanceWorkerId || undefined
       })
 
       // Update local state
@@ -413,8 +400,11 @@ export function Interventions() {
       if (selectedUpdateStatus === 'completed') {
         // Complete Intervention Logic
 
-        // Validate Machinist if going to IN_PRODUCTION
-        if (!updateMachinistId) {
+        // Validate Machinist if going to IN_PRODUCTION (default outcome)
+        // Note: Ideally we should let user select outcome status, but for now we assume Is returning to Production
+        const outcomeStatus = EQUIPMENT_STATUSES.IN_PRODUCTION;
+
+        if (outcomeStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !updateMachinistId) {
           toast({
             title: 'Machinist Required',
             description: 'Please select a machinist to hand over the equipment',
@@ -424,15 +414,11 @@ export function Interventions() {
           return
         }
 
-        // 1. Update Equipment Status to IN_PRODUCTION (or previous status if not breakdown)
-        // For now, let's assume back to IN_PRODUCTION is the standard "Fix"
-        await changeEquipmentStatus(selectedIntervention.equipmentId._id, {
-          status: EQUIPMENT_STATUSES.IN_PRODUCTION,
+        // Atomic Complete Operation
+        await completeIntervention(selectedIntervention._id, {
+          outcomeStatus,
           machinistId: updateMachinistId
-        })
-
-        // 2. Update Intervention Status to Completed
-        await updateIntervention(selectedIntervention._id, { status: 'Completed' })
+        });
 
         // Update local state
         setInterventions(prev => prev.map(i => i._id === selectedIntervention._id ? { ...i, status: 'Completed' } : i))

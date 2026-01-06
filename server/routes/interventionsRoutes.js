@@ -3,6 +3,7 @@ const { requireUser } = require('./middleware/auth');
 const { Intervention } = require('../models/Intervention');
 const { Equipment } = require('../models/Equipment');
 const EquipmentMetricsService = require('../services/equipmentMetricsService');
+const InterventionService = require('../services/interventionService');
 
 const router = express.Router();
 
@@ -213,6 +214,46 @@ router.delete('/:id', requireUser, require('../routes/middleware/auth').requireR
   }
 
   return res.status(200).json({ success: true });
+});
+
+// POST /api/interventions/:id/start
+router.post('/:id/start', requireUser, require('../routes/middleware/auth').requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager', 'foreman', 'mechanic', 'electrician']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { mechanicId, electricianId, maintenanceWorkerId } = req.body;
+
+    const intervention = await InterventionService.startIntervention(id, req.user._id, {
+      mechanicId,
+      electricianId,
+      maintenanceWorkerId
+    });
+
+    return res.status(200).json({ success: true, intervention });
+  } catch (error) {
+    console.error('Start intervention error:', error);
+    return res.status(400).json({ message: error.message || 'Failed to start intervention' });
+  }
+});
+
+// POST /api/interventions/:id/complete
+router.post('/:id/complete', requireUser, require('../routes/middleware/auth').requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager', 'foreman', 'mechanic', 'electrician']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { outcomeStatus, machinistId, notes, cost, actualDuration } = req.body;
+
+    const intervention = await InterventionService.completeIntervention(id, req.user._id, {
+      outcomeStatus,
+      machinistId,
+      notes,
+      cost,
+      actualDuration
+    });
+
+    return res.status(200).json({ success: true, intervention });
+  } catch (error) {
+    console.error('Complete intervention error:', error);
+    return res.status(400).json({ message: error.message || 'Failed to complete intervention' });
+  }
 });
 
 module.exports = router;

@@ -202,22 +202,22 @@ const equipmentStatusHistorySchema = new mongoose.Schema({
   },
   machinist: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Machinist',
+    ref: 'Personnel',
     required: false
   },
   mechanic: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Mechanic',
+    ref: 'Personnel',
     required: false
   },
   electrician: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Electrician',
+    ref: 'Personnel',
     required: false
   },
   maintenanceWorker: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'MaintenanceWorker',
+    ref: 'Personnel',
     required: false
   },
   breakdownInfo: {

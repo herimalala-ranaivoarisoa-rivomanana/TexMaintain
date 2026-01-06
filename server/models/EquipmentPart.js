@@ -318,7 +318,7 @@ schema.statics.calculateGlobalStock = async function (partId) {
 /**
  * Trouve les pièces nécessitant un réapprovisionnement
  */
-schema.statics.findPartsNeedingReorder = async function () {
+schema.statics.findPartsNeedingReorder = async function (factoryId) {
   const { Part } = require('./Part');
 
   // Récupérer toutes les associations
@@ -330,6 +330,17 @@ schema.statics.findPartsNeedingReorder = async function () {
   for (const assoc of associations) {
     // Skip if part is missing (deleted but association remains)
     if (!assoc.part) continue;
+
+    // Filter by factory if provided
+    if (factoryId) {
+      const partFactoryId = assoc.part.factory ? assoc.part.factory.toString() : null;
+      // If part has no factory (legacy), we might include it or exclude it. 
+      // Safest is to include only if matches, or if part has no factory (legacy global).
+      // Assuming strict multi-tenancy:
+      if (partFactoryId && partFactoryId !== factoryId.toString()) {
+        continue;
+      }
+    }
 
     const partId = assoc.part._id.toString();
     if (!partMap.has(partId)) {

@@ -2,10 +2,7 @@ const mongoose = require('mongoose');
 const { Equipment } = require('../models/Equipment');
 const { EquipmentStatusHistory, STATUS_METADATA } = require('../models/EquipmentStatusHistory');
 const { Intervention } = require('../models/Intervention');
-const { Machinist } = require('../models/Machinist');
-const { Mechanic } = require('../models/Mechanic');
-const { Electrician } = require('../models/Electrician');
-const { MaintenanceWorker } = require('../models/MaintenanceWorker');
+const { Personnel } = require('../models/Personnel');
 const EquipmentMetricsService = require('./equipmentMetricsService');
 
 /**
@@ -23,10 +20,10 @@ class EquipmentStatusService {
    * @returns {Promise<object>} Updated equipment and history entry
    */
   static async changeStatus(equipmentId, newStatus, userId, options = {}) {
-    const { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media, metadata = {} } = options;
+    const { reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media, metadata = {}, session = null } = options;
 
     // Validate equipment exists
-    const equipment = await Equipment.findById(equipmentId);
+    const equipment = await Equipment.findById(equipmentId).session(session);
     if (!equipment) {
       throw new Error('Equipment not found');
     }
@@ -41,6 +38,24 @@ class EquipmentStatusService {
     // Validate required personnel for specific statuses
     if (newStatus === 'in_production' && !machinistId) {
       throw new Error('Machinist is required when setting equipment to In Production');
+    }
+
+    // Validate personnel roles if IDs are provided
+    if (machinistId) {
+      const p = await Personnel.findById(machinistId).session(session);
+      if (!p || p.role !== 'Machinist') throw new Error('Invalid Machinist ID or personnel is not a Machinist');
+    }
+    if (mechanicId) {
+      const p = await Personnel.findById(mechanicId).session(session);
+      if (!p || p.role !== 'Mechanic') throw new Error('Invalid Mechanic ID or personnel is not a Mechanic');
+    }
+    if (electricianId) {
+      const p = await Personnel.findById(electricianId).session(session);
+      if (!p || p.role !== 'Electrician') throw new Error('Invalid Electrician ID or personnel is not an Electrician');
+    }
+    if (maintenanceWorkerId) {
+      const p = await Personnel.findById(maintenanceWorkerId).session(session);
+      if (!p || p.role !== 'MaintenanceWorker') throw new Error('Invalid Maintenance Worker ID or personnel is not a Maintenance Worker');
     }
 
     // Maintenance statuses requiring personnel
@@ -75,7 +90,7 @@ class EquipmentStatusService {
       await EquipmentStatusHistory.findOneAndUpdate(
         { equipment: equipmentId, newStatus: previousStatus, duration: null },
         { duration },
-        { sort: { timestamp: -1 } }
+        { sort: { timestamp: -1 }, session }
       );
     }
 
@@ -100,26 +115,26 @@ class EquipmentStatusService {
         const personnelNames = [];
 
         if (machinistId) {
-          const p = await Machinist.findById(machinistId);
+          const p = await Personnel.findById(machinistId).session(session);
           if (p) personnelNames.push(`${p.firstName} ${p.lastName}`);
         }
         if (mechanicId) {
-          const p = await Mechanic.findById(mechanicId);
+          const p = await Personnel.findById(mechanicId).session(session);
           if (p) personnelNames.push(`${p.firstName} ${p.lastName}`);
         }
         if (electricianId) {
-          const p = await Electrician.findById(electricianId);
+          const p = await Personnel.findById(electricianId).session(session);
           if (p) personnelNames.push(`${p.firstName} ${p.lastName}`);
         }
         if (maintenanceWorkerId) {
-          const p = await MaintenanceWorker.findById(maintenanceWorkerId);
+          const p = await Personnel.findById(maintenanceWorkerId).session(session);
           if (p) personnelNames.push(`${p.firstName} ${p.lastName}`);
         }
 
         const assignedToName = personnelNames.join(', ');
 
         // Create Intervention
-        const newIntervention = await Intervention.create({
+        const [newIntervention] = await Intervention.create([{
           title: `Auto: ${STATUS_METADATA[newStatus]?.label || newStatus} - ${equipment.name || 'Equipment'}`,
           type,
           priority,
@@ -130,7 +145,7 @@ class EquipmentStatusService {
           assignedTo: assignedToName,
           dueDate: new Date(), // Immediate attention
           createdDate: new Date()
-        });
+        }], { session });
 
         createdInterventionId = newIntervention._id;
         console.log(`Auto-created intervention ${newIntervention._id} for status ${newStatus}`);
@@ -141,7 +156,7 @@ class EquipmentStatusService {
     }
 
     // Create history entry
-    const historyEntry = await EquipmentStatusHistory.create({
+    const [historyEntry] = await EquipmentStatusHistory.create([{
       equipment: equipmentId,
       previousStatus: previousStatus || null,
       newStatus,
@@ -160,7 +175,7 @@ class EquipmentStatusService {
       media: options.media || [],
       metadata,
       timestamp: new Date()
-    });
+    }], { session });
 
     // Update equipment status
     equipment.status = newStatus;
@@ -177,9 +192,10 @@ class EquipmentStatusService {
     // Update status media
     equipment.statusMedia = options.media || [];
 
-    await equipment.save();
+    await equipment.save({ session });
 
-    // Populate the history entry
+    // Populate the history entry (population relies on read, should generally work even within session context if documents exist)
+    // Note: Population in mongoose with session usually works fine.
     await historyEntry.populate('changedBy', 'email role');
     await historyEntry.populate('intervention', 'title type status');
     if (machinistId) {
@@ -197,14 +213,23 @@ class EquipmentStatusService {
 
     // Return updated equipment with populated fields
     const updatedEquipment = await Equipment.findById(equipmentId)
+      .session(session)
       .populate('category')
       .populate('type')
       .populate('lastStatusChangedBy', 'email role');
 
     // Trigger metric recalculation (availability/downtime changes)
-    EquipmentMetricsService.calculateMetrics(equipmentId).catch(err =>
-      console.error(`Error recalculating metrics for ${equipmentId}:`, err)
-    );
+    // Only invoke if NO session (committed), or if we are sure we want to run it now.
+    // Metric Recalculation is heavy and maybe shouldn't be part of the transaction critical path if not necessary for consistency.
+    // We can run it detached, but if transaction fails, we might have recalculated for nothing (or based on phantom data).
+    // Better to run it AFTER transaction commits in the caller.
+    // But this method calls it here.
+    // We will conditionally run it if no session is passed, or let the caller handle it if session IS passed.
+    if (!session) {
+      EquipmentMetricsService.calculateMetrics(equipmentId).catch(err =>
+        console.error(`Error recalculating metrics for ${equipmentId}:`, err)
+      );
+    }
 
     return {
       equipment: updatedEquipment,

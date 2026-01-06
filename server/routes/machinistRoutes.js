@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { requireUser, requireRole } = require('./middleware/auth');
-const { Machinist } = require('../models/Machinist');
+const { Personnel } = require('../models/Personnel');
 
 const router = express.Router();
 
@@ -15,7 +15,7 @@ router.get('/', requireUser, async (req, res) => {
 
     const { page = 1, limit = 50, q, isActive } = req.query;
 
-    const query = { factory: new mongoose.Types.ObjectId(factoryId) };
+    const query = { factory: new mongoose.Types.ObjectId(factoryId), role: 'Machinist' };
 
     // Filter by active status
     if (isActive !== undefined) {
@@ -35,12 +35,12 @@ router.get('/', requireUser, async (req, res) => {
     const skip = (Number(page) - 1) * Number(limit);
 
     const [machinists, total] = await Promise.all([
-      Machinist.find(query)
+      Personnel.find(query)
         .sort({ lastName: 1, firstName: 1 })
         .skip(skip)
         .limit(Number(limit))
         .lean(),
-      Machinist.countDocuments(query)
+      Personnel.countDocuments(query)
     ]);
 
     return res.status(200).json({
@@ -63,7 +63,7 @@ router.get('/:id', requireUser, async (req, res) => {
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);
     }
-    const machinist = await Machinist.findOne(query).lean();
+    const machinist = await Personnel.findOne({ ...query, role: 'Machinist' }).lean();
 
     if (!machinist) {
       return res.status(404).json({ message: 'Machinist not found' });
@@ -92,20 +92,22 @@ router.post('/', requireUser, requireRole(['admin', 'production_manager', 'line_
     }
 
     // Check if matricule already exists
-    const existing = await Machinist.findOne({
+    const existing = await Personnel.findOne({
       matricule,
-      factory: new mongoose.Types.ObjectId(factoryId)
+      factory: new mongoose.Types.ObjectId(factoryId),
+      role: 'Machinist'
     });
     if (existing) {
       return res.status(400).json({ message: 'A machinist with this matricule already exists in this factory' });
     }
 
-    const machinist = new Machinist({
+    const machinist = new Personnel({
       matricule,
       firstName,
       lastName,
       isActive: isActive !== undefined ? isActive : true,
-      factory: factoryId
+      factory: factoryId,
+      role: 'Machinist'
     });
 
     await machinist.save();
@@ -123,8 +125,9 @@ router.put('/:id', requireUser, requireRole(['admin', 'production_manager', 'lin
     const factoryId = req.header('x-factory-id');
 
     // Ensure machinist belongs to factory on update
-    const existingMachinist = await Machinist.findOne({
+    const existingMachinist = await Personnel.findOne({
       _id: req.params.id,
+      role: 'Machinist',
       ...(factoryId && { factory: new mongoose.Types.ObjectId(factoryId) })
     });
 
@@ -136,10 +139,11 @@ router.put('/:id', requireUser, requireRole(['admin', 'production_manager', 'lin
 
     // Check if matricule is being changed and if it already exists
     if (matricule) {
-      const existing = await Machinist.findOne({
+      const existing = await Personnel.findOne({
         matricule,
         _id: { $ne: req.params.id },
-        factory: existingMachinist.factory
+        factory: existingMachinist.factory,
+        role: 'Machinist'
       });
       if (existing) {
         return res.status(400).json({ message: 'A machinist with this matricule already exists in this factory' });
@@ -152,7 +156,7 @@ router.put('/:id', requireUser, requireRole(['admin', 'production_manager', 'lin
     if (lastName !== undefined) updateData.lastName = lastName;
     if (isActive !== undefined) updateData.isActive = isActive;
 
-    const machinist = await Machinist.findByIdAndUpdate(
+    const machinist = await Personnel.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true, runValidators: true }
@@ -174,8 +178,8 @@ router.delete('/:id', requireUser, requireRole(['admin', 'production_manager']),
       query.factory = new mongoose.Types.ObjectId(factoryId);
     }
 
-    const machinist = await Machinist.findOneAndUpdate(
-      query,
+    const machinist = await Personnel.findOneAndUpdate(
+      { ...query, role: 'Machinist' },
       { isActive: false },
       { new: true }
     );

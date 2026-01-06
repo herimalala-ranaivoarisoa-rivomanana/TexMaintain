@@ -5,11 +5,13 @@ const { EquipmentPart } = require('../models/EquipmentPart');
 
 const router = express.Router();
 
+const mongoose = require('mongoose');
+
 // GET /api/inventory (with basic pagination & filters)
 router.get('/', requireUser, async (req, res) => {
   const { page = 1, limit = 50, category, q, sort = 'updatedAt', order = 'desc', type } = req.query || {};
   const and = [];
-  if (req.activeFactoryId) and.push({ factory: req.activeFactoryId }); // Filter by Factory
+  if (req.activeFactoryId) and.push({ factory: new mongoose.Types.ObjectId(req.activeFactoryId) }); // Filter by Factory
   if (category) and.push({ category });
   let tFilter = null;
   if (typeof type === 'string') {
@@ -43,13 +45,17 @@ router.get('/', requireUser, async (req, res) => {
   const safePage = Math.min(requestedPage, totalPages);
   const skip = (safePage - 1) * lmt;
 
-  // Get paginated results and GLOBAL statistics based on ALL parts
+  // Basic stats filter (just factory)
+  const statsFilter = req.activeFactoryId ? { factory: new mongoose.Types.ObjectId(req.activeFactoryId) } : {};
+
+  // Get paginated results and GLOBAL statistics based on ALL parts (filtered by factory)
   const [partsRaw, globalStats, allCount] = await Promise.all([
     Part.find(query).sort(sortSpec).skip(skip).limit(lmt).lean(),
     Part.aggregate([
+      { $match: statsFilter },
       { $group: { _id: '$type', count: { $sum: 1 } } }
     ]),
-    Part.countDocuments({})
+    Part.countDocuments(statsFilter)
   ]);
 
   // Attach stock status ensuring backend SSOT

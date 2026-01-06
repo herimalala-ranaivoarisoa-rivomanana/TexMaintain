@@ -43,7 +43,27 @@ router.get('/', requireUser, async (req, res) => {
     const { equipment, part, criticality, page = 1, limit = 50 } = req.query;
 
     const filter = {};
-    if (equipment) filter.equipment = equipment;
+
+    // Multi-tenant Filter: Ensure we only show associations for equipment in the active factory
+    if (req.activeFactoryId) {
+      // Get all equipment IDs for this factory
+      const factoryEquipment = await Equipment.find({ factory: req.activeFactoryId }).select('_id');
+      const allowedEquipmentIds = factoryEquipment.map(e => e._id);
+
+      if (equipment) {
+        // Verify requested equipment is in allowed list
+        if (!allowedEquipmentIds.some(id => id.toString() === equipment)) {
+          // If requesting restricted equipment, return empty
+          return res.status(200).json({ success: true, associations: [], pagination: { page: 1, limit: parseInt(limit), total: 0, pages: 0 } });
+        }
+        filter.equipment = equipment;
+      } else {
+        // Constrain by all allowed equipment
+        filter.equipment = { $in: allowedEquipmentIds };
+      }
+    } else if (equipment) {
+      filter.equipment = equipment;
+    }
     if (part) filter.part = part;
     if (criticality) filter.criticality = criticality;
 
@@ -163,7 +183,7 @@ router.get('/part/:partId/global-stock', requireUser, async (req, res) => {
  */
 router.get('/reorder-alerts', requireUser, async (req, res) => {
   try {
-    const alerts = await EquipmentPart.findPartsNeedingReorder();
+    const alerts = await EquipmentPart.findPartsNeedingReorder(req.activeFactoryId);
 
     return res.status(200).json({
       success: true,

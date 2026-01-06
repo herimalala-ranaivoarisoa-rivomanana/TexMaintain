@@ -8,6 +8,13 @@ export const getEquipmentCategories = async () => {
   return response.data;
 };
 
+// Description: Get equipment category statistics
+// Endpoint: GET /api/equipment-categories/statistics
+export const getEquipmentCategoryStatistics = async () => {
+  const response = await api.get('/api/equipment-categories/statistics');
+  return response.data;
+};
+
 // Description: Create new equipment category (admin)
 // Endpoint: POST /api/equipment-categories
 export const createEquipmentCategory = async (data: { name: string; description?: string }) => {

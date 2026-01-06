@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const { Part } = require('../models/Part');
 const { requireUser } = require('./middleware/auth');
@@ -6,8 +7,11 @@ const { requireUser } = require('./middleware/auth');
 // GET /api/procurement/orders - List all purchase orders
 router.get('/orders', requireUser, async (req, res) => {
     try {
-        // Find all parts that have pending orders
+        const factoryFilter = req.activeFactoryId ? { factory: new mongoose.Types.ObjectId(req.activeFactoryId) } : {};
+
+        // Find all parts that have pending orders AND belong to the factory
         const parts = await Part.find({
+            ...factoryFilter,
             'pendingOrders.0': { $exists: true }
         }).lean();
 
@@ -46,7 +50,10 @@ router.get('/orders', requireUser, async (req, res) => {
 // GET /api/procurement/stats - Get procurement statistics
 router.get('/stats', requireUser, async (req, res) => {
     try {
+        const factoryFilter = req.activeFactoryId ? { factory: new mongoose.Types.ObjectId(req.activeFactoryId) } : {};
+
         const parts = await Part.find({
+            ...factoryFilter,
             'pendingOrders.0': { $exists: true }
         }).lean();
 
@@ -86,7 +93,10 @@ router.post('/orders', requireUser, async (req, res) => {
     try {
         const { partId, quantity, supplier, notes, expectedDate } = req.body;
 
-        const part = await Part.findById(partId);
+        const query = { _id: partId };
+        if (req.activeFactoryId) query.factory = req.activeFactoryId;
+
+        const part = await Part.findOne(query);
         if (!part) {
             return res.status(404).json({ message: 'Part not found' });
         }
@@ -113,7 +123,10 @@ router.patch('/orders/:id/status', requireUser, async (req, res) => {
         const { id } = req.params;
         const { status, partId, quantity, reference } = req.body;
 
-        const part = await Part.findById(partId);
+        const query = { _id: partId };
+        if (req.activeFactoryId) query.factory = req.activeFactoryId;
+
+        const part = await Part.findOne(query);
         if (!part) {
             return res.status(404).json({ message: 'Part not found' });
         }
