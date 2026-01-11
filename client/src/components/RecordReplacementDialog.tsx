@@ -12,30 +12,30 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
-import { recordReplacement, type EquipmentPart } from '@/api/equipmentParts'
+import { recordReplacement, type AssetPart } from '@/api/assetParts'
 import { AlertCircle } from 'lucide-react'
 
 import { BeforeAfterMediaUpload } from './BeforeAfterMediaUpload'
 
 interface RecordReplacementDialogProps {
-  equipmentPart: EquipmentPart
+  assetPart: AssetPart // Support both types
   onClose: () => void
   onSuccess: () => void
 }
 
 export function RecordReplacementDialog({
-  equipmentPart,
+  assetPart,
   onClose,
   onSuccess
 }: RecordReplacementDialogProps) {
-  const [quantityUsed, setQuantityUsed] = useState(equipmentPart.quantityPerMachine)
+  const [quantityUsed, setQuantityUsed] = useState(assetPart.quantityPerMachine)
   const [notes, setNotes] = useState('')
   const [mediaBefore, setMediaBefore] = useState<string[]>([])
   const [mediaAfter, setMediaAfter] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
 
-  const currentStock = equipmentPart.part.currentStock
+  const currentStock = assetPart.part.currentStock
   const newStock = currentStock - quantityUsed
   const isStockInsufficient = newStock < 0
 
@@ -62,7 +62,7 @@ export function RecordReplacementDialog({
 
     try {
       setSaving(true)
-      await recordReplacement(equipmentPart._id, {
+      await recordReplacement(assetPart._id, {
         quantityUsed,
         notes,
         mediaBefore,
@@ -93,7 +93,7 @@ export function RecordReplacementDialog({
         <DialogHeader>
           <DialogTitle>Record a replacement</DialogTitle>
           <DialogDescription>
-            {equipmentPart.part.name} ({equipmentPart.part.partNumber})
+            {assetPart.part.name} ({assetPart.part.partNumber})
           </DialogDescription>
         </DialogHeader>
 
@@ -101,8 +101,8 @@ export function RecordReplacementDialog({
           {/* Informations de la pièce */}
           <div className="border rounded-lg p-3 bg-slate-50 space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-600">Équipement:</span>
-              <span className="font-medium">{equipmentPart.equipment.model}</span>
+              <span className="text-slate-600">Asset:</span>
+              <span className="font-medium">{assetPart.asset.model}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-600">Current stock:</span>
@@ -110,7 +110,7 @@ export function RecordReplacementDialog({
             </div>
             <div className="flex justify-between">
               <span className="text-slate-600">Usual quantity:</span>
-              <span className="font-medium">{equipmentPart.quantityPerMachine} piece(s)</span>
+              <span className="font-medium">{assetPart.quantityPerMachine} piece(s)</span>
             </div>
           </div>
 

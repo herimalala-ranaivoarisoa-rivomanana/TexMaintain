@@ -84,7 +84,7 @@ L'utilisation de paramètres d'URL (`/part-details/:id`) au lieu de query parame
 ✅ **SEO-friendly** : URLs plus propres et lisibles
 ✅ **RESTful** : Suit les conventions REST
 ✅ **Bookmarkable** : URLs plus faciles à partager et mémoriser
-✅ **Cohérence** : Même pattern que les autres routes (equipment/:id, interventions/:id)
+✅ **Cohérence** : Même pattern que les autres routes (asset/:id, interventions/:id)
 ✅ **Type-safe** : TypeScript peut typer les paramètres d'URL
 
 #### Exemple
@@ -129,7 +129,7 @@ Le menu dans `Sidebar.tsx` contient le lien vers "Reorder Alerts" :
 ```typescript
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Equipment", href: "/equipment", icon: Settings },
+  { name: "Asset", href: "/asset", icon: Settings },
   // ... autres liens ...
   { name: "Inventory", href: "/inventory", icon: Package },
   { name: "Reorder Alerts", href: "/reorder-alerts", icon: AlertTriangle },
@@ -216,12 +216,12 @@ Le projet utilise maintenant un pattern cohérent pour toutes les pages de déta
 ```typescript
 // Liste
 <Route path="inventory" element={<Inventory />} />
-<Route path="equipment" element={<Equipment />} />
+<Route path="asset" element={<Asset />} />
 <Route path="interventions" element={<Interventions />} />
 
 // Détails avec paramètre d'URL
 <Route path="inventory/:id" element={<PartDetailWrapper />} />
-<Route path="equipment/:id" element={<EquipmentDetailWrapper />} />
+<Route path="asset/:id" element={<AssetDetailWrapper />} />
 <Route path="interventions/:id" element={<InterventionDetailWrapper />} />
 <Route path="part-details/:id" element={<PartDetails />} />
 ```

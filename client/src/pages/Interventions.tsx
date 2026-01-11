@@ -31,8 +31,8 @@ import {
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { getInterventions, createIntervention, updateIntervention, deleteIntervention, startIntervention, completeIntervention } from "@/api/interventions"
-import { getEquipment } from "@/api/equipment"
-import { EQUIPMENT_STATUSES, STATUS_METADATA, getStatusLabel, EQUIPMENT_STATUS_CATEGORIES } from "@/types/equipment"
+import { getAssets, changeAssetStatus } from "@/api/assets"
+import { ASSET_STATUSES, STATUS_METADATA, getStatusLabel, ASSET_STATUS_CATEGORIES } from "@/types/asset"
 import { getMechanics } from "@/api/mechanics"
 import { getElectricians } from "@/api/electricians"
 import { getMaintenanceWorkers } from "@/api/maintenanceWorkers"
@@ -49,11 +49,11 @@ interface Intervention {
   type: string
   priority: string
   status: string
-  equipment: string
+  asset: string
   assignedTo: string
   createdDate: string
   dueDate: string
-  equipmentId?: {
+  assetId?: {
     _id: string
     status: string
     location: string
@@ -71,7 +71,7 @@ export function Interventions() {
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || "all")
   const [typeFilter, setTypeFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
-  const [equipmentFilter] = useState("all")
+  const [assetFilter] = useState("all")
   const [personnelFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState<'all' | 'overdue' | 'today' | 'week' | 'month'>('all')
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
@@ -87,13 +87,13 @@ export function Interventions() {
     title: "",
     type: "",
     priority: "",
-    equipmentId: "",
-    equipment: "",
+    assetId: "",
+    asset: "",
     assignedTo: "",
     description: "",
     dueDate: ""
   })
-  const [equipmentList, setEquipmentList] = useState<any[]>([])
+  const [assetList, setAssetList] = useState<any[]>([])
   const [personnelList, setPersonnelList] = useState<any[]>([])
   const { toast } = useToast()
   const { user } = useAuth()
@@ -148,13 +148,13 @@ export function Interventions() {
     const fetchResources = async () => {
       try {
         const [eqRes, mechRes, elecRes, workRes, machRes] = await Promise.all([
-          getEquipment({ limit: 1000 }), // Get all equipment for selection
+          getAssets({ limit: 1000 }), // Get all assets for selection
           getMechanics({ isActive: true }),
           getElectricians({ isActive: true }),
           getMaintenanceWorkers({ isActive: true }),
           getMachinists({ isActive: true })
         ])
-        setEquipmentList((eqRes as any).equipment || [])
+        setAssetList((eqRes as any).assets || [])
 
         const mechanics = (mechRes as any).mechanics || []
         const electricians = (elecRes as any).electricians || []
@@ -229,13 +229,13 @@ export function Interventions() {
   }
 
   const exportCSV = () => {
-    const headers = ['Title', 'Type', 'Priority', 'Status', 'Equipment', 'AssignedTo', 'Created', 'Due']
+    const headers = ['Title', 'Type', 'Priority', 'Status', 'Asset', 'AssignedTo', 'Created', 'Due']
     const rows = interventions.map(i => [
       i.title,
       i.type,
       i.priority,
       i.status,
-      i.equipment,
+      i.asset,
       i.assignedTo || '',
       i.createdDate ? new Date(i.createdDate).toISOString() : '',
       i.dueDate ? new Date(i.dueDate).toISOString() : ''
@@ -261,16 +261,16 @@ export function Interventions() {
       }
       setInterventions([temp as any, ...interventions])
       try {
-        // Find equipment name if not set but ID is
-        let equipmentName = newIntervention.equipment
-        if (!equipmentName && newIntervention.equipmentId) {
-          const eq = equipmentList.find(e => e._id === newIntervention.equipmentId)
-          if (eq) equipmentName = eq.location || `Equipment ${eq._id}`
+        // Find asset name if not set but ID is
+        let assetName = newIntervention.asset
+        if (!assetName && newIntervention.assetId) {
+          const eq = assetList.find(e => e._id === newIntervention.assetId)
+          if (eq) assetName = eq.location || `Asset ${eq._id}`
         }
 
         const payload = {
           ...newIntervention,
-          equipment: equipmentName
+          asset: assetName
         }
 
         const res = await createIntervention(payload)
@@ -285,7 +285,7 @@ export function Interventions() {
         description: "Intervention created successfully",
       })
       setIsDialogOpen(false)
-      setNewIntervention({ title: "", type: "", priority: "", equipment: "", equipmentId: "", assignedTo: "", description: "", dueDate: "" })
+      setNewIntervention({ title: "", type: "", priority: "", asset: "", assetId: "", assignedTo: "", description: "", dueDate: "" })
     } catch (error) {
       console.error('Error creating intervention:', error)
       toast({
@@ -321,8 +321,8 @@ export function Interventions() {
   }
 
   const handleStartIntervention = (intervention: any) => {
-    // Check if equipment is in BREAKDOWN status
-    if (intervention.equipmentId && intervention.equipmentId.status === EQUIPMENT_STATUSES.BREAKDOWN) {
+    // Check if asset is in BREAKDOWN status
+    if (intervention.assetId && intervention.assetId.status === ASSET_STATUSES.BREAKDOWN) {
       setSelectedIntervention(intervention)
       // Pre-select assigned personnel if possible (simple match by name)
       // Note: Ideally we should have IDs, but here we might only have name strings in assignedTo
@@ -371,7 +371,7 @@ export function Interventions() {
         ].filter(Boolean).join(', ')
       } : i))
 
-      toast({ title: 'Started', description: 'Intervention started and equipment set to Under Repair' })
+      toast({ title: 'Started', description: 'Intervention started and asset set to Under Repair' })
       setStartDialogOpen(false)
     } catch (error) {
       console.error('Error starting intervention:', error)
@@ -402,12 +402,12 @@ export function Interventions() {
 
         // Validate Machinist if going to IN_PRODUCTION (default outcome)
         // Note: Ideally we should let user select outcome status, but for now we assume Is returning to Production
-        const outcomeStatus = EQUIPMENT_STATUSES.IN_PRODUCTION;
+        const outcomeStatus = ASSET_STATUSES.IN_PRODUCTION;
 
-        if (outcomeStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !updateMachinistId) {
+        if (outcomeStatus === ASSET_STATUSES.IN_PRODUCTION && !updateMachinistId) {
           toast({
             title: 'Machinist Required',
-            description: 'Please select a machinist to hand over the equipment',
+            description: 'Please select a machinist to hand over the asset',
             variant: 'destructive'
           })
           setIsUpdatingStatus(false)
@@ -422,30 +422,30 @@ export function Interventions() {
 
         // Update local state
         setInterventions(prev => prev.map(i => i._id === selectedIntervention._id ? { ...i, status: 'Completed' } : i))
-        toast({ title: 'Completed', description: 'Intervention completed and equipment back in production' })
+        toast({ title: 'Completed', description: 'Intervention completed and asset back in production' })
 
       } else {
         // Check if the new status is a non-maintenance status (Production or Out of Service)
         // If so, we should auto-complete the intervention
         const newStatusMetadata = STATUS_METADATA[selectedUpdateStatus]
-        const isMaintenanceStatus = newStatusMetadata?.category === EQUIPMENT_STATUS_CATEGORIES.MAINTENANCE
+        const isMaintenanceStatus = newStatusMetadata?.category === ASSET_STATUS_CATEGORIES.MAINTENANCE
 
         if (!isMaintenanceStatus) {
           // Auto-complete logic
 
           // If going to IN_PRODUCTION, validate Machinist
-          if (selectedUpdateStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !updateMachinistId) {
+          if (selectedUpdateStatus === ASSET_STATUSES.IN_PRODUCTION && !updateMachinistId) {
             toast({
               title: 'Machinist Required',
-              description: 'Please select a machinist to hand over the equipment',
+              description: 'Please select a machinist to hand over the asset',
               variant: 'destructive'
             })
             setIsUpdatingStatus(false)
             return
           }
 
-          // 1. Change Equipment Status
-          await changeEquipmentStatus(selectedIntervention.equipmentId._id, {
+          // 1. Change Asset Status
+          await changeAssetStatus(selectedIntervention.assetId._id, {
             status: selectedUpdateStatus as any,
             machinistId: updateMachinistId || undefined
           })
@@ -473,8 +473,8 @@ export function Interventions() {
             }
           }
 
-          // Change Equipment Status Logic
-          await changeEquipmentStatus(selectedIntervention.equipmentId._id, {
+          // Change Asset Status Logic
+          await changeAssetStatus(selectedIntervention.assetId._id, {
             status: selectedUpdateStatus as any,
             mechanicId: updateMechanicId || undefined,
             electricianId: updateElectricianId || undefined,
@@ -482,7 +482,7 @@ export function Interventions() {
           })
 
           // Intervention remains In Progress
-          toast({ title: 'Updated', description: 'Equipment status updated' })
+          toast({ title: 'Updated', description: 'Asset status updated' })
         }
 
 
@@ -554,8 +554,8 @@ export function Interventions() {
       // Priority filter
       if (priorityFilter !== 'all' && intervention.priority !== priorityFilter) return false
 
-      // Equipment filter
-      if (equipmentFilter !== 'all' && intervention.equipmentId?._id !== equipmentFilter) return false
+      // Asset filter
+      if (assetFilter !== 'all' && intervention.assetId?._id !== assetFilter) return false
 
       // Personnel filter
       if (personnelFilter !== 'all' && !intervention.assignedTo?.includes(personnelFilter)) return false
@@ -590,7 +590,7 @@ export function Interventions() {
 
       return true
     })
-  }, [filteredInterventions, typeFilter, priorityFilter, equipmentFilter, personnelFilter, dateFilter])
+  }, [filteredInterventions, typeFilter, priorityFilter, assetFilter, personnelFilter, dateFilter])
 
   // Check if intervention is overdue
   const isOverdue = (intervention: Intervention) => {
@@ -635,7 +635,7 @@ export function Interventions() {
               <DialogHeader>
                 <DialogTitle>Create New Intervention</DialogTitle>
                 <DialogDescription>
-                  Create a new maintenance intervention for equipment.
+                  Create a new maintenance intervention for asset.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -676,23 +676,23 @@ export function Interventions() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="equipment">Equipment</Label>
+                  <Label htmlFor="asset">Asset</Label>
                   <Select
-                    value={newIntervention.equipmentId}
+                    value={newIntervention.assetId}
                     onValueChange={(value) => {
-                      const eq = equipmentList.find(e => e._id === value)
+                      const eq = assetList.find(e => e._id === value)
                       setNewIntervention({
                         ...newIntervention,
-                        equipmentId: value,
-                        equipment: eq ? (eq.location || eq.name) : "" // Fallback name
+                        assetId: value,
+                        asset: eq ? (eq.location || eq.name) : "" // Fallback name
                       })
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select equipment" />
+                      <SelectValue placeholder="Select asset" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
-                      {equipmentList.map(eq => (
+                      {assetList.map(eq => (
                         <SelectItem key={eq._id} value={eq._id}>
                           {eq.category?.name} - {eq.type?.name} ({eq.location})
                         </SelectItem>
@@ -811,7 +811,7 @@ export function Interventions() {
           <DialogHeader>
             <DialogTitle>Start Intervention</DialogTitle>
             <DialogDescription>
-              This equipment is currently in <strong>BREAKDOWN</strong>. Starting this intervention will change the status to <strong>UNDER REPAIR</strong>.
+              This asset is currently in <strong>BREAKDOWN</strong>. Starting this intervention will change the status to <strong>UNDER REPAIR</strong>.
               Please select the personnel performing the repair.
             </DialogDescription>
           </DialogHeader>
@@ -871,11 +871,11 @@ export function Interventions() {
           <DialogHeader>
             <DialogTitle>Update Intervention Status</DialogTitle>
             <DialogDescription>
-              Update the status of the intervention and the equipment.
+              Update the status of the intervention and the asset.
               <br />
               <span className="text-xs text-muted-foreground">
-                Current Status: {selectedIntervention?.equipmentId?.status || 'Unknown'}
-                {!STATUS_METADATA[selectedIntervention?.equipmentId?.status || ''] && ' (Metadata Missing)'}
+                Current Status: {selectedIntervention?.assetId?.status || 'Unknown'}
+                {!STATUS_METADATA[selectedIntervention?.assetId?.status || ''] && ' (Metadata Missing)'}
               </span>
             </DialogDescription>
           </DialogHeader>
@@ -888,28 +888,28 @@ export function Interventions() {
                 </SelectTrigger>
                 <SelectContent>
                   {/* Only show Complete if transition to IN_PRODUCTION is allowed */}
-                  {selectedIntervention?.equipmentId?.status &&
-                    STATUS_METADATA[selectedIntervention.equipmentId.status]?.allowedTransitions?.includes(EQUIPMENT_STATUSES.IN_PRODUCTION) && (
+                  {selectedIntervention?.assetId?.status &&
+                    STATUS_METADATA[selectedIntervention.assetId.status]?.allowedTransitions?.includes(ASSET_STATUSES.IN_PRODUCTION) && (
                       <SelectItem value="completed">Complete Intervention (Back to Production)</SelectItem>
                     )}
 
                   {/* Standard Allowed Transitions */}
-                  {selectedIntervention?.equipmentId?.status && STATUS_METADATA[selectedIntervention.equipmentId.status]?.allowedTransitions?.map((status) => (
+                  {selectedIntervention?.assetId?.status && STATUS_METADATA[selectedIntervention.assetId.status]?.allowedTransitions?.map((status) => (
                     <SelectItem key={status} value={status}>
                       {getStatusLabel(status)}
                     </SelectItem>
                   ))}
 
                   {/* Fallback: If no allowed transitions found (e.g. invalid status), show all maintenance statuses */}
-                  {(!selectedIntervention?.equipmentId?.status ||
-                    !STATUS_METADATA[selectedIntervention.equipmentId.status] ||
-                    !STATUS_METADATA[selectedIntervention.equipmentId.status]?.allowedTransitions?.length) && (
+                  {(!selectedIntervention?.assetId?.status ||
+                    !STATUS_METADATA[selectedIntervention.assetId.status] ||
+                    !STATUS_METADATA[selectedIntervention.assetId.status]?.allowedTransitions?.length) && (
                       <>
                         <SelectItem value="completed">Complete Intervention (Back to Production)</SelectItem>
-                        {Object.values(EQUIPMENT_STATUSES)
-                          .filter(s => STATUS_METADATA[s]?.category === EQUIPMENT_STATUS_CATEGORIES.MAINTENANCE ||
-                            s === EQUIPMENT_STATUSES.STORED ||
-                            s === EQUIPMENT_STATUSES.SCRAPPED)
+                        {Object.values(ASSET_STATUSES)
+                          .filter(s => STATUS_METADATA[s]?.category === ASSET_STATUS_CATEGORIES.MAINTENANCE ||
+                            s === ASSET_STATUSES.STORED ||
+                            s === ASSET_STATUSES.SCRAPPED)
                           .map(status => (
                             <SelectItem key={status} value={status}>
                               {getStatusLabel(status)} (Fallback)
@@ -923,7 +923,7 @@ export function Interventions() {
             </div>
 
             {/* Machinist Selection for Completion or In Production transition */}
-            {(selectedUpdateStatus === 'completed' || selectedUpdateStatus === EQUIPMENT_STATUSES.IN_PRODUCTION) && (
+            {(selectedUpdateStatus === 'completed' || selectedUpdateStatus === ASSET_STATUSES.IN_PRODUCTION) && (
               <div className="grid gap-2">
                 <Label>Hand over to Machinist</Label>
                 <Select value={updateMachinistId} onValueChange={setUpdateMachinistId}>
@@ -1161,10 +1161,10 @@ export function Interventions() {
                         <User className="mr-1 h-3 w-3" />
                         {intervention.assignedTo}
                       </span>
-                      {intervention.equipmentId && (
+                      {intervention.assetId && (
                         <span className="flex items-center text-xs">
-                          <Badge variant="outline" className={`${STATUS_METADATA[intervention.equipmentId.status]?.color || 'bg-gray-500'} text-white`}>
-                            {getStatusLabel(intervention.equipmentId.status as any)}
+                          <Badge variant="outline" className={`${STATUS_METADATA[intervention.assetId.status]?.color || 'bg-gray-500'} text-white`}>
+                            {getStatusLabel(intervention.assetId.status as any)}
                           </Badge>
                         </span>
                       )}
@@ -1184,8 +1184,8 @@ export function Interventions() {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div>
-                    <p className="text-sm text-slate-500">Equipment</p>
-                    <p className="font-medium text-slate-900">{intervention.equipment}</p>
+                    <p className="text-sm text-slate-500">Asset</p>
+                    <p className="font-medium text-slate-900">{intervention.asset}</p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-500">Created</p>
@@ -1248,7 +1248,7 @@ export function Interventions() {
                   <TableHead>Type</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Equipment</TableHead>
+                  <TableHead>Asset</TableHead>
                   <TableHead>Assigned To</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Actions</TableHead>
@@ -1281,7 +1281,7 @@ export function Interventions() {
                         {intervention.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate">{intervention.equipment}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{intervention.asset}</TableCell>
                     <TableCell>{intervention.assignedTo}</TableCell>
                     <TableCell className={isOverdue(intervention) ? 'text-red-600 font-bold' : ''}>
                       {new Date(intervention.dueDate).toLocaleDateString()}
@@ -1364,11 +1364,11 @@ export function Interventions() {
               {/* Details Grid */}
               <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
                 <div>
-                  <p className="text-sm text-slate-500 mb-1">Equipment</p>
-                  <p className="font-medium">{quickViewIntervention.equipment}</p>
-                  {quickViewIntervention.equipmentId && (
+                  <p className="text-sm text-slate-500 mb-1">Asset</p>
+                  <p className="font-medium">{quickViewIntervention.asset}</p>
+                  {quickViewIntervention.assetId && (
                     <Badge variant="outline" className="mt-1 text-xs">
-                      Status: {getStatusLabel(quickViewIntervention.equipmentId.status as any)}
+                      Status: {getStatusLabel(quickViewIntervention.assetId.status as any)}
                     </Badge>
                   )}
                 </div>
@@ -1389,14 +1389,14 @@ export function Interventions() {
                 </div>
               </div>
 
-              {/* Equipment Location */}
-              {quickViewIntervention.equipmentId && (
+              {/* Asset Location */}
+              {quickViewIntervention.assetId && (
                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-sm text-blue-700 font-medium mb-2">Equipment Details</p>
+                  <p className="text-sm text-blue-700 font-medium mb-2">Asset Details</p>
                   <div className="space-y-1 text-sm">
-                    <p><strong>Location:</strong> {quickViewIntervention.equipmentId.location}</p>
-                    <p><strong>Category:</strong> {quickViewIntervention.equipmentId.category?.name}</p>
-                    <p><strong>Type:</strong> {quickViewIntervention.equipmentId.type?.name}</p>
+                    <p><strong>Location:</strong> {quickViewIntervention.assetId.location}</p>
+                    <p><strong>Category:</strong> {quickViewIntervention.assetId.category?.name}</p>
+                    <p><strong>Type:</strong> {quickViewIntervention.assetId.type?.name}</p>
                   </div>
                 </div>
               )}

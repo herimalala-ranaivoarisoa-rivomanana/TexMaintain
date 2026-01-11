@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { requireUser } = require('./middleware/auth');
-const { Equipment } = require('../models/Equipment');
+const { Asset } = require('../models/Asset');
 const { ProcessArea } = require('../models/ProcessArea');
 const { ProcessDepartment } = require('../models/ProcessDepartment');
 const { Intervention } = require('../models/Intervention');
@@ -19,7 +19,7 @@ router.get('/kpis', requireUser, async (req, res) => {
 
     const factoryQuery = { factory: new mongoose.Types.ObjectId(factoryId) };
 
-    const totalPlantEquipment = await Equipment.countDocuments(factoryQuery);
+    const totalPlantAsset = await Asset.countDocuments(factoryQuery);
     const activeInterventions = await Intervention.countDocuments({ ...factoryQuery, status: { $in: ['Pending', 'In Progress'] } });
     const criticalParts = await Part.countDocuments({ ...factoryQuery, $expr: { $lte: ['$currentStock', '$minStock'] } });
 
@@ -27,20 +27,20 @@ router.get('/kpis', requireUser, async (req, res) => {
     const processAreas = await ProcessArea.find(factoryQuery).populate({
       path: 'departments.departmentId',
       populate: {
-        path: 'equipment.equipmentId',
-        model: 'Equipment'
+        path: 'asset.assetId',
+        model: 'Asset'
       }
     }).lean();
 
-    // Collect all assigned equipment IDs for Global Reliability calculation
-    const allAssignedEquipmentIds = [];
+    // Collect all assigned asset IDs for Global Reliability calculation
+    const allAssignedAssetIds = [];
     for (const area of processAreas) {
       if (area.departments) {
         for (const dept of area.departments) {
-          if (dept.departmentId && dept.departmentId.equipment) {
-            for (const item of dept.departmentId.equipment) {
-              if (item.equipmentId) {
-                allAssignedEquipmentIds.push(item.equipmentId._id);
+          if (dept.departmentId && dept.departmentId.asset) {
+            for (const item of dept.departmentId.asset) {
+              if (item.assetId) {
+                allAssignedAssetIds.push(item.assetId._id);
               }
             }
           }
@@ -48,13 +48,13 @@ router.get('/kpis', requireUser, async (req, res) => {
       }
     }
 
-    // Aggregate MTBF and MTTR from Equipment collection
+    // Aggregate MTBF and MTTR from Asset collection
     let mttr = 0;
     let mtbf = 0;
 
-    if (allAssignedEquipmentIds.length > 0) {
-      const aggregation = await Equipment.aggregate([
-        { $match: { _id: { $in: allAssignedEquipmentIds } } },
+    if (allAssignedAssetIds.length > 0) {
+      const aggregation = await Asset.aggregate([
+        { $match: { _id: { $in: allAssignedAssetIds } } },
         {
           $group: {
             _id: null,
@@ -90,8 +90,8 @@ router.get('/kpis', requireUser, async (req, res) => {
       createdDate: { $gte: startOfDay }
     }).lean();
 
-    // Map interventions by equipment ID for fast lookup
-    const downtimeByEquipment = {};
+    // Map interventions by asset ID for fast lookup
+    const downtimeByAsset = {};
     allDowntimeInterventions.forEach(i => {
       let downtime = 0;
       if (i.status === 'Completed' && i.completedDate) {
@@ -104,9 +104,9 @@ router.get('/kpis', requireUser, async (req, res) => {
         downtime = (now - i.createdDate) / (1000 * 60); // minutes
       }
 
-      const eqId = i.equipmentId?.toString(); // Ensure we use equipmentId ref
+      const eqId = i.assetId?.toString(); // Ensure we use assetId ref
       if (eqId) {
-        downtimeByEquipment[eqId] = (downtimeByEquipment[eqId] || 0) + downtime;
+        downtimeByAsset[eqId] = (downtimeByAsset[eqId] || 0) + downtime;
       }
     });
 
@@ -118,17 +118,17 @@ router.get('/kpis', requireUser, async (req, res) => {
         totalDefectCount += area.stats.defectCount || 0;
       }
 
-      // Aggregate Equipment Stats (Availability)
-      let areaEquipmentCount = 0;
-      const areaEquipmentIds = [];
+      // Aggregate Asset Stats (Availability)
+      let areaAssetCount = 0;
+      const areaAssetIds = [];
 
       if (area.departments) {
         for (const dept of area.departments) {
-          if (dept.departmentId && dept.departmentId.equipment) {
-            for (const item of dept.departmentId.equipment) {
-              if (item.equipmentId) {
-                areaEquipmentCount++;
-                areaEquipmentIds.push(item.equipmentId._id.toString());
+          if (dept.departmentId && dept.departmentId.asset) {
+            for (const item of dept.departmentId.asset) {
+              if (item.assetId) {
+                areaAssetCount++;
+                areaAssetIds.push(item.assetId._id.toString());
               }
             }
           }
@@ -138,13 +138,13 @@ router.get('/kpis', requireUser, async (req, res) => {
       // Calculate Scheduled Time for this area
       const shiftDuration = area.stats?.shiftDuration || 480;
       const plannedDowntime = area.stats?.plannedDowntime || 0;
-      const scheduledTimePerEquipment = Math.max(0, shiftDuration - plannedDowntime);
+      const scheduledTimePerAsset = Math.max(0, shiftDuration - plannedDowntime);
 
-      globalScheduledTime += areaEquipmentCount * scheduledTimePerEquipment;
+      globalScheduledTime += areaAssetCount * scheduledTimePerAsset;
 
-      // Sum downtime for equipment in this area
-      areaEquipmentIds.forEach(eqId => {
-        globalUnplannedDowntime += (downtimeByEquipment[eqId] || 0);
+      // Sum downtime for asset in this area
+      areaAssetIds.forEach(eqId => {
+        globalUnplannedDowntime += (downtimeByAsset[eqId] || 0);
       });
     }
 
@@ -184,7 +184,7 @@ router.get('/kpis', requireUser, async (req, res) => {
         mtbf,
         oee,
         availability,
-        totalEquipment: totalPlantEquipment,
+        totalAsset: totalPlantAsset,
         activeInterventions,
         criticalParts,
         pendingOrders
@@ -208,7 +208,7 @@ router.get('/activities', requireUser, async (req, res) => {
 
     const recentInterventions = await Intervention.find(factoryQuery).sort({ createdDate: -1 }).limit(5).lean();
     const recentParts = await Part.find(factoryQuery).sort({ updatedAt: -1 }).limit(3).lean();
-    const recentEquipment = await Equipment.find(factoryQuery).sort({ updatedAt: -1 }).limit(2).lean();
+    const recentAsset = await Asset.find(factoryQuery).sort({ updatedAt: -1 }).limit(2).lean();
 
     const activities = [
       ...recentInterventions.map(i => ({
@@ -225,10 +225,10 @@ router.get('/activities', requireUser, async (req, res) => {
         timestamp: p.updatedAt,
         priority: 'medium'
       })),
-      ...recentEquipment.map(e => ({
+      ...recentAsset.map(e => ({
         _id: String(e._id),
-        type: 'equipment',
-        description: `Equipment updated: ${e.model || e.serialNumber || 'Unknown'}`,
+        type: 'asset',
+        description: `Asset updated: ${e.model || e.serialNumber || 'Unknown'}`,
         timestamp: e.updatedAt,
         priority: 'low'
       }))

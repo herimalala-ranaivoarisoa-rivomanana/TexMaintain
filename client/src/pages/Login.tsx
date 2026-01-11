@@ -40,11 +40,12 @@ export function Login() {
       })
       navigate("/")
     } catch (error) {
-      console.error("Login error:", error.message)
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      console.error("Login error:", errorMessage)
       toast({
         variant: "destructive",
         title: "Error",
-        description: error?.message,
+        description: errorMessage,
       })
     } finally {
       setLoading(false)

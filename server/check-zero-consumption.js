@@ -4,8 +4,8 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { EquipmentPart } = require('./models/EquipmentPart');
-const { Equipment } = require('./models/Equipment');
+const { AssetPart } = require('./models/AssetPart');
+const { Asset } = require('./models/Asset');
 const { Part } = require('./models/Part');
 
 async function check() {
@@ -16,17 +16,17 @@ async function check() {
     console.log('✅ Connecté\n');
 
     // Trouver les associations avec consommation = 0
-    const zeroConsumption = await EquipmentPart.find({
+    const zeroConsumption = await AssetPart.find({
       annualConsumption: 0
     })
-    .populate('equipment', 'model serialNumber')
+    .populate('asset', 'model serialNumber')
     .populate('part', 'name partNumber');
 
     console.log(`📊 Associations avec annualConsumption = 0: ${zeroConsumption.length}\n`);
 
     if (zeroConsumption.length > 0) {
       for (const assoc of zeroConsumption) {
-        console.log(`❌ ${assoc.equipment?.model || 'Unknown'} + ${assoc.part?.name || 'Unknown'}`);
+        console.log(`❌ ${assoc.asset?.model || 'Unknown'} + ${assoc.part?.name || 'Unknown'}`);
         console.log(`   ID: ${assoc._id}`);
         console.log(`   Quantité: ${assoc.quantityPerMachine}`);
         console.log(`   Fréquence: ${assoc.replacementFrequencyPerYear}/an`);
@@ -39,13 +39,13 @@ async function check() {
 
     // Afficher TOUTES les associations
     console.log('📋 TOUTES les associations:\n');
-    const all = await EquipmentPart.find({})
-      .populate('equipment', 'model serialNumber')
+    const all = await AssetPart.find({})
+      .populate('asset', 'model serialNumber')
       .populate('part', 'name partNumber');
 
     for (const assoc of all) {
       const status = assoc.annualConsumption === 0 ? '❌' : '✅';
-      console.log(`${status} ${assoc.equipment?.model || 'Unknown'} (${assoc.equipment?.serialNumber}) + ${assoc.part?.name || 'Unknown'}`);
+      console.log(`${status} ${assoc.asset?.model || 'Unknown'} (${assoc.asset?.serialNumber}) + ${assoc.part?.name || 'Unknown'}`);
       console.log(`   Qty: ${assoc.quantityPerMachine}, Freq: ${assoc.replacementFrequencyPerYear}/an, Annual: ${assoc.annualConsumption}`);
       console.log(`   Notes: ${assoc.notes || 'Aucune'}\n`);
     }

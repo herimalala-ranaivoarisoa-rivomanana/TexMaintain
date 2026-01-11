@@ -117,8 +117,8 @@ DLM125469 145879546:
 ### 1. Calcul Manuel lors de insertMany()
 
 **Fichiers modifiés** :
-- ✅ `server/routes/equipmentPartsRoutes.js`
-- ✅ `server/routes/equipmentRoutes.js`
+- ✅ `server/routes/assetPartsRoutes.js`
+- ✅ `server/routes/assetRoutes.js`
 
 **Résultat** :
 - Toutes les futures duplications auront les valeurs correctes
@@ -126,7 +126,7 @@ DLM125469 145879546:
 
 ### 2. Hook pre-save Actif
 
-Le hook `pre-save` dans `EquipmentPart.js` calcule automatiquement les valeurs pour :
+Le hook `pre-save` dans `AssetPart.js` calcule automatiquement les valeurs pour :
 - ✅ Créations unitaires
 - ✅ Modifications
 - ✅ Garantit la cohérence

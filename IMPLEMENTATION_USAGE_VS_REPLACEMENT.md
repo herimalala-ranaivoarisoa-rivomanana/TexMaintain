@@ -62,7 +62,7 @@ Dialog spécifique pour enregistrer l'utilisation des consommables :
 
 ### 2. ✅ API Client Mise à Jour
 
-**`client/src/api/equipmentParts.ts`** (MODIFIÉ)
+**`client/src/api/assetParts.ts`** (MODIFIÉ)
 
 Ajout de la fonction `recordUsage()` :
 
@@ -74,7 +74,7 @@ export const recordReplacement = async (id: string, data: {
   quantity: number
   notes?: string 
 }) => {
-  const response = await api.post(`/api/equipment-parts/${id}/record-replacement`, data)
+  const response = await api.post(`/api/asset-parts/${id}/record-replacement`, data)
   return response.data
 }
 
@@ -85,7 +85,7 @@ export const recordUsage = async (id: string, data: {
   quantity: number
   notes?: string 
 }) => {
-  const response = await api.post(`/api/equipment-parts/${id}/record-usage`, data)
+  const response = await api.post(`/api/asset-parts/${id}/record-usage`, data)
   return response.data
 }
 ```
@@ -94,7 +94,7 @@ export const recordUsage = async (id: string, data: {
 
 ### 3. ✅ Composant Liste Mis à Jour
 
-**`client/src/components/EquipmentPartsList.tsx`** (MODIFIÉ)
+**`client/src/components/AssetPartsList.tsx`** (MODIFIÉ)
 
 #### Ajouts :
 
@@ -105,7 +105,7 @@ import { RecordUsageDialog } from './RecordUsageDialog'
 
 **b) État pour le dialog d'utilisation :**
 ```typescript
-const [recordingUsageFor, setRecordingUsageFor] = useState<EquipmentPart | null>(null)
+const [recordingUsageFor, setRecordingUsageFor] = useState<AssetPart | null>(null)
 ```
 
 **c) Label conditionnel :**
@@ -117,7 +117,7 @@ const actionLabel = type === 'part'
 
 **d) Handlers :**
 ```typescript
-const handleRecordUsage = (part: EquipmentPart) => {
+const handleRecordUsage = (part: AssetPart) => {
   setRecordingUsageFor(part)
 }
 
@@ -146,7 +146,7 @@ const handleUsageRecorded = () => {
 ```typescript
 {recordingUsageFor && (
   <RecordUsageDialog
-    equipmentPart={recordingUsageFor}
+    assetPart={recordingUsageFor}
     onClose={() => setRecordingUsageFor(null)}
     onSuccess={handleUsageRecorded}
   />
@@ -157,13 +157,13 @@ const handleUsageRecorded = () => {
 
 ### 4. ✅ Route Backend Ajoutée
 
-**`server/routes/equipmentPartsRoutes.js`** (MODIFIÉ)
+**`server/routes/assetPartsRoutes.js`** (MODIFIÉ)
 
 Nouvelle route pour enregistrer l'utilisation :
 
 ```javascript
 /**
- * POST /api/equipment-parts/:id/record-usage
+ * POST /api/asset-parts/:id/record-usage
  * Enregistrer une utilisation de consommable (pour consumables)
  */
 router.post('/:id/record-usage', requireUser, async (req, res) => {
@@ -180,7 +180,7 @@ router.post('/:id/record-usage', requireUser, async (req, res) => {
     
     const { quantityUsed, notes } = parse.data
     
-    const association = await EquipmentPart.findById(id)
+    const association = await AssetPart.findById(id)
     if (!association) {
       return res.status(404).json({ message: 'Association not found' })
     }
@@ -194,8 +194,8 @@ router.post('/:id/record-usage', requireUser, async (req, res) => {
       { $inc: { currentStock: -quantityUsed } }
     )
     
-    const updated = await EquipmentPart.findById(id)
-      .populate('equipment', 'model serialNumber')
+    const updated = await AssetPart.findById(id)
+      .populate('asset', 'model serialNumber')
       .populate('part', 'name partNumber currentStock')
       .populate('replacementHistory.performedBy', 'fullName email')
       .lean()
@@ -218,7 +218,7 @@ router.post('/:id/record-usage', requireUser, async (req, res) => {
 
 ## 📊 Comparaison Visuelle
 
-### Page `/equipment/A-123/parts` (Pièces)
+### Page `/asset/A-123/parts` (Pièces)
 
 ```
 ┌────────────────────────────────────────────────┐
@@ -237,7 +237,7 @@ Clic → RecordReplacementDialog
        "Quantité remplacée"
 ```
 
-### Page `/equipment/A-123/consumable` (Consommables)
+### Page `/asset/A-123/consumable` (Consommables)
 
 ```
 ┌────────────────────────────────────────────────┐
@@ -263,7 +263,7 @@ Clic → RecordUsageDialog
 ### Pour Parts (Pièces de Rechange)
 
 ```
-1. Technicien va sur /equipment/A-123/parts
+1. Technicien va sur /asset/A-123/parts
 2. Voit "Rotary Cutter 45mm"
 3. Vient de remplacer le cutter usé
 4. Clic sur "📝 Enregistrer un remplacement"
@@ -281,7 +281,7 @@ Clic → RecordUsageDialog
 ### Pour Consumables (Consommables)
 
 ```
-1. Technicien va sur /equipment/A-123/consumable
+1. Technicien va sur /asset/A-123/consumable
 2. Voit "Huile de lubrification 5L"
 3. Vient de lubrifier la machine
 4. Clic sur "📝 Enregistrer une utilisation"
@@ -337,7 +337,7 @@ Tous les textes sont cohérents dans l'interface :
 ### Test 1 : Parts (Pièces)
 
 ```bash
-1. Aller sur /equipment/[id]/parts
+1. Aller sur /asset/[id]/parts
 2. Vérifier le bouton : "📝 Enregistrer un remplacement"
 3. Cliquer sur le bouton
 4. Vérifier le dialog :
@@ -353,7 +353,7 @@ Tous les textes sont cohérents dans l'interface :
 ### Test 2 : Consumables (Consommables)
 
 ```bash
-1. Aller sur /equipment/[id]/consumable
+1. Aller sur /asset/[id]/consumable
 2. Vérifier le bouton : "📝 Enregistrer une utilisation"
 3. Cliquer sur le bouton
 4. Vérifier le dialog :
@@ -370,13 +370,13 @@ Tous les textes sont cohérents dans l'interface :
 
 ```bash
 # Test record-replacement (parts)
-curl -X POST http://localhost:3000/api/equipment-parts/[ID]/record-replacement \
+curl -X POST http://localhost:3000/api/asset-parts/[ID]/record-replacement \
   -H "Authorization: Bearer [TOKEN]" \
   -H "Content-Type: application/json" \
   -d '{"quantityUsed": 1, "notes": "Test remplacement"}'
 
 # Test record-usage (consumables)
-curl -X POST http://localhost:3000/api/equipment-parts/[ID]/record-usage \
+curl -X POST http://localhost:3000/api/asset-parts/[ID]/record-usage \
   -H "Authorization: Bearer [TOKEN]" \
   -H "Content-Type: application/json" \
   -d '{"quantityUsed": 0.5, "notes": "Test utilisation"}'
@@ -390,9 +390,9 @@ curl -X POST http://localhost:3000/api/equipment-parts/[ID]/record-usage \
 1. ✅ `client/src/components/RecordUsageDialog.tsx`
 
 ### Fichiers Modifiés (3)
-2. ✅ `client/src/api/equipmentParts.ts` - Ajout fonction `recordUsage()`
-3. ✅ `client/src/components/EquipmentPartsList.tsx` - Bouton et dialog conditionnels
-4. ✅ `server/routes/equipmentPartsRoutes.js` - Nouvelle route `/record-usage`
+2. ✅ `client/src/api/assetParts.ts` - Ajout fonction `recordUsage()`
+3. ✅ `client/src/components/AssetPartsList.tsx` - Bouton et dialog conditionnels
+4. ✅ `server/routes/assetPartsRoutes.js` - Nouvelle route `/record-usage`
 
 ### Total : 4 fichiers
 
@@ -415,8 +415,8 @@ Ctrl+Shift+R
 
 ### Étape 3 : Tester
 ```bash
-1. /equipment/[id]/parts → "Enregistrer un remplacement"
-2. /equipment/[id]/consumable → "Enregistrer une utilisation"
+1. /asset/[id]/parts → "Enregistrer un remplacement"
+2. /asset/[id]/consumable → "Enregistrer une utilisation"
 ```
 
 ---
@@ -425,7 +425,7 @@ Ctrl+Shift+R
 
 - [x] RecordUsageDialog créé
 - [x] recordUsage() ajouté dans API client
-- [x] EquipmentPartsList mis à jour avec bouton conditionnel
+- [x] AssetPartsList mis à jour avec bouton conditionnel
 - [x] Route backend /record-usage ajoutée
 - [x] Labels conditionnels selon type
 - [x] Handlers pour usage ajoutés

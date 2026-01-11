@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { ProductionLine } = require('./models/ProductionLine');
-const { Equipment } = require('./models/Equipment');
+const { Asset } = require('./models/Asset');
 const { Intervention } = require('./models/Intervention');
 const { Part } = require('./models/Part');
 require('dotenv').config();
@@ -11,19 +11,19 @@ async function checkData() {
         console.log('Connected to MongoDB');
 
         // 1. Global Counts (General Dashboard)
-        const globalEquipmentCount = await Equipment.countDocuments();
+        const globalAssetCount = await Asset.countDocuments();
         const globalInterventionCount = await Intervention.countDocuments({ status: { $in: ['Pending', 'In Progress'] } });
 
         console.log('--- GLOBAL DATA ---');
-        console.log(`Total Equipment: ${globalEquipmentCount}`);
+        console.log(`Total Asset: ${globalAssetCount}`);
         console.log(`Active Interventions: ${globalInterventionCount}`);
 
         // 2. Process Area Counts
         const lines = await ProductionLine.find().populate({
             path: 'sections.sectionId',
             populate: {
-                path: 'equipment.equipmentId',
-                model: 'Equipment'
+                path: 'asset.assetId',
+                model: 'Asset'
             }
         });
 
@@ -32,35 +32,35 @@ async function checkData() {
         for (const line of lines) {
             console.log(`\n--- LINE: ${line.name} ---`);
 
-            const equipmentIds = [];
+            const assetIds = [];
             line.sections.forEach(section => {
-                if (section.sectionId && section.sectionId.equipment) {
-                    section.sectionId.equipment.forEach(item => {
-                        if (item.equipmentId) {
-                            equipmentIds.push(item.equipmentId._id);
+                if (section.sectionId && section.sectionId.asset) {
+                    section.sectionId.asset.forEach(item => {
+                        if (item.assetId) {
+                            assetIds.push(item.assetId._id);
                         }
                     });
                 }
             });
 
-            console.log(`Equipment on Line: ${equipmentIds.length}`);
+            console.log(`Asset on Line: ${assetIds.length}`);
 
             const lineInterventionCount = await Intervention.countDocuments({
-                equipment: { $in: equipmentIds },
+                asset: { $in: assetIds },
                 status: { $in: ['Pending', 'In Progress'] }
             });
             console.log(`Active Interventions on Line: ${lineInterventionCount}`);
 
-            const unassignedCount = globalEquipmentCount - equipmentIds.length;
+            const unassignedCount = globalAssetCount - assetIds.length;
             if (unassignedCount > 0) {
-                console.log(`\nWARNING: ${unassignedCount} equipment(s) are NOT assigned to this line.`);
+                console.log(`\nWARNING: ${unassignedCount} asset(s) are NOT assigned to this line.`);
 
-                // Find unassigned equipment
-                const allEquipment = await Equipment.find({}, '_id name');
-                const assignedSet = new Set(equipmentIds.map(id => id.toString()));
-                const unassigned = allEquipment.filter(e => !assignedSet.has(e._id.toString()));
+                // Find unassigned asset
+                const allAsset = await Asset.find({}, '_id name');
+                const assignedSet = new Set(assetIds.map(id => id.toString()));
+                const unassigned = allAsset.filter(e => !assignedSet.has(e._id.toString()));
 
-                console.log('Unassigned Equipment:', unassigned.map(e => e.name));
+                console.log('Unassigned Asset:', unassigned.map(e => e.name));
             }
         }
 

@@ -1,5 +1,5 @@
 /**
- * Test script to verify Equipment Status History enrichment
+ * Test script to verify Asset Status History enrichment
  * 
  * This script verifies that status history correctly stores and retrieves:
  * - User information (changedBy)
@@ -11,12 +11,12 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-const { Equipment } = require('./models/Equipment');
-const { EquipmentStatusHistory } = require('./models/EquipmentStatusHistory');
+const { Asset } = require('./models/Asset');
+const { AssetStatusHistory } = require('./models/AssetStatusHistory');
 const { User } = require('./models/User');
 const { Machinist } = require('./models/Machinist');
 const { Mechanic } = require('./models/Mechanic');
-const EquipmentStatusService = require('./services/equipmentStatusService');
+const AssetStatusService = require('./services/assetStatusService');
 
 async function testStatusHistoryEnrichment() {
   try {
@@ -24,13 +24,13 @@ async function testStatusHistoryEnrichment() {
     await mongoose.connect(process.env.DATABASE_URL);
     console.log('✅ Connected to database');
 
-    // Find a test equipment
-    const equipment = await Equipment.findOne().lean();
-    if (!equipment) {
-      console.log('❌ No equipment found in database');
+    // Find a test asset
+    const asset = await Asset.findOne().lean();
+    if (!asset) {
+      console.log('❌ No asset found in database');
       return;
     }
-    console.log(`📦 Testing with equipment: ${equipment._id}`);
+    console.log(`📦 Testing with asset: ${asset._id}`);
 
     // Find test users
     const user = await User.findOne().lean();
@@ -44,7 +44,7 @@ async function testStatusHistoryEnrichment() {
 
     console.log('\n🧪 Test 1: Get existing status history');
     console.log('=====================================');
-    const historyResult = await EquipmentStatusService.getStatusHistory(equipment._id, { limit: 5 });
+    const historyResult = await AssetStatusService.getStatusHistory(asset._id, { limit: 5 });
     console.log(`Total history entries: ${historyResult.total}`);
     
     if (historyResult.history.length > 0) {
@@ -86,7 +86,7 @@ async function testStatusHistoryEnrichment() {
 
     console.log('\n✅ Status history enrichment test completed');
     console.log('\n📊 Summary:');
-    console.log(`  - Equipment ID: ${equipment._id}`);
+    console.log(`  - Asset ID: ${asset._id}`);
     console.log(`  - Total history entries: ${historyResult.total}`);
     console.log(`  - Latest ${historyResult.history.length} entries retrieved with full personnel information`);
     

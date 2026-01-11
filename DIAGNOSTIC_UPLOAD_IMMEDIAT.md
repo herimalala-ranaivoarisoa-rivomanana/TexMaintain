@@ -44,20 +44,20 @@ Dans le terminal où tourne le serveur, cherchez :
 
 ## 🐛 ERREURS COURANTES ET SOLUTIONS
 
-### Erreur 1 : "Equipment ID, breakdown type, and description are required"
+### Erreur 1 : "Asset ID, breakdown type, and description are required"
 
 **Cause** : Champs manquants dans la requête
 
 **Solution** :
 - Vérifiez que `breakdownType` est bien sélectionné
 - Vérifiez que `breakdownDescription` est rempli
-- Vérifiez que `equipmentId` est valide
+- Vérifiez que `assetId` est valide
 
 **Code à vérifier** :
 ```typescript
-// Dans Equipment.tsx ou ProductionLines.tsx
+// Dans Asset.tsx ou ProductionLines.tsx
 console.log('Upload params:', {
-  equipmentId: editingItem._id,
+  assetId: editingItem._id,
   breakdownType,
   breakdownDescription,
   filesCount: breakdownMedia.length
@@ -116,12 +116,12 @@ console.log('Upload params:', {
 
 ### Test 1 : Vérifier que le serveur reçoit la requête
 
-Ajoutez ce log temporaire dans `Equipment.tsx` :
+Ajoutez ce log temporaire dans `Asset.tsx` :
 
 ```typescript
 // Avant await uploadBreakdownMedia(...)
 console.log('🚀 About to upload:', {
-  equipmentId: editingItem._id,
+  assetId: editingItem._id,
   breakdownType,
   breakdownDescription,
   filesCount: breakdownMedia.length,
@@ -146,7 +146,7 @@ localStorage.getItem('token')  // Vérifier le token
 
 curl -X POST http://localhost:3000/api/breakdown-media \
   -H "Authorization: Bearer VOTRE_TOKEN" \
-  -F "equipmentId=EQUIPMENT_ID" \
+  -F "assetId=EQUIPMENT_ID" \
   -F "breakdownType=electrical" \
   -F "description=Test" \
   -F "files=@test.jpg"
@@ -175,7 +175,7 @@ Avant de tester à nouveau :
 ### Action 1 : Activer les logs détaillés
 
 Les logs sont maintenant activés dans :
-- ✅ `Equipment.tsx` - Logs d'erreur détaillés
+- ✅ `Asset.tsx` - Logs d'erreur détaillés
 - ✅ `ProductionLines.tsx` - Logs d'erreur détaillés
 - ✅ `breakdownMedia.js` - Logs serveur
 
@@ -206,7 +206,7 @@ Headers:
   Content-Type: multipart/form-data
 
 Body (FormData):
-  equipmentId: string
+  assetId: string
   breakdownType: string (electrical, mechanical, etc.)
   description: string
   files: File[] (max 5, max 10MB each)
@@ -219,7 +219,7 @@ Body (FormData):
   "message": "Breakdown media uploaded successfully",
   "breakdownMedia": {
     "_id": "...",
-    "equipment": "...",
+    "asset": "...",
     "breakdownType": "electrical",
     "description": "...",
     "files": [...]

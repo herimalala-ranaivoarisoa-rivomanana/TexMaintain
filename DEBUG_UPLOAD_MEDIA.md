@@ -35,7 +35,7 @@ Ajout de messages d'erreur spécifiques :
 Ajout de logs pour déboguer :
 ```javascript
 📤 Breakdown media upload request: {
-  equipmentId, breakdownType, description,
+  assetId, breakdownType, description,
   filesCount, user
 }
 ✅ Breakdown media uploaded successfully
@@ -50,7 +50,7 @@ Ajout de logs pour déboguer :
 # Devrait réussir (fichiers optionnels)
 curl -X POST http://localhost:3000/api/breakdown-media \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "equipmentId=123" \
+  -F "assetId=123" \
   -F "breakdownType=electrical" \
   -F "description=Test sans fichier"
 ```
@@ -59,7 +59,7 @@ curl -X POST http://localhost:3000/api/breakdown-media \
 ```bash
 curl -X POST http://localhost:3000/api/breakdown-media \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "equipmentId=123" \
+  -F "assetId=123" \
   -F "breakdownType=electrical" \
   -F "description=Test avec image" \
   -F "files=@photo.jpg"
@@ -70,7 +70,7 @@ curl -X POST http://localhost:3000/api/breakdown-media \
 # Devrait échouer avec message clair
 curl -X POST http://localhost:3000/api/breakdown-media \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "equipmentId=123" \
+  -F "assetId=123" \
   -F "breakdownType=electrical" \
   -F "description=Test fichier trop grand" \
   -F "files=@large_file.jpg"  # >10MB
@@ -83,7 +83,7 @@ curl -X POST http://localhost:3000/api/breakdown-media \
 # Devrait échouer avec message clair
 curl -X POST http://localhost:3000/api/breakdown-media \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "equipmentId=123" \
+  -F "assetId=123" \
   -F "breakdownType=electrical" \
   -F "description=Test trop de fichiers" \
   -F "files=@file1.jpg" \
@@ -101,7 +101,7 @@ curl -X POST http://localhost:3000/api/breakdown-media \
 # Devrait échouer avec message clair
 curl -X POST http://localhost:3000/api/breakdown-media \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "equipmentId=123" \
+  -F "assetId=123" \
   -F "breakdownType=electrical" \
   -F "description=Test fichier invalide" \
   -F "files=@malware.exe"
@@ -181,7 +181,7 @@ db.breakdownmedias.find().pretty()
 **Cause** : Type de fichier non autorisé
 **Solution** : Utiliser uniquement images (.jpg, .png, .gif, .webp) ou vidéos (.mp4, .mpeg, .mov)
 
-### 5. "Equipment ID, breakdown type, and description are required"
+### 5. "Asset ID, breakdown type, and description are required"
 **Cause** : Champs manquants
 **Solution** : Vérifier que tous les champs sont remplis dans le formulaire
 
@@ -196,7 +196,7 @@ db.breakdownmedias.find().pretty()
 ### Logs de succès
 ```
 📤 Breakdown media upload request: {
-  equipmentId: '6905b7c4684b94f91c133a7b',
+  assetId: '6905b7c4684b94f91c133a7b',
   breakdownType: 'electrical',
   description: 'Court-circuit',
   filesCount: 2,
@@ -204,7 +204,7 @@ db.breakdownmedias.find().pretty()
 }
 ✅ Breakdown media uploaded successfully: {
   id: '690...',
-  equipment: '6905b7c4684b94f91c133a7b',
+  asset: '6905b7c4684b94f91c133a7b',
   filesCount: 2
 }
 ```

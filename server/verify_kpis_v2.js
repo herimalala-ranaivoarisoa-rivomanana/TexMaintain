@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { Equipment } = require('./models/Equipment');
+const { Asset } = require('./models/Asset');
 const { ProductionLine } = require('./models/ProductionLine'); // Corrected import
 const { Intervention } = require('./models/Intervention');
 require('dotenv').config();
@@ -54,22 +54,22 @@ async function verifyKPIsV2() {
         console.log(`   Calculated MTTR: ${expectedMTTR.toFixed(2)} hours`);
 
         // 3. Calculate Expected MTBF
-        // Group by equipment
-        const interventionsByEquipment = {};
+        // Group by asset
+        const interventionsByAsset = {};
         interventions.forEach(i => {
-            const eqId = i.equipment?.toString(); // Use equipment field (ObjectId string)
-            if (!interventionsByEquipment[eqId]) {
-                interventionsByEquipment[eqId] = [];
+            const eqId = i.asset?.toString(); // Use asset field (ObjectId string)
+            if (!interventionsByAsset[eqId]) {
+                interventionsByAsset[eqId] = [];
             }
-            interventionsByEquipment[eqId].push(i);
+            interventionsByAsset[eqId].push(i);
         });
 
         let totalIntervalsHours = 0;
         let totalIntervalsCount = 0;
 
-        Object.keys(interventionsByEquipment).forEach(eqId => {
+        Object.keys(interventionsByAsset).forEach(eqId => {
             // Sort by createdDate
-            const eqInterventions = interventionsByEquipment[eqId].sort((a, b) => a.createdDate - b.createdDate);
+            const eqInterventions = interventionsByAsset[eqId].sort((a, b) => a.createdDate - b.createdDate);
 
             if (eqInterventions.length >= 2) {
                 for (let i = 1; i < eqInterventions.length; i++) {

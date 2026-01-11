@@ -10,7 +10,7 @@
 ### Test 1: Vérifier les Logs Console
 
 1. Ouvrir la console du navigateur (F12)
-2. Aller sur `/equipment`
+2. Aller sur `/asset`
 3. Cliquer sur un équipement
 4. Cliquer sur "Change Status"
 5. Sélectionner "Under Repair", "Under Inspection" ou "Scheduled Maintenance"

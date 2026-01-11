@@ -19,13 +19,13 @@ import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
 import { useFactory } from "@/contexts/FactoryContext"
 import { getProcessAreas, createProcessArea, updateProcessArea, deleteProcessArea } from "@/api/processAreas"
-import { getProcessDepartments, createProcessDepartment, updateProcessDepartment, updateProcessDepartmentEquipment } from "@/api/processDepartments"
-import { getEquipment, updateEquipment } from "@/api/equipment"
+import { getProcessDepartments, createProcessDepartment, updateProcessDepartment, updateProcessDepartmentAsset } from "@/api/processDepartments"
+import { getAssets, updateAsset } from "@/api/assets"
 
-import { EQUIPMENT_STATUSES, getStatusColor as getEquipmentStatusColor, getStatusLabel, StatusMetadata } from "@/types/equipment"
-import type { EquipmentStatus } from "@/types/equipment"
-import { getStatusMetadata } from "@/api/equipment"
-import { EquipmentStatusDialog } from "@/components/EquipmentStatusDialog"
+import { ASSET_STATUSES, getStatusColor as getAssetStatusColor, getStatusLabel, StatusMetadata } from "@/types/asset"
+import type { AssetStatus } from "@/types/asset"
+import { getStatusMetadata } from "@/api/assets"
+import { AssetStatusDialog } from "@/components/AssetStatusDialog"
 import {
   DndContext,
   closestCenter,
@@ -53,8 +53,8 @@ interface ProcessArea {
       _id: string
       name: string
       description?: string
-      equipment: Array<{
-        equipmentId: {
+      asset: Array<{
+        assetId: {
           _id: string
           category: { name: string }
           type: { name: string }
@@ -77,14 +77,14 @@ interface ProcessDepartment {
   name: string
   description?: string
   processArea: string
-  equipment: Array<{
-    equipmentId: any
+  asset: Array<{
+    assetId: any
     order: number
   }>
   order: number
 }
 
-interface Equipment {
+interface Asset {
   _id: string
   name?: string
   category: { name: string }
@@ -98,13 +98,13 @@ interface Equipment {
   statusMedia?: string[]
 }
 
-interface SortableEquipmentProps {
+interface SortableAssetProps {
   id: string
-  equipment: Equipment
+  asset: Asset
   onStatusClick: () => void
 }
 
-const SortableEquipment = ({ id, equipment, onStatusClick }: SortableEquipmentProps) => {
+const SortableAsset = ({ id, asset, onStatusClick }: SortableAssetProps) => {
   const {
     attributes,
     listeners,
@@ -118,7 +118,7 @@ const SortableEquipment = ({ id, equipment, onStatusClick }: SortableEquipmentPr
     transition,
   }
 
-  const statusColor = getEquipmentStatusColor(equipment.status as EquipmentStatus)
+  const statusColor = getAssetStatusColor(asset.status as AssetStatus)
 
   return (
     <div
@@ -131,11 +131,11 @@ const SortableEquipment = ({ id, equipment, onStatusClick }: SortableEquipmentPr
       </div>
       <div className={`h-2 w-2 rounded-full ${statusColor}`} />
       <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">{equipment.name || 'Unnamed Equipment'}</div>
+        <div className="font-medium truncate">{asset.name || 'Unnamed Asset'}</div>
         <div className="text-xs text-muted-foreground flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px] h-5 px-1">{equipment.category?.name}</Badge>
+          <Badge variant="outline" className="text-[10px] h-5 px-1">{asset.category?.name}</Badge>
           <span>•</span>
-          <span className="truncate">{equipment.type?.name}</span>
+          <span className="truncate">{asset.type?.name}</span>
         </div>
       </div>
       <Badge
@@ -145,7 +145,7 @@ const SortableEquipment = ({ id, equipment, onStatusClick }: SortableEquipmentPr
           onStatusClick();
         }}
       >
-        {getStatusLabel(equipment.status as EquipmentStatus)}
+        {getStatusLabel(asset.status as AssetStatus)}
       </Badge>
     </div>
   )
@@ -162,8 +162,8 @@ function ProcessAreas() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isCreateDepartmentDialogOpen, setIsCreateDepartmentDialogOpen] = useState(false)
   const [selectedArea, setSelectedArea] = useState<ProcessArea | null>(null)
-  const [isAddEquipmentDialogOpen, setIsAddEquipmentDialogOpen] = useState(false)
-  const [selectedDepartment, setSelectedDepartment] = useState<any | null>(null) // Department details for adding equipment
+  const [isAddAssetDialogOpen, setIsAddAssetDialogOpen] = useState(false)
+  const [selectedDepartment, setSelectedDepartment] = useState<any | null>(null) // Department details for adding asset
 
   // Form states
   const [newAreaName, setNewAreaName] = useState("")
@@ -171,16 +171,16 @@ function ProcessAreas() {
   const [newDepartmentName, setNewDepartmentName] = useState("")
   const [newDepartmentDescription, setNewDepartmentDescription] = useState("")
 
-  // Equipment selection state
-  const [availableEquipment, setAvailableEquipment] = useState<Equipment[]>([])
-  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>("")
+  // Asset selection state
+  const [availableAsset, setAvailableAsset] = useState<Asset[]>([])
+  const [selectedAssetId, setSelectedAssetId] = useState<string>("")
 
   // Status update state
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
-  const [selectedEquipmentForStatus, setSelectedEquipmentForStatus] = useState<Equipment | null>(null)
+  const [selectedAssetForStatus, setSelectedAssetForStatus] = useState<Asset | null>(null)
 
-  const handleStatusClick = (equipment: Equipment) => {
-    setSelectedEquipmentForStatus(equipment)
+  const handleStatusClick = (asset: Asset) => {
+    setSelectedAssetForStatus(asset)
     setIsStatusDialogOpen(true)
   }
 
@@ -272,54 +272,54 @@ function ProcessAreas() {
     }
   }
 
-  const loadAvailableEquipment = async () => {
+  const loadAvailableAsset = async () => {
     try {
-      // Get all equipment (we could filter for unassigned later if we want strict assignment)
-      // For now, let's just show all active equipment not 'out_of_service' maybe?
-      // Or just all equipment.
-      const response = await getEquipment({ limit: 1000 })
-      setAvailableEquipment(response.equipment)
+      // Get all asset (we could filter for unassigned later if we want strict assignment)
+      // For now, let's just show all active asset not 'out_of_service' maybe?
+      // Or just all asset.
+      const response = await getAssets({ limit: 1000 })
+      setAvailableAsset(response.assets)
     } catch (error) {
       console.error(error)
       toast({
         title: "Error",
-        description: "Failed to load equipment",
+        description: "Failed to load asset",
         variant: "destructive"
       })
     }
   }
 
-  const handleAddEquipment = async () => {
-    if (!selectedDepartment || !selectedEquipmentId) return
+  const handleAddAsset = async () => {
+    if (!selectedDepartment || !selectedAssetId) return
 
     try {
       // 1. Add to department list logic
-      const currentEquipment = selectedDepartment.equipment || [];
-      const newEquipmentList = [
-        ...currentEquipment.map((e: any) => ({ equipmentId: e.equipmentId._id, order: e.order })),
-        { equipmentId: selectedEquipmentId, order: currentEquipment.length }
+      const currentAsset = selectedDepartment.asset || [];
+      const newAssetList = [
+        ...currentAsset.map((e: any) => ({ assetId: e.assetId._id, order: e.order })),
+        { assetId: selectedAssetId, order: currentAsset.length }
       ]
 
-      await updateProcessDepartmentEquipment(selectedDepartment._id, newEquipmentList)
+      await updateProcessDepartmentAsset(selectedDepartment._id, newAssetList)
 
-      // 2. Update equipment's processArea and processDepartment fields
+      // 2. Update asset's processArea and processDepartment fields
       // Find the parent area for this department
       const parentArea = processAreas.find(area => area.departments.some(d => d.departmentId._id === selectedDepartment._id))
 
       if (parentArea) {
-        await updateEquipment(selectedEquipmentId, {
+        await updateAsset(selectedAssetId, {
           processArea: parentArea._id,
           processDepartment: selectedDepartment._id
         })
       }
 
-      toast({ title: "Success", description: "Equipment added to department" })
-      setIsAddEquipmentDialogOpen(false)
-      setSelectedEquipmentId("")
+      toast({ title: "Success", description: "Asset added to department" })
+      setIsAddAssetDialogOpen(false)
+      setSelectedAssetId("")
       fetchData()
     } catch (error) {
       console.error(error)
-      toast({ title: "Error", description: "Failed to add equipment", variant: "destructive" })
+      toast({ title: "Error", description: "Failed to add asset", variant: "destructive" })
     }
   }
 
@@ -337,27 +337,27 @@ function ProcessAreas() {
       if (!departmentEntry) return
 
       const department = departmentEntry.departmentId
-      const oldIndex = department.equipment.findIndex((e) => e.equipmentId._id === active.id)
-      const newIndex = department.equipment.findIndex((e) => e.equipmentId._id === over?.id)
+      const oldIndex = department.asset.findIndex((e) => e.assetId._id === active.id)
+      const newIndex = department.asset.findIndex((e) => e.assetId._id === over?.id)
 
       // Optimist update locally
       // Deep clone to avoid mutating state directly
       const newProcessAreas = JSON.parse(JSON.stringify(processAreas))
       const targetDepartment = newProcessAreas[areaIndex].departments.find((d: any) => d.departmentId._id === departmentId).departmentId
 
-      targetDepartment.equipment = arrayMove(targetDepartment.equipment, oldIndex, newIndex)
+      targetDepartment.asset = arrayMove(targetDepartment.asset, oldIndex, newIndex)
       setProcessAreas(newProcessAreas)
 
       // Send to server
       try {
-        const equipmentList = targetDepartment.equipment.map((e: any, index: number) => ({
-          equipmentId: e.equipmentId._id,
+        const assetList = targetDepartment.asset.map((e: any, index: number) => ({
+          assetId: e.assetId._id,
           order: index
         }))
-        await updateProcessDepartmentEquipment(departmentId, equipmentList)
+        await updateProcessDepartmentAsset(departmentId, assetList)
       } catch (error) {
         console.error(error)
-        toast({ title: "Error", description: "Failed to reorder equipment", variant: "destructive" })
+        toast({ title: "Error", description: "Failed to reorder asset", variant: "destructive" })
         fetchData() // Revert
       }
     }
@@ -430,8 +430,8 @@ function ProcessAreas() {
                         className="h-6 w-6"
                         onClick={() => {
                           setSelectedDepartment(department)
-                          loadAvailableEquipment()
-                          setIsAddEquipmentDialogOpen(true)
+                          loadAvailableAsset()
+                          setIsAddAssetDialogOpen(true)
                         }}
                       >
                         <Plus className="h-3 w-3" />
@@ -444,21 +444,21 @@ function ProcessAreas() {
                       onDragEnd={(e) => handleDragEnd(e, department._id)}
                     >
                       <SortableContext
-                        items={department.equipment.map(e => e.equipmentId._id)}
+                        items={department.asset.map(e => e.assetId._id)}
                         strategy={verticalListSortingStrategy}
                       >
                         <div className="space-y-2 min-h-[50px]">
-                          {department.equipment.length === 0 && (
+                          {department.asset.length === 0 && (
                             <div className="text-xs text-muted-foreground text-center py-4 border-2 border-dashed rounded bg-muted/20">
-                              No equipment
+                              No asset
                             </div>
                           )}
-                          {department.equipment.map(({ equipmentId }) => (
-                            <SortableEquipment
-                              key={equipmentId._id}
-                              id={equipmentId._id}
-                              equipment={equipmentId}
-                              onStatusClick={() => handleStatusClick(equipmentId)}
+                          {department.asset.map(({ assetId }) => (
+                            <SortableAsset
+                              key={assetId._id}
+                              id={assetId._id}
+                              asset={assetId}
+                              onStatusClick={() => handleStatusClick(assetId)}
                             />
                           ))}
                         </div>
@@ -472,21 +472,21 @@ function ProcessAreas() {
         ))}
       </div>
 
-      {/* Equipment Status Dialog */}
-      {selectedEquipmentForStatus && (
-        <EquipmentStatusDialog
+      {/* Asset Status Dialog */}
+      {selectedAssetForStatus && (
+        <AssetStatusDialog
           open={isStatusDialogOpen}
           onOpenChange={(open) => {
             setIsStatusDialogOpen(open)
-            if (!open) setSelectedEquipmentForStatus(null)
+            if (!open) setSelectedAssetForStatus(null)
           }}
-          equipmentId={selectedEquipmentForStatus._id}
-          currentStatus={selectedEquipmentForStatus.status as EquipmentStatus}
-          equipmentName={selectedEquipmentForStatus.name || 'Equipment'}
+          assetId={selectedAssetForStatus._id}
+          currentStatus={selectedAssetForStatus.status as AssetStatus}
+          assetName={selectedAssetForStatus.name || 'Asset'}
           onStatusChanged={() => {
             fetchData()
             setIsStatusDialogOpen(false)
-            setSelectedEquipmentForStatus(null)
+            setSelectedAssetForStatus(null)
           }}
         />
       )}
@@ -557,21 +557,21 @@ function ProcessAreas() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Equipment Dialog */}
-      <Dialog open={isAddEquipmentDialogOpen} onOpenChange={setIsAddEquipmentDialogOpen}>
+      {/* Add Asset Dialog */}
+      <Dialog open={isAddAssetDialogOpen} onOpenChange={setIsAddAssetDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Equipment to {selectedDepartment?.name}</DialogTitle>
+            <DialogTitle>Add Asset to {selectedDepartment?.name}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>Select Equipment</Label>
-              <Select value={selectedEquipmentId} onValueChange={setSelectedEquipmentId}>
+              <Label>Select Asset</Label>
+              <Select value={selectedAssetId} onValueChange={setSelectedAssetId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select equipment..." />
+                  <SelectValue placeholder="Select asset..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableEquipment.map(eq => (
+                  {availableAsset.map(eq => (
                     <SelectItem key={eq._id} value={eq._id}>
                       {eq.name || 'Unnamed'} ({eq.category?.name} - {eq.type?.name})
                     </SelectItem>
@@ -581,8 +581,8 @@ function ProcessAreas() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddEquipmentDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddEquipment}>Add</Button>
+            <Button variant="outline" onClick={() => setIsAddAssetDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddAsset}>Add</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

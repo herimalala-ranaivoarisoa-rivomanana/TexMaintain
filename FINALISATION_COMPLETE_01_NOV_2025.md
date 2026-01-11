@@ -11,7 +11,7 @@
 ### ✅ TOUTES LES TÂCHES TERMINÉES
 
 #### Backend (100%)
-- ✅ Modèle EquipmentPart
+- ✅ Modèle AssetPart
 - ✅ 10 endpoints API
 - ✅ Calculs automatiques
 - ✅ Validation et sécurité
@@ -95,7 +95,7 @@ import { AlertTriangle } from "lucide-react"
 6. Vérifier que la page s'affiche
 
 ### Test 2 : Créer une association (5 min)
-1. Aller sur Equipment
+1. Aller sur Asset
 2. Cliquer sur un équipement
 3. Aller dans l'onglet "Pièces" (si disponible)
 4. Cliquer "Ajouter"
@@ -168,9 +168,9 @@ import { AlertTriangle } from "lucide-react"
 ```
 server/
 ├── models/
-│   └── EquipmentPart.js (348 lignes)
+│   └── AssetPart.js (348 lignes)
 ├── routes/
-│   └── equipmentPartsRoutes.js (400+ lignes)
+│   └── assetPartsRoutes.js (400+ lignes)
 └── server.js (modifié)
 ```
 
@@ -178,13 +178,13 @@ server/
 ```
 client/src/
 ├── api/
-│   └── equipmentParts.ts (350+ lignes)
+│   └── assetParts.ts (350+ lignes)
 ├── components/
-│   ├── EquipmentPartsList.tsx (300+ lignes)
-│   ├── EquipmentPartFormDialog.tsx (400+ lignes)
+│   ├── AssetPartsList.tsx (300+ lignes)
+│   ├── AssetPartFormDialog.tsx (400+ lignes)
 │   ├── RecordReplacementDialog.tsx (150+ lignes)
 │   ├── ReorderAlertsWidget.tsx (200+ lignes)
-│   ├── PartEquipmentsList.tsx (200+ lignes)
+│   ├── PartAssetsList.tsx (200+ lignes)
 │   ├── GlobalStockCard.tsx (250+ lignes)
 │   └── Sidebar.tsx (modifié)
 ├── pages/
@@ -278,7 +278,7 @@ npm run dev
 ## ✅ CHECKLIST FINALE
 
 ### Backend
-- [x] Modèle EquipmentPart
+- [x] Modèle AssetPart
 - [x] Routes API (10 endpoints)
 - [x] Calculs automatiques
 - [x] Validation Zod
@@ -287,11 +287,11 @@ npm run dev
 
 ### Frontend
 - [x] Client API TypeScript
-- [x] EquipmentPartsList
-- [x] EquipmentPartFormDialog
+- [x] AssetPartsList
+- [x] AssetPartFormDialog
 - [x] RecordReplacementDialog
 - [x] ReorderAlertsWidget
-- [x] PartEquipmentsList
+- [x] PartAssetsList
 - [x] GlobalStockCard
 - [x] PartDetails page
 - [x] ReorderAlerts page

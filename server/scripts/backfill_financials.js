@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const { Equipment } = require('../models/Equipment');
-const EquipmentMetricsService = require('../services/equipmentMetricsService');
+const { Asset } = require('../models/Asset');
+const AssetMetricsService = require('../services/assetMetricsService');
 
 const path = require('path');
 // Load environment variables
@@ -14,10 +14,10 @@ const backfillFinancials = async () => {
         await connectDB();
         console.log('Connected to MongoDB via shared config');
 
-        const equipments = await Equipment.find({});
-        console.log(`Found ${equipments.length} equipments to process...`);
+        const assets = await Asset.find({});
+        console.log(`Found ${assets.length} assets to process...`);
 
-        for (const eq of equipments) {
+        for (const eq of assets) {
             // Generate random but realistic purchase price between $500 and $15,000 depending on type (heuristic)
             // We can base it loosely on category if available, otherwise random.
             let basePrice = 2000;
@@ -37,17 +37,17 @@ const backfillFinancials = async () => {
             if (!eq.usefulLifeYears) updates.usefulLifeYears = usefulLifeYears;
 
             if (Object.keys(updates).length > 0) {
-                await Equipment.findByIdAndUpdate(eq._id, updates);
+                await Asset.findByIdAndUpdate(eq._id, updates);
                 // console.log(`Updated ${eq.name || eq._id}: Price=$${purchasePrice}, Life=${usefulLifeYears}y`);
             }
         }
 
         console.log('Financial parameters set. Now calculating metrics (TCO, Depreciation)...');
 
-        // Trigger recalculation of metrics for all equipment to populate tco, currentValue, etc.
-        const count = await EquipmentMetricsService.recalculateAll();
+        // Trigger recalculation of metrics for all asset to populate tco, currentValue, etc.
+        const count = await AssetMetricsService.recalculateAll();
 
-        console.log(`Successfully recalculated metrics for ${count} equipments.`);
+        console.log(`Successfully recalculated metrics for ${count} assets.`);
         console.log('Backfill complete!');
         process.exit(0);
     } catch (error) {

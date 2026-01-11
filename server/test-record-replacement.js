@@ -4,8 +4,8 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { EquipmentPart } = require('./models/EquipmentPart');
-const { Equipment } = require('./models/Equipment');
+const { AssetPart } = require('./models/AssetPart');
+const { Asset } = require('./models/Asset');
 const { Part } = require('./models/Part');
 
 async function testRecordReplacement() {
@@ -16,10 +16,10 @@ async function testRecordReplacement() {
     console.log('✅ Connecté\n');
 
     // Trouver une association
-    const assoc = await EquipmentPart.findOne({
+    const assoc = await AssetPart.findOne({
       replacementFrequencyPerYear: { $gt: 0 }
     })
-    .populate('equipment', 'model serialNumber')
+    .populate('asset', 'model serialNumber')
     .populate('part', 'name partNumber');
 
     if (!assoc) {
@@ -28,7 +28,7 @@ async function testRecordReplacement() {
     }
 
     console.log('📦 Association trouvée:');
-    console.log(`   Équipement: ${assoc.equipment?.model}`);
+    console.log(`   Équipement: ${assoc.asset?.model}`);
     console.log(`   Pièce: ${assoc.part?.name}`);
     console.log(`   Fréquence: ${assoc.replacementFrequencyPerYear}/an`);
     console.log(`   Dernier remplacement AVANT: ${assoc.lastReplacementDate?.toLocaleDateString('fr-FR') || 'Jamais'}`);
@@ -44,7 +44,7 @@ async function testRecordReplacement() {
     console.log('   ✅ Remplacement enregistré\n');
 
     // Recharger l'association pour voir les changements
-    const updated = await EquipmentPart.findById(assoc._id);
+    const updated = await AssetPart.findById(assoc._id);
     
     console.log('📊 Résultat:');
     console.log(`   Dernier remplacement APRÈS: ${updated.lastReplacementDate?.toLocaleDateString('fr-FR')}`);

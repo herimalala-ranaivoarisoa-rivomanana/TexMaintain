@@ -31,13 +31,13 @@ Les associations créées **avant** l'implémentation du hook `pre-save` n'ont p
 
 ### Option 1: Via API (Recommandé)
 
-**Route créée**: `POST /api/equipment-parts/recalculate-all`
+**Route créée**: `POST /api/asset-parts/recalculate-all`
 
 #### Utilisation avec cURL
 
 ```bash
 # Depuis le terminal
-curl -X POST http://localhost:3000/api/equipment-parts/recalculate-all \
+curl -X POST http://localhost:3000/api/asset-parts/recalculate-all \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json"
 ```
@@ -49,7 +49,7 @@ curl -X POST http://localhost:3000/api/equipment-parts/recalculate-all \
 // 2. Ouvrir la console (F12)
 // 3. Exécuter:
 
-fetch('/api/equipment-parts/recalculate-all', {
+fetch('/api/asset-parts/recalculate-all', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -119,14 +119,14 @@ Après recalcul:
 
 ```bash
 # Dans MongoDB Compass ou CLI
-db.equipmentparts.find({ annualConsumption: 0 }).count()
+db.assetparts.find({ annualConsumption: 0 }).count()
 # Résultat: X associations avec annualConsumption = 0
 ```
 
 ### Après le Recalcul
 
 ```bash
-db.equipmentparts.find({ annualConsumption: 0 }).count()
+db.assetparts.find({ annualConsumption: 0 }).count()
 # Résultat: 0 (toutes corrigées)
 ```
 
@@ -185,7 +185,7 @@ db.equipmentparts.find({ annualConsumption: 0 }).count()
 
 ```javascript
 // Console du navigateur
-fetch('/api/equipment-parts/recalculate-all', {
+fetch('/api/asset-parts/recalculate-all', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -266,7 +266,7 @@ Console du navigateur:
 
 ### Hook Pre-Save
 
-Le hook `pre-save` dans le modèle `EquipmentPart` garantit que:
+Le hook `pre-save` dans le modèle `AssetPart` garantit que:
 - ✅ Toute **nouvelle** association aura ses valeurs calculées automatiquement
 - ✅ Toute **modification** d'association recalculera les valeurs
 - ✅ Plus besoin de recalcul manuel pour les nouvelles données

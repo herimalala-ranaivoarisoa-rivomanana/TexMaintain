@@ -151,7 +151,7 @@ curl http://localhost:3000/api/health
 
 ### Test 3 : Compression
 ```bash
-curl -H "Accept-Encoding: gzip" -I http://localhost:3000/api/equipment
+curl -H "Accept-Encoding: gzip" -I http://localhost:3000/api/asset
 ```
 
 Devrait contenir : `Content-Encoding: gzip`
@@ -259,10 +259,10 @@ npm run seed       # Réinitialiser la base de données
 curl http://localhost:3000/api/health
 
 # Test CORS
-curl -H "Origin: http://localhost:5173" http://localhost:3000/api/equipment
+curl -H "Origin: http://localhost:5173" http://localhost:3000/api/asset
 
 # Test compression
-curl -H "Accept-Encoding: gzip" -I http://localhost:3000/api/equipment
+curl -H "Accept-Encoding: gzip" -I http://localhost:3000/api/asset
 ```
 
 ---

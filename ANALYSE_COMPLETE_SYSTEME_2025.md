@@ -71,13 +71,13 @@ TexMaintain/
 
 ## 🗄️ SCHÉMAS DE DONNÉES (MODÈLES)
 
-### 1. **Equipment** (Équipement)
-**Fichier**: `server/models/Equipment.js`
+### 1. **Asset** (Équipement)
+**Fichier**: `server/models/Asset.js`
 
 ```javascript
 {
-  category: ObjectId → EquipmentCategory (requis)
-  type: ObjectId → EquipmentType (requis)
+  category: ObjectId → Category (requis)
+  type: ObjectId → SubCategory (requis)
   status: String (enum: 14 statuts) (requis, défaut: 'stored')
   statusCategory: String (enum: production|maintenance|out_of_service)
   lastStatusChange: Date
@@ -115,12 +115,12 @@ TexMaintain/
 
 ---
 
-### 2. **EquipmentStatusHistory** (Historique des statuts)
-**Fichier**: `server/models/EquipmentStatusHistory.js`
+### 2. **AssetStatusHistory** (Historique des statuts)
+**Fichier**: `server/models/AssetStatusHistory.js`
 
 ```javascript
 {
-  equipment: ObjectId → Equipment (requis)
+  asset: ObjectId → Asset (requis)
   previousStatus: String (enum: statuts)
   newStatus: String (enum: statuts) (requis)
   changedBy: ObjectId → User (requis)
@@ -175,7 +175,7 @@ TexMaintain/
 
 ```javascript
 {
-  equipment: ObjectId → Equipment (requis)
+  asset: ObjectId → Asset (requis)
   breakdownType: String (enum: 8 types) (requis)
   description: String (requis)
   files: [{
@@ -203,7 +203,7 @@ TexMaintain/
 
 ```javascript
 {
-  equipment: ObjectId → Equipment (requis)
+  asset: ObjectId → Asset (requis)
   type: String (enum: corrective|preventive|predictive) (requis)
   status: String (enum: pending|in_progress|completed|cancelled)
   priority: String (enum: low|medium|high|critical)
@@ -337,8 +337,8 @@ TexMaintain/
 {
   name: String (requis)
   productionLine: ObjectId → ProductionLine (requis)
-  equipment: [{
-    equipmentId: ObjectId → Equipment (requis)
+  asset: [{
+    assetId: ObjectId → Asset (requis)
     position: Number
     assignedAt: Date (défaut: now)
   }]
@@ -351,7 +351,7 @@ TexMaintain/
 
 ### 8. **Catalogue** (4 modèles)
 
-#### EquipmentCategory (Catégorie d'équipement)
+#### Category (Catégorie d'équipement)
 ```javascript
 {
   name: String (unique, requis)
@@ -361,11 +361,11 @@ TexMaintain/
 }
 ```
 
-#### EquipmentType (Type d'équipement)
+#### SubCategory (Type d'équipement)
 ```javascript
 {
   name: String (requis)
-  category: ObjectId → EquipmentCategory (requis)
+  category: ObjectId → Category (requis)
   description: String
   specifications: Mixed
   createdAt: Date
@@ -393,7 +393,7 @@ TexMaintain/
   stockQuantity: Number (défaut: 0)
   minStockLevel: Number
   unit: String
-  equipmentTypes: [ObjectId → EquipmentType]
+  assetTypes: [ObjectId → SubCategory]
   createdAt: Date
   updatedAt: Date
 }
@@ -411,7 +411,7 @@ POST   /logout            - Se déconnecter
 GET    /me                - Obtenir l'utilisateur connecté
 ```
 
-### **Equipment** (`/api/equipment`)
+### **Asset** (`/api/asset`)
 ```
 GET    /                  - Liste paginée (filtres: status, q, sort, order)
 POST   /                  - Créer un équipement (admin, maintenance_manager)
@@ -425,7 +425,7 @@ GET    /:id/status-history - Historique des statuts
 ### **Breakdown Media** (`/api/breakdown-media`)
 ```
 POST   /                  - Upload médias de panne (max 5 fichiers, 10MB/fichier)
-GET    /equipment/:id     - Médias d'un équipement
+GET    /asset/:id     - Médias d'un équipement
 GET    /:id               - Détails d'un média
 DELETE /:id               - Supprimer un média
 ```
@@ -457,12 +457,12 @@ DELETE /production-sections/:id  - Supprimer
 
 ### **Catalogue**
 ```
-GET    /api/equipment-categories - Liste des catégories
-POST   /api/equipment-categories - Créer une catégorie
-PATCH  /api/equipment-categories/:id
-DELETE /api/equipment-categories/:id
+GET    /api/asset-categories - Liste des catégories
+POST   /api/asset-categories - Créer une catégorie
+PATCH  /api/asset-categories/:id
+DELETE /api/asset-categories/:id
 
-GET    /api/equipment-types      - Liste des types
+GET    /api/asset-types      - Liste des types
 GET    /api/brands               - Liste des marques
 GET    /api/inventory            - Inventaire des pièces
 ```
@@ -479,7 +479,7 @@ DELETE /:id               - Supprimer
 ### **Dashboard** (`/api/dashboard`)
 ```
 GET    /stats             - Statistiques globales
-GET    /equipment-status  - Répartition des statuts
+GET    /asset-status  - Répartition des statuts
 GET    /mtbf-mttr         - Indicateurs de fiabilité
 ```
 
@@ -490,7 +490,7 @@ POST   /users             - Seed utilisateurs
 POST   /categories        - Seed catégories
 POST   /types             - Seed types
 POST   /brands            - Seed marques
-POST   /equipment         - Seed équipements
+POST   /asset         - Seed équipements
 POST   /parts             - Seed pièces
 ```
 
@@ -537,7 +537,7 @@ GET    /health/db         - État de la base de données
 - Indicateurs KPI (MTBF, MTTR, disponibilité)
 - Alertes et notifications
 
-#### 2. **Equipment** (`/equipment`)
+#### 2. **Asset** (`/asset`)
 - Liste paginée avec filtres (statut, recherche)
 - Tri par colonne
 - Actions: Créer, Modifier, Supprimer
@@ -581,10 +581,10 @@ GET    /health/db         - État de la base de données
 ## 🔄 LOGIQUE MÉTIER CLÉS
 
 ### 1. **Changement de statut d'équipement**
-**Service**: `server/services/equipmentStatusService.js`
+**Service**: `server/services/assetStatusService.js`
 
 ```javascript
-async changeStatus(equipmentId, newStatus, userId, options) {
+async changeStatus(assetId, newStatus, userId, options) {
   // 1. Validation de la transition
   // 2. Vérification du personnel requis
   // 3. Mise à jour de l'équipement
@@ -629,7 +629,7 @@ const upload = multer({
 ```
 
 ### 3. **Pagination et filtrage**
-**Exemple**: `GET /api/equipment?page=1&limit=10&status=breakdown&q=DDL&sort=createdAt&order=desc`
+**Exemple**: `GET /api/asset?page=1&limit=10&status=breakdown&q=DDL&sort=createdAt&order=desc`
 
 ```javascript
 const page = parseInt(req.query.page) || 1
@@ -646,14 +646,14 @@ if (req.query.q) {
   ]
 }
 
-const equipment = await Equipment.find(filter)
+const asset = await Asset.find(filter)
   .populate('category type brand lastStatusChangedBy')
   .sort({ [sort]: order === 'asc' ? 1 : -1 })
   .skip(skip)
   .limit(limit)
   .lean()
 
-const total = await Equipment.countDocuments(filter)
+const total = await Asset.countDocuments(filter)
 ```
 
 ### 4. **Seed de données**
@@ -661,12 +661,12 @@ const total = await Equipment.countDocuments(filter)
 
 Ordre de seeding:
 1. Users (admin + 6 autres rôles)
-2. Equipment Categories (10 catégories)
-3. Equipment Types (30+ types)
+2. Asset Categories (10 catégories)
+3. Asset Types (30+ types)
 4. Brands (15 marques)
 5. Process areas (5 lignes)
 6. Production Sections (15 sections)
-7. Equipment (50+ équipements)
+7. Asset (50+ équipements)
 8. Parts (100+ pièces)
 9. Personnel (machinistes, mécaniciens, électriciens, agents)
 
@@ -706,7 +706,7 @@ trs = disponibilité * performance * qualité
 - **Problème**: Frontend appelait `/breakdown-media` au lieu de `/api/breakdown-media`
 - **Solution**: Ajout du préfixe `/api/` dans `client/src/api/breakdownMedia.ts`
 
-### 3. **Erreur 400 sur PATCH equipment (brand vide)**
+### 3. **Erreur 400 sur PATCH asset (brand vide)**
 - **Problème**: Chaîne vide `""` envoyée pour `brand` (ObjectId attendu)
 - **Solution**: Transformation de `brand: ""` en suppression du champ dans la route PATCH
 
@@ -716,7 +716,7 @@ trs = disponibilité * performance * qualité
 
 ### 5. **Erreur `Cannot find name 'fetchData'`**
 - **Problème**: Appel à une fonction locale dans un scope incorrect
-- **Solution**: Remplacement par `fetchEquipment()` qui est la fonction correcte
+- **Solution**: Remplacement par `fetchAsset()` qui est la fonction correcte
 
 ### 6. **Formulaire d'édition non scrollable**
 - **Problème**: Contenu trop long dépassait l'écran

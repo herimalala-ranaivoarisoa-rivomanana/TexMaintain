@@ -31,12 +31,12 @@ DLM125469 145879546 (Stocké):
 
 ### Cause Racine
 
-Les associations créées **avant** l'implémentation du hook `pre-save` dans le modèle `EquipmentPart` n'ont pas leurs valeurs calculées automatiquement.
+Les associations créées **avant** l'implémentation du hook `pre-save` dans le modèle `AssetPart` n'ont pas leurs valeurs calculées automatiquement.
 
 ### Détails Techniques
 
 ```javascript
-// Modèle EquipmentPart.js
+// Modèle AssetPart.js
 schema.pre('save', function(next) {
   // Ce hook calcule automatiquement:
   this.annualConsumption = this.quantityPerMachine * this.replacementFrequencyPerYear
@@ -57,15 +57,15 @@ schema.pre('save', function(next) {
 
 ### Solution 1: Route API de Recalcul
 
-**Fichier**: `server/routes/equipmentPartsRoutes.js`
+**Fichier**: `server/routes/assetPartsRoutes.js`
 
 ```javascript
 /**
- * POST /api/equipment-parts/recalculate-all
+ * POST /api/asset-parts/recalculate-all
  * Recalculer toutes les associations existantes (admin uniquement)
  */
 router.post('/recalculate-all', requireUser, requireRole(['admin']), async (req, res) => {
-  const associations = await EquipmentPart.find({})
+  const associations = await AssetPart.find({})
   
   let updated = 0
   for (const assoc of associations) {
@@ -98,7 +98,7 @@ Script Node.js pour recalculer toutes les associations en une seule fois.
 // 2. Ouvrir la console (F12)
 // 3. Exécuter:
 
-fetch('/api/equipment-parts/recalculate-all', {
+fetch('/api/asset-parts/recalculate-all', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -117,7 +117,7 @@ fetch('/api/equipment-parts/recalculate-all', {
 ### Méthode 2: Via cURL
 
 ```bash
-curl -X POST http://localhost:3000/api/equipment-parts/recalculate-all \
+curl -X POST http://localhost:3000/api/asset-parts/recalculate-all \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json"
 ```
@@ -131,7 +131,7 @@ curl -X POST http://localhost:3000/api/equipment-parts/recalculate-all \
 ```json
 {
   "_id": "...",
-  "equipment": "...",
+  "asset": "...",
   "part": "...",
   "quantityPerMachine": 1,
   "replacementFrequencyPerYear": 2,
@@ -147,7 +147,7 @@ curl -X POST http://localhost:3000/api/equipment-parts/recalculate-all \
 ```json
 {
   "_id": "...",
-  "equipment": "...",
+  "asset": "...",
   "part": "...",
   "quantityPerMachine": 1,
   "replacementFrequencyPerYear": 2,
@@ -259,7 +259,7 @@ Une fois le recalcul initial effectué, le système maintient automatiquement la
 
 ```javascript
 // MongoDB Compass ou CLI
-db.equipmentparts.find({
+db.assetparts.find({
   $or: [
     { annualConsumption: 0 },
     { dailyConsumption: 0 },

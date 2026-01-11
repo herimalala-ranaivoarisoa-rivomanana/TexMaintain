@@ -92,7 +92,7 @@ export const updateOrderStatus = async (id: string, orderId: string, status: str
   return response.data;
 };
 
-// Description: Calculate min/max automatically from equipment associations
+// Description: Calculate min/max automatically from asset associations
 // Endpoint: POST /api/inventory/:id/calculate-min-max
 export const calculateMinMax = async (id: string) => {
   const response = await api.post(`/api/inventory/${id}/calculate-min-max`);

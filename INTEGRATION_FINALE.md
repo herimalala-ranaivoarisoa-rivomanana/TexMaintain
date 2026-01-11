@@ -8,12 +8,12 @@
 ## ✅ FICHIERS CRÉÉS (9/12)
 
 ### Composants et Pages
-1. ✅ `client/src/api/equipmentParts.ts`
-2. ✅ `client/src/components/EquipmentPartsList.tsx`
-3. ✅ `client/src/components/EquipmentPartFormDialog.tsx`
+1. ✅ `client/src/api/assetParts.ts`
+2. ✅ `client/src/components/AssetPartsList.tsx`
+3. ✅ `client/src/components/AssetPartFormDialog.tsx`
 4. ✅ `client/src/components/RecordReplacementDialog.tsx`
 5. ✅ `client/src/components/ReorderAlertsWidget.tsx`
-6. ✅ `client/src/components/PartEquipmentsList.tsx`
+6. ✅ `client/src/components/PartAssetsList.tsx`
 7. ✅ `client/src/components/GlobalStockCard.tsx`
 8. ✅ `client/src/pages/PartDetails.tsx`
 9. ✅ `client/src/pages/ReorderAlerts.tsx`
@@ -41,17 +41,17 @@ import ReorderAlerts from '@/pages/ReorderAlerts'
 
 ---
 
-### 2. Intégrer EquipmentPartsList dans Equipment details
+### 2. Intégrer AssetPartsList dans Asset details
 
-**Option A : Créer une page EquipmentDetails séparée**
+**Option A : Créer une page AssetDetails séparée**
 
 ```typescript
-// client/src/pages/EquipmentDetails.tsx
-import { EquipmentPartsList } from '@/components/EquipmentPartsList'
+// client/src/pages/AssetDetails.tsx
+import { AssetPartsList } from '@/components/AssetPartsList'
 
-export default function EquipmentDetails() {
+export default function AssetDetails() {
   const [searchParams] = useSearchParams()
-  const equipmentId = searchParams.get('id')
+  const assetId = searchParams.get('id')
   
   return (
     <div className="p-8 space-y-6">
@@ -61,18 +61,18 @@ export default function EquipmentDetails() {
       </Card>
       
       {/* Pièces associées */}
-      <EquipmentPartsList equipmentId={equipmentId!} />
+      <AssetPartsList assetId={assetId!} />
     </div>
   )
 }
 ```
 
-**Option B : Ajouter un onglet dans Equipment.tsx**
+**Option B : Ajouter un onglet dans Asset.tsx**
 
 ```typescript
-// Dans Equipment.tsx
+// Dans Asset.tsx
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { EquipmentPartsList } from '@/components/EquipmentPartsList'
+import { AssetPartsList } from '@/components/AssetPartsList'
 
 // Dans le JSX de la carte équipement
 <Tabs defaultValue="info">
@@ -87,7 +87,7 @@ import { EquipmentPartsList } from '@/components/EquipmentPartsList'
   </TabsContent>
   
   <TabsContent value="parts">
-    <EquipmentPartsList equipmentId={item._id} />
+    <AssetPartsList assetId={item._id} />
   </TabsContent>
   
   <TabsContent value="history">
@@ -107,7 +107,7 @@ import { EquipmentPartsList } from '@/components/EquipmentPartsList'
 - [ ] Vérifier les types TypeScript
 - [ ] Tester la gestion d'erreurs
 
-#### 2. EquipmentPartsList
+#### 2. AssetPartsList
 - [ ] Affichage avec 0 pièces
 - [ ] Affichage avec 10+ pièces
 - [ ] Bouton "Ajouter"
@@ -117,7 +117,7 @@ import { EquipmentPartsList } from '@/components/EquipmentPartsList'
 - [ ] Affichage des calculs
 - [ ] Statut du prochain remplacement
 
-#### 3. EquipmentPartFormDialog
+#### 3. AssetPartFormDialog
 - [ ] Création d'association
 - [ ] Modification d'association
 - [ ] Calculs en temps réel
@@ -140,7 +140,7 @@ import { EquipmentPartsList } from '@/components/EquipmentPartsList'
 - [ ] Bouton rafraîchir manuel
 - [ ] Lien "Voir tout"
 
-#### 6. PartEquipmentsList
+#### 6. PartAssetsList
 - [ ] Affichage des équipements
 - [ ] Tri par importance
 - [ ] Tri par criticité
@@ -206,7 +206,7 @@ import { EquipmentPartsList } from '@/components/EquipmentPartsList'
 
 ### Étape 3 : Liens entre pages ⏳
 - [ ] Inventory → PartDetails (clic sur pièce)
-- [ ] PartDetails → Equipment (clic sur équipement)
+- [ ] PartDetails → Asset (clic sur équipement)
 - [ ] ReorderAlerts → PartDetails (clic sur alerte)
 - [ ] Dashboard → ReorderAlerts (clic "Voir tout")
 
@@ -251,12 +251,12 @@ npm run dev
 **Solution** : Vérifier les chemins d'import (@/components/...)
 
 ### 3. API 404
-**Symptôme** : Erreur 404 sur /api/equipment-parts  
+**Symptôme** : Erreur 404 sur /api/asset-parts  
 **Solution** : Vérifier que le serveur est démarré et les routes enregistrées
 
 ### 4. Types TypeScript
 **Symptôme** : Erreurs de typage  
-**Solution** : Vérifier les imports depuis @/api/equipmentParts
+**Solution** : Vérifier les imports depuis @/api/assetParts
 
 ### 5. Calculs incorrects
 **Symptôme** : Valeurs aberrantes  
@@ -278,7 +278,7 @@ npm run dev
 - ✅ 100% - Pages (2/2)
 - ✅ 100% - Intégration Dashboard
 - ⏳ 50% - Routes React Router (à ajouter)
-- ⏳ 50% - Intégration Equipment (optionnel)
+- ⏳ 50% - Intégration Asset (optionnel)
 
 **Total Frontend** : 92% complété (11/12 tâches)
 
@@ -348,8 +348,8 @@ import ReorderAlerts from '@/pages/ReorderAlerts'
 4. `INTEGRATION_FINALE.md` - Ce document
 
 ### Code
-- Backend : `server/models/EquipmentPart.js`, `server/routes/equipmentPartsRoutes.js`
-- Frontend : `client/src/api/equipmentParts.ts`, `client/src/components/*`, `client/src/pages/*`
+- Backend : `server/models/AssetPart.js`, `server/routes/assetPartsRoutes.js`
+- Frontend : `client/src/api/assetParts.ts`, `client/src/components/*`, `client/src/pages/*`
 
 ---
 

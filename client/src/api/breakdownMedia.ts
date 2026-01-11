@@ -1,13 +1,13 @@
 import api from './api'
 
 export const uploadBreakdownMedia = async (
-  equipmentId: string,
+  assetId: string,
   breakdownType: string,
   description: string,
   files: File[]
 ) => {
   const formData = new FormData()
-  formData.append('equipmentId', equipmentId)
+  formData.append('assetId', assetId)
   formData.append('breakdownType', breakdownType)
   formData.append('description', description)
   
@@ -23,8 +23,8 @@ export const uploadBreakdownMedia = async (
   return response.data
 }
 
-export const getBreakdownMediaByEquipment = async (equipmentId: string) => {
-  const response = await api.get(`/api/breakdown-media/equipment/${equipmentId}`)
+export const getBreakdownMediaByAsset = async (assetId: string) => {
+  const response = await api.get(`/api/breakdown-media/asset/${assetId}`)
   return response.data
 }
 

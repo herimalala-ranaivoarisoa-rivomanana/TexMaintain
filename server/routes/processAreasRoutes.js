@@ -6,19 +6,19 @@ const { ProcessDepartment } = require('../models/ProcessDepartment');
 
 const router = express.Router();
 
-const { Equipment, EQUIPMENT_STATUSES } = require('../models/Equipment');
+const { Asset, ASSET_STATUSES } = require('../models/Asset');
 const { Intervention } = require('../models/Intervention');
 const { Part } = require('../models/Part');
-const { EquipmentPart } = require('../models/EquipmentPart');
+const { AssetPart } = require('../models/AssetPart');
 
-// Helper to compute MTTR and MTBF from equipment IDs
-const computeReliability = async (equipmentIds) => {
-  if (!equipmentIds || equipmentIds.length === 0) {
+// Helper to compute MTTR and MTBF from asset IDs
+const computeReliability = async (assetIds) => {
+  if (!assetIds || assetIds.length === 0) {
     return { mttr: 0, mtbf: 0 };
   }
 
-  const aggregation = await Equipment.aggregate([
-    { $match: { _id: { $in: equipmentIds } } },
+  const aggregation = await Asset.aggregate([
+    { $match: { _id: { $in: assetIds } } },
     {
       $group: {
         _id: null,
@@ -59,8 +59,8 @@ router.get('/', requireUser, async (req, res) => {
   const processAreas = await ProcessArea.find(query).populate({
     path: 'departments.departmentId',
     populate: {
-      path: 'equipment.equipmentId',
-      model: 'Equipment',
+      path: 'asset.assetId',
+      model: 'Asset',
       populate: [
         { path: 'category', select: 'name' },
         { path: 'type', select: 'name' },
@@ -78,8 +78,8 @@ router.get('/:id', requireUser, async (req, res) => {
     const processArea = await ProcessArea.findById(id).populate({
       path: 'departments.departmentId',
       populate: {
-        path: 'equipment.equipmentId',
-        model: 'Equipment',
+        path: 'asset.assetId',
+        model: 'Asset',
         populate: [
           { path: 'category', select: 'name' },
           { path: 'type', select: 'name' },
@@ -104,40 +104,40 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1. Get Process Area and all its equipment
+    // 1. Get Process Area and all its asset
     const processArea = await ProcessArea.findById(id).populate({
       path: 'departments.departmentId',
       populate: {
-        path: 'equipment.equipmentId',
-        model: 'Equipment'
+        path: 'asset.assetId',
+        model: 'Asset'
       }
     }).lean();
 
     if (!processArea) return res.status(404).json({ message: 'Process area not found' });
 
-    // Extract all equipment IDs
-    const equipmentList = [];
+    // Extract all asset IDs
+    const assetList = [];
     if (processArea.departments) {
       processArea.departments.forEach(dept => {
-        if (dept.departmentId && dept.departmentId.equipment) {
-          dept.departmentId.equipment.forEach(item => {
-            if (item.equipmentId) {
-              equipmentList.push(item.equipmentId);
+        if (dept.departmentId && dept.departmentId.asset) {
+          dept.departmentId.asset.forEach(item => {
+            if (item.assetId) {
+              assetList.push(item.assetId);
             }
           });
         }
       });
     }
 
-    const equipmentIds = equipmentList.map(e => e._id);
-    const totalEquipment = equipmentIds.length;
+    const assetIds = assetList.map(e => e._id);
+    const totalAsset = assetIds.length;
 
     // 2. Calculate KPIs
     let availability = 0;
     const shiftDuration = processArea.stats?.shiftDuration || 480;
     const plannedDowntime = processArea.stats?.plannedDowntime || 0;
-    const scheduledTimePerEquipment = Math.max(0, shiftDuration - plannedDowntime);
-    const totalScheduledTime = totalEquipment * scheduledTimePerEquipment;
+    const scheduledTimePerAsset = Math.max(0, shiftDuration - plannedDowntime);
+    const totalScheduledTime = totalAsset * scheduledTimePerAsset;
 
     let totalUnplannedDowntime = 0;
     if (totalScheduledTime > 0) {
@@ -146,7 +146,7 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
       const now = new Date();
 
       const downtimeInterventions = await Intervention.find({
-        equipment: { $in: equipmentIds },
+        asset: { $in: assetIds },
         type: { $in: ['Corrective', 'Emergency'] },
         createdDate: { $gte: startOfDay }
       }).lean();
@@ -183,29 +183,29 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
     const availabilityFactor = availability / 100;
     const oee = Math.round(availabilityFactor * performance * quality * 100 * 100) / 100;
 
-    const { mttr, mtbf } = await computeReliability(equipmentIds);
+    const { mttr, mtbf } = await computeReliability(assetIds);
 
     const activeInterventionsListRaw = await Intervention.find({
-      equipmentId: { $in: equipmentIds },
+      assetId: { $in: assetIds },
       status: { $in: ['Pending', 'In Progress'] }
-    }).populate('equipmentId', 'name code').sort({ priority: 1, createdDate: -1 }).lean();
+    }).populate('assetId', 'name code').sort({ priority: 1, createdDate: -1 }).lean();
 
     const activeInterventionsList = activeInterventionsListRaw.map(i => ({
       ...i,
-      equipment: i.equipmentId
+      asset: i.assetId
     }));
 
     const activeInterventions = activeInterventionsList.length;
 
-    const equipmentParts = await EquipmentPart.find({ equipment: { $in: equipmentIds } }).distinct('part');
-    const allReorderAlerts = await EquipmentPart.findPartsNeedingReorder();
+    const assetParts = await AssetPart.find({ asset: { $in: assetIds } }).distinct('part');
+    const allReorderAlerts = await AssetPart.findPartsNeedingReorder();
     const lineReorderAlerts = allReorderAlerts.filter(alert =>
-      equipmentParts.some(partId => partId.toString() === alert.part._id.toString())
+      assetParts.some(partId => partId.toString() === alert.part._id.toString())
     );
     const criticalParts = lineReorderAlerts.length;
 
     const partsWithOrders = await Part.find({
-      _id: { $in: equipmentParts },
+      _id: { $in: assetParts },
       'pendingOrders.status': { $in: ['pending', 'ordered', 'in_transit'] }
     });
 
@@ -213,13 +213,13 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
       return total + part.pendingOrders.filter(o => ['pending', 'ordered', 'in_transit'].includes(o.status)).length;
     }, 0);
 
-    const recentInterventions = await Intervention.find({ equipmentId: { $in: equipmentIds } })
+    const recentInterventions = await Intervention.find({ assetId: { $in: assetIds } })
       .sort({ createdDate: -1 }).limit(5).lean();
 
-    const recentParts = await Part.find({ _id: { $in: equipmentParts } })
+    const recentParts = await Part.find({ _id: { $in: assetParts } })
       .sort({ updatedAt: -1 }).limit(3).lean();
 
-    const recentEquipment = await Equipment.find({ _id: { $in: equipmentIds } })
+    const recentAsset = await Asset.find({ _id: { $in: assetIds } })
       .sort({ updatedAt: -1 }).limit(2).lean();
 
     const activities = [
@@ -237,10 +237,10 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
         timestamp: p.updatedAt,
         priority: 'medium'
       })),
-      ...recentEquipment.map(e => ({
+      ...recentAsset.map(e => ({
         _id: String(e._id),
-        type: 'equipment',
-        description: `Equipment updated: ${e.name || e.code}`,
+        type: 'asset',
+        description: `Asset updated: ${e.name || e.code}`,
         timestamp: e.updatedAt,
         priority: 'low'
       }))
@@ -251,7 +251,7 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
     res.json({
       processArea,
       kpis: {
-        totalEquipment,
+        totalAsset,
         activeInterventions,
         criticalParts,
         pendingOrders,
@@ -265,7 +265,7 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
       details: {
         activeInterventions: activeInterventionsList,
         criticalParts: lineReorderAlerts,
-        equipment: equipmentList
+        asset: assetList
       },
       reorderAlerts: lineReorderAlerts,
       recentActivities: activities.slice(0, 10)

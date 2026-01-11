@@ -4,7 +4,7 @@
  */
 
 const mongoose = require('mongoose');
-const { EquipmentPart } = require('../models/EquipmentPart');
+const { AssetPart } = require('../models/AssetPart');
 require('dotenv').config();
 
 async function recalculateAllAssociations() {
@@ -14,7 +14,7 @@ async function recalculateAllAssociations() {
     console.log('✅ Connecté à MongoDB');
 
     // Récupérer toutes les associations
-    const associations = await EquipmentPart.find({});
+    const associations = await AssetPart.find({});
     console.log(`📊 ${associations.length} associations trouvées`);
 
     let updated = 0;
@@ -43,10 +43,10 @@ async function recalculateAllAssociations() {
     console.log(`   - Total: ${associations.length}`);
 
     // Afficher quelques exemples
-    const samples = await EquipmentPart.find({}).limit(3).populate('equipment', 'model').populate('part', 'name');
+    const samples = await AssetPart.find({}).limit(3).populate('asset', 'model').populate('part', 'name');
     console.log('\n📋 Exemples de valeurs recalculées:');
     samples.forEach(s => {
-      console.log(`   - ${s.equipment.model} + ${s.part.name}:`);
+      console.log(`   - ${s.asset.model} + ${s.part.name}:`);
       console.log(`     Quantité: ${s.quantityPerMachine}, Fréquence: ${s.replacementFrequencyPerYear}/an`);
       console.log(`     → Consommation annuelle: ${s.annualConsumption} pièces`);
       console.log(`     → Consommation journalière: ${s.dailyConsumption.toFixed(3)} pièces`);

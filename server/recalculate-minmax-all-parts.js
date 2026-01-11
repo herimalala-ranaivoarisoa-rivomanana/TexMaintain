@@ -5,9 +5,9 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const { Part } = require('./models/Part');
-const { EquipmentPart } = require('./models/EquipmentPart');
-const { Equipment } = require('./models/Equipment');
-const EquipmentPartsService = require('./services/equipmentPartsService');
+const { AssetPart } = require('./models/AssetPart');
+const { Asset } = require('./models/Asset');
+const AssetPartsService = require('./services/assetPartsService');
 
 async function recalculateAllPartsMinMax() {
   try {
@@ -17,7 +17,7 @@ async function recalculateAllPartsMinMax() {
     console.log('✅ Connecté\n');
 
     // Récupérer toutes les pièces qui ont au moins une association
-    const partsWithAssociations = await EquipmentPart.distinct('part');
+    const partsWithAssociations = await AssetPart.distinct('part');
     console.log(`📊 ${partsWithAssociations.length} pièce(s) avec associations trouvée(s)\n`);
 
     let updated = 0;
@@ -36,7 +36,7 @@ async function recalculateAllPartsMinMax() {
         console.log(`      AVANT: Min=${part.minStock}, Max=${part.maxStock}`);
 
         // Recalculer
-        const result = await EquipmentPartsService.recalculateMinMaxForPart(partId);
+        const result = await AssetPartsService.recalculateMinMaxForPart(partId);
 
         console.log(`      APRÈS: Min=${result.minStock}, Max=${result.maxStock}`);
 

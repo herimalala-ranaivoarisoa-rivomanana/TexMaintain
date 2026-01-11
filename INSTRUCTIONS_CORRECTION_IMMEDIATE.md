@@ -33,7 +33,7 @@ DLM125469 145879546:
 // 3. Ouvrir la console (F12)
 // 4. Copier-coller ce code :
 
-fetch('/api/equipment-parts/recalculate-all', {
+fetch('/api/asset-parts/recalculate-all', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -88,8 +88,8 @@ fetch('/api/equipment-parts/recalculate-all', {
 Le serveur a été mis à jour pour calculer automatiquement les valeurs lors de la duplication.
 
 **Fichiers modifiés** :
-- ✅ `server/routes/equipmentPartsRoutes.js`
-- ✅ `server/routes/equipmentRoutes.js`
+- ✅ `server/routes/assetPartsRoutes.js`
+- ✅ `server/routes/assetRoutes.js`
 
 **Résultat** :
 - ✅ Toutes les **futures** duplications auront les valeurs correctes
@@ -216,7 +216,7 @@ console.log(localStorage.getItem('token'))
 
 ```javascript
 // Vérifier combien d'associations existent
-fetch('/api/equipment-parts')
+fetch('/api/asset-parts')
   .then(res => res.json())
   .then(data => console.log('Associations:', data.total))
 ```

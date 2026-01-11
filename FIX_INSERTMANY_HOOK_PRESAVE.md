@@ -29,11 +29,11 @@ Association dupliquée (créée via insertMany()):
 
 ```javascript
 // ✅ save() déclenche le hook pre-save
-const assoc = new EquipmentPart({...data})
+const assoc = new AssetPart({...data})
 await assoc.save()  // Hook pre-save appelé → valeurs calculées
 
 // ❌ insertMany() NE déclenche PAS le hook pre-save
-await EquipmentPart.insertMany([{...data}])  // Hook pre-save NON appelé → valeurs = 0
+await AssetPart.insertMany([{...data}])  // Hook pre-save NON appelé → valeurs = 0
 ```
 
 ### Documentation Mongoose
@@ -52,12 +52,12 @@ Au lieu de compter sur le hook `pre-save`, on calcule manuellement les valeurs *
 
 ## 🔧 Modifications Apportées
 
-### 1. Duplication d'Association (equipmentPartsRoutes.js)
+### 1. Duplication d'Association (assetPartsRoutes.js)
 
 **Avant** :
 ```javascript
 duplications.push({
-  equipment: otherEquipment._id,
+  asset: otherAsset._id,
   part: data.part,
   quantityPerMachine: data.quantityPerMachine,
   replacementFrequencyPerYear: data.replacementFrequencyPerYear,
@@ -66,7 +66,7 @@ duplications.push({
   // ❌ Pas de valeurs calculées
 });
 
-await EquipmentPart.insertMany(duplications);
+await AssetPart.insertMany(duplications);
 // Résultat: annualConsumption = 0
 ```
 
@@ -82,7 +82,7 @@ const criticalityMap = { 'low': 1, 'medium': 2, 'high': 3, 'critical': 4 };
 const criticalityScore = criticalityMap[data.criticality] || 2;
 
 duplications.push({
-  equipment: otherEquipment._id,
+  asset: otherAsset._id,
   part: data.part,
   quantityPerMachine: data.quantityPerMachine,
   replacementFrequencyPerYear: data.replacementFrequencyPerYear,
@@ -101,18 +101,18 @@ duplications.push({
   reorderPoint: reorderPoint
 });
 
-await EquipmentPart.insertMany(duplications);
+await AssetPart.insertMany(duplications);
 // Résultat: annualConsumption = 2 ✅
 ```
 
 ---
 
-### 2. Duplication pour Nouvel Équipement (equipmentRoutes.js)
+### 2. Duplication pour Nouvel Équipement (assetRoutes.js)
 
 **Avant** :
 ```javascript
 const newAssociations = referenceAssociations.map(assoc => ({
-  equipment: created._id,
+  asset: created._id,
   part: assoc.part,
   quantityPerMachine: assoc.quantityPerMachine,
   replacementFrequencyPerYear: assoc.replacementFrequencyPerYear,
@@ -121,7 +121,7 @@ const newAssociations = referenceAssociations.map(assoc => ({
   // ❌ Pas de valeurs calculées
 }));
 
-await EquipmentPart.insertMany(newAssociations);
+await AssetPart.insertMany(newAssociations);
 // Résultat: annualConsumption = 0
 ```
 
@@ -135,7 +135,7 @@ const newAssociations = referenceAssociations.map(assoc => {
   const reorderPoint = Math.ceil(safetyStock + (dailyConsumption * assoc.leadTimeDays));
   
   return {
-    equipment: created._id,
+    asset: created._id,
     part: assoc.part,
     quantityPerMachine: assoc.quantityPerMachine,
     replacementFrequencyPerYear: assoc.replacementFrequencyPerYear,
@@ -155,7 +155,7 @@ const newAssociations = referenceAssociations.map(assoc => {
   };
 });
 
-await EquipmentPart.insertMany(newAssociations);
+await AssetPart.insertMany(newAssociations);
 // Résultat: annualConsumption = 2 ✅
 ```
 
@@ -280,10 +280,10 @@ Duplication d'association:
 ```javascript
 // Alternative avec validation
 const operations = duplications.map(data => ({
-  insertOne: { document: new EquipmentPart(data) }
+  insertOne: { document: new AssetPart(data) }
 }));
 
-await EquipmentPart.bulkWrite(operations);
+await AssetPart.bulkWrite(operations);
 // Déclenche les validations mais pas les hooks
 ```
 
@@ -319,10 +319,10 @@ Le calcul manuel est utilisé uniquement pour :
 
 ## 📖 Fichiers Modifiés
 
-1. **`server/routes/equipmentPartsRoutes.js`**
+1. **`server/routes/assetPartsRoutes.js`**
    - Ligne 277-304: Calcul manuel lors de la duplication
 
-2. **`server/routes/equipmentRoutes.js`**
+2. **`server/routes/assetRoutes.js`**
    - Ligne 377-402: Calcul manuel pour nouveaux équipements
 
 ---

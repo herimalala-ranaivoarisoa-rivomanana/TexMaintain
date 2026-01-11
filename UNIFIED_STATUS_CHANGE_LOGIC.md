@@ -2,7 +2,7 @@
 
 ## 🎯 Objectif
 
-Les règles de changement de statut sont maintenant **identiques** dans `/equipment` et `/process-area`.
+Les règles de changement de statut sont maintenant **identiques** dans `/asset` et `/process-area`.
 
 ## 🔄 API Unifiée
 
@@ -10,17 +10,17 @@ Les règles de changement de statut sont maintenant **identiques** dans `/equipm
 
 **Dans `/process-area`:**
 ```typescript
-// ❌ Utilisait updateEquipment (ne supporte pas le personnel)
-await updateEquipment(equipmentId, { 
+// ❌ Utilisait updateAsset (ne supporte pas le personnel)
+await updateAsset(assetId, { 
   status: newStatus,
   machinistId: selectedMachinistId 
 })
 ```
 
-**Dans `/equipment`:**
+**Dans `/asset`:**
 ```typescript
-// ✅ Utilisait changeEquipmentStatus (supporte tout le personnel)
-await changeEquipmentStatus(equipmentId, {
+// ✅ Utilisait changeAssetStatus (supporte tout le personnel)
+await changeAssetStatus(assetId, {
   status: newStatus,
   machinistId,
   mechanicId,
@@ -31,12 +31,12 @@ await changeEquipmentStatus(equipmentId, {
 
 ### Après (Solution)
 
-**Les deux pages utilisent maintenant `changeEquipmentStatus`:**
+**Les deux pages utilisent maintenant `changeAssetStatus`:**
 
 ```typescript
 // ✅ Même API partout
-await changeEquipmentStatus(equipmentId, {
-  status: newStatus as EquipmentStatus,
+await changeAssetStatus(assetId, {
+  status: newStatus as AssetStatus,
   machinistId: selectedMachinistId || undefined,
   mechanicId: selectedMechanicId || undefined,
   electricianId: selectedElectricianId || undefined,
@@ -80,7 +80,7 @@ const maintenanceStatuses = [
   EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE
 ]
 
-if (maintenanceStatuses.includes(newStatus as EquipmentStatus)) {
+if (maintenanceStatuses.includes(newStatus as AssetStatus)) {
   if (!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId) {
     toast({
       title: 'Validation Error',
@@ -100,7 +100,7 @@ if (maintenanceStatuses.includes(newStatus as EquipmentStatus)) {
 
 ## 🎨 Interface Utilisateur Identique
 
-### Dans `/equipment` (EquipmentStatusDialog.tsx)
+### Dans `/asset` (AssetStatusDialog.tsx)
 
 ```typescript
 {/* Maintenance Personnel Selection */}
@@ -121,7 +121,7 @@ if (maintenanceStatuses.includes(newStatus as EquipmentStatus)) {
 
 ```typescript
 {/* Maintenance Personnel Selection - Same logic */}
-{[EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(newStatus as EquipmentStatus) && (
+{[EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(newStatus as AssetStatus) && (
   <div className={`space-y-4 p-4 border rounded-lg ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'bg-red-50 border-red-300' : 'bg-orange-50'}`}>
     <div className="flex items-center gap-2">
       <Wrench className={`h-5 w-5 ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-600' : 'text-orange-600'}`} />
@@ -139,7 +139,7 @@ if (maintenanceStatuses.includes(newStatus as EquipmentStatus)) {
 ### 1. ProductionLines.tsx - Imports
 
 ```typescript
-import { getEquipment, updateEquipment, changeEquipmentStatus } from "@/api/equipment"
+import { getAsset, updateAsset, changeAssetStatus } from "@/api/asset"
 import { getMachinists } from "@/api/machinists"
 import { getMechanics } from "@/api/mechanics"
 import { getElectricians } from "@/api/electricians"
@@ -190,7 +190,7 @@ useEffect(() => {
 
 ```typescript
 const handleChangeStatus = async () => {
-  if (!selectedEquipmentForStatus || !newStatus) return
+  if (!selectedAssetForStatus || !newStatus) return
   
   // Validate machinist for "In Production"
   if (newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId) {
@@ -208,7 +208,7 @@ const handleChangeStatus = async () => {
     EQUIPMENT_STATUSES.UNDER_INSPECTION, 
     EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE
   ]
-  if (maintenanceStatuses.includes(newStatus as EquipmentStatus)) {
+  if (maintenanceStatuses.includes(newStatus as AssetStatus)) {
     if (!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId) {
       toast({
         title: 'Validation Error',
@@ -219,9 +219,9 @@ const handleChangeStatus = async () => {
     }
   }
   
-  // Use changeEquipmentStatus API
-  await changeEquipmentStatus(selectedEquipmentForStatus.id, {
-    status: newStatus as EquipmentStatus,
+  // Use changeAssetStatus API
+  await changeAssetStatus(selectedAssetForStatus.id, {
+    status: newStatus as AssetStatus,
     machinistId: selectedMachinistId || undefined,
     mechanicId: selectedMechanicId || undefined,
     electricianId: selectedElectricianId || undefined,
@@ -238,9 +238,9 @@ const handleChangeStatus = async () => {
   disabled={
     isSaving || 
     !newStatus || 
-    newStatus === selectedEquipmentForStatus?.currentStatus || 
+    newStatus === selectedAssetForStatus?.currentStatus || 
     (newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId) ||
-    ([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(newStatus as EquipmentStatus) && !selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId)
+    ([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(newStatus as AssetStatus) && !selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId)
   }
 >
   {isSaving ? 'Changing...' : 'Change Status'}
@@ -251,17 +251,17 @@ const handleChangeStatus = async () => {
 
 | Statut | Personnel Requis | Validation | UI | API |
 |--------|------------------|------------|-----|-----|
-| **In Production** | Machinist (1) | ✅ Client + Serveur | Section conditionnelle | `changeEquipmentStatus` |
-| **Under Repair** | Maintenance (≥1) | ✅ Client + Serveur | Section conditionnelle | `changeEquipmentStatus` |
-| **Under Inspection** | Maintenance (≥1) | ✅ Client + Serveur | Section conditionnelle | `changeEquipmentStatus` |
-| **Scheduled Maintenance** | Maintenance (≥1) | ✅ Client + Serveur | Section conditionnelle | `changeEquipmentStatus` |
-| **Autres statuts** | Aucun | ❌ Pas de validation | Pas de section | `changeEquipmentStatus` |
+| **In Production** | Machinist (1) | ✅ Client + Serveur | Section conditionnelle | `changeAssetStatus` |
+| **Under Repair** | Maintenance (≥1) | ✅ Client + Serveur | Section conditionnelle | `changeAssetStatus` |
+| **Under Inspection** | Maintenance (≥1) | ✅ Client + Serveur | Section conditionnelle | `changeAssetStatus` |
+| **Scheduled Maintenance** | Maintenance (≥1) | ✅ Client + Serveur | Section conditionnelle | `changeAssetStatus` |
+| **Autres statuts** | Aucun | ❌ Pas de validation | Pas de section | `changeAssetStatus` |
 
 ## ✅ Cohérence Garantie
 
 ### Backend
 
-**Route unique:** `POST /api/equipment/:id/change-status`
+**Route unique:** `POST /api/asset/:id/change-status`
 
 **Validation:**
 ```javascript
@@ -280,12 +280,12 @@ if (maintenanceStatuses.includes(status) && !mechanicId && !electricianId && !ma
 ### Frontend
 
 **Deux pages, même logique:**
-- `/equipment` → `EquipmentStatusDialog.tsx`
+- `/asset` → `AssetStatusDialog.tsx`
 - `/process-area` → `ProductionLines.tsx`
 
 **Même API:**
 ```typescript
-import { changeEquipmentStatus } from "@/api/equipment"
+import { changeAssetStatus } from "@/api/asset"
 ```
 
 **Même validation:**
@@ -306,8 +306,8 @@ if (maintenanceStatuses.includes(newStatus) && !mechanic && !electrician && !wor
 
 ## 🧪 Tests
 
-### Test 1: In Production depuis /equipment
-1. Aller sur `/equipment`
+### Test 1: In Production depuis /asset
+1. Aller sur `/asset`
 2. Cliquer "Change Status"
 3. Sélectionner "In Production"
 4. ✅ Section machinist apparaît
@@ -329,8 +329,8 @@ if (maintenanceStatuses.includes(newStatus) && !mechanic && !electrician && !wor
 9. Valider
 10. ✅ Statut changé
 
-### Test 3: Under Repair depuis /equipment
-1. Aller sur `/equipment`
+### Test 3: Under Repair depuis /asset
+1. Aller sur `/asset`
 2. Cliquer "Change Status"
 3. Sélectionner "Under Repair"
 4. ✅ Section maintenance apparaît (rouge)
@@ -356,7 +356,7 @@ if (maintenanceStatuses.includes(newStatus) && !mechanic && !electrician && !wor
 
 ## 🎯 Résultat
 
-Les règles de changement de statut sont maintenant **100% identiques** dans `/equipment` et `/process-area` :
+Les règles de changement de statut sont maintenant **100% identiques** dans `/asset` et `/process-area` :
 
 - ✅ Même API backend
 - ✅ Même validation client

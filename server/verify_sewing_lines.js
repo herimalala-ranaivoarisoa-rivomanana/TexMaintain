@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
-const { Equipment } = require('./models/Equipment');
+const { Asset } = require('./models/Asset');
 const { ProductionSection } = require('./models/ProductionSection');
 const { ProductionLine } = require('./models/ProductionLine');
 
@@ -21,24 +21,24 @@ const verify = async () => {
         const sectionNames = [...new Set(sections.map(s => s.name))];
         console.log('Section Names:', sectionNames.sort());
 
-        // Check Equipment
-        const equipment = await Equipment.find();
-        console.log(`Equipment found: ${equipment.length}`);
+        // Check Asset
+        const asset = await Asset.find();
+        console.log(`Asset found: ${asset.length}`);
 
         // Check for forbidden keywords
         const forbidden = ['Hashima', 'Macpi', 'Veit', 'Brisay', 'Eastman', 'KM'];
         let forbiddenCount = 0;
-        equipment.forEach(e => {
+        asset.forEach(e => {
             if (forbidden.some(f => e.name.includes(f) || e.model.includes(f))) {
                 forbiddenCount++;
-                console.warn(`⚠️ Forbidden Equipment: ${e.name}`);
+                console.warn(`⚠️ Forbidden Asset: ${e.name}`);
             }
         });
 
         if (forbiddenCount === 0) {
-            console.log('✅ No forbidden equipment found (Only sewing).');
+            console.log('✅ No forbidden asset found (Only sewing).');
         } else {
-            console.log(`❌ Found ${forbiddenCount} forbidden equipment.`);
+            console.log(`❌ Found ${forbiddenCount} forbidden asset.`);
         }
 
         // Check Association
@@ -47,14 +47,14 @@ const verify = async () => {
         const sectionsWithEq = await ProductionSection.find().lean();
         const associatedIds = new Set();
         sectionsWithEq.forEach(s => {
-            if (s.equipment) {
-                s.equipment.forEach(e => {
-                    if (e.equipmentId) associatedIds.add(e.equipmentId.toString());
+            if (s.asset) {
+                s.asset.forEach(e => {
+                    if (e.assetId) associatedIds.add(e.assetId.toString());
                 });
             }
         });
 
-        equipment.forEach(e => {
+        asset.forEach(e => {
             if (!associatedIds.has(e._id.toString())) orphanCount++;
             if (e.location !== 'Antsirabe-1' || !e.productionLine || !e.productionSection) {
                 console.warn(`⚠️ Issue with EQ: ${e.name}. Loc: ${e.location}, Line: ${e.productionLine}, Section: ${e.productionSection}`);
@@ -63,7 +63,7 @@ const verify = async () => {
         });
 
         if (orphanCount === 0 && missingFieldsCount === 0) {
-            console.log('✅ All equipment associated and strictly formatted ("Antsirabe-1", Line, Section refs).');
+            console.log('✅ All asset associated and strictly formatted ("Antsirabe-1", Line, Section refs).');
         } else {
             console.log(`❌ ${orphanCount} orphans found. ${missingFieldsCount} with missing fields.`);
         }

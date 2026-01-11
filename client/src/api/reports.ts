@@ -1,7 +1,7 @@
 import api from './api';
 
 export interface ReportStats {
-    equipmentCount: number;
+    assetCount: number;
     activeInterventions: number;
     lowStockParts: number;
     totalStockValue: number;
@@ -36,7 +36,7 @@ export interface InventoryMetrics {
 }
 
 export interface FinancialMetrics {
-    topCostlyEquipment: Array<{
+    topCostlyAsset: Array<{
         _id: string;
         name: string;
         tco: number;

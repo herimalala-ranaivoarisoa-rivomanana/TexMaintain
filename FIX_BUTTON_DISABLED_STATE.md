@@ -8,7 +8,7 @@ Le bouton "Change Status" était **actif** même quand le statut "Under Repair" 
 
 ### 1. Logique de Désactivation du Bouton
 
-**Fichier:** `client/src/components/EquipmentStatusDialog.tsx`
+**Fichier:** `client/src/components/AssetStatusDialog.tsx`
 
 Ajout d'une logique pour vérifier si le personnel de maintenance est requis et sélectionné :
 

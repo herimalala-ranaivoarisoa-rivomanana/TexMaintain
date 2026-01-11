@@ -6,7 +6,7 @@ import { getPartById } from "@/api/inventory"
 import { Package, MapPin, DollarSign, Hash, ArrowLeft } from "lucide-react"
 import { StockStatusCard } from "@/components/StockStatusCard"
 import { GlobalStockCard } from "@/components/GlobalStockCard"
-import { PartEquipmentsList } from "@/components/PartEquipmentsList"
+import { PartAssetsList } from "@/components/PartAssetsList"
 
 interface PartData {
   _id: string
@@ -130,7 +130,7 @@ export function PartDetail() {
       <GlobalStockCard partId={id!} />
 
       {/* Équipements utilisant cette pièce */}
-      <PartEquipmentsList partId={id!} />
+      <PartAssetsList partId={id!} />
     </div>
   )
 }

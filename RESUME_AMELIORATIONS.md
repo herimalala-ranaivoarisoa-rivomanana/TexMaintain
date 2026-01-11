@@ -164,13 +164,13 @@ curl http://localhost:3000/api/health
 
 ### Test 3 : CORS
 ```bash
-curl -H "Origin: http://malicious-site.com" http://localhost:3000/api/equipment
+curl -H "Origin: http://malicious-site.com" http://localhost:3000/api/asset
 # Devrait être bloqué
 ```
 
 ### Test 4 : Compression
 ```bash
-curl -H "Accept-Encoding: gzip" -I http://localhost:3000/api/equipment
+curl -H "Accept-Encoding: gzip" -I http://localhost:3000/api/asset
 # Devrait contenir : Content-Encoding: gzip
 ```
 
@@ -255,7 +255,7 @@ curl http://localhost:3000/api/health
 tail -f server/logs/app.log
 
 # Tester CORS
-curl -H "Origin: http://localhost:5173" http://localhost:3000/api/equipment
+curl -H "Origin: http://localhost:5173" http://localhost:3000/api/asset
 ```
 
 ---

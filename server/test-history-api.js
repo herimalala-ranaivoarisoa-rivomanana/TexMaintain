@@ -1,14 +1,14 @@
 /**
- * Test the Equipment Status History API endpoint
+ * Test the Asset Status History API endpoint
  */
 
 const axios = require('axios');
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-const { Equipment } = require('./models/Equipment');
-const { EquipmentCategory } = require('./models/EquipmentCategory');
-const { EquipmentType } = require('./models/EquipmentType');
+const { Asset } = require('./models/Asset');
+const { Category } = require('./models/Category');
+const { SubCategory } = require('./models/SubCategory');
 
 async function testHistoryAPI() {
   try {
@@ -16,27 +16,27 @@ async function testHistoryAPI() {
     await mongoose.connect(process.env.DATABASE_URL);
     console.log('✅ Connected to database\n');
 
-    // Get first equipment
-    const equipment = await Equipment.findOne().populate('category type').lean();
-    if (!equipment) {
-      console.log('❌ No equipment found in database');
+    // Get first asset
+    const asset = await Asset.findOne().populate('category type').lean();
+    if (!asset) {
+      console.log('❌ No asset found in database');
       return;
     }
 
-    const equipmentId = equipment._id.toString();
-    console.log('📦 Testing with Equipment:');
-    console.log(`   ID: ${equipmentId}`);
-    console.log(`   Location: ${equipment.location}`);
-    console.log(`   Category: ${equipment.category?.name}`);
-    console.log(`   Type: ${equipment.type?.name}`);
-    console.log(`   Current Status: ${equipment.status}\n`);
+    const assetId = asset._id.toString();
+    console.log('📦 Testing with Asset:');
+    console.log(`   ID: ${assetId}`);
+    console.log(`   Location: ${asset.location}`);
+    console.log(`   Category: ${asset.category?.name}`);
+    console.log(`   Type: ${asset.type?.name}`);
+    console.log(`   Current Status: ${asset.status}\n`);
 
     // First, let's check if we need to login
     // For testing, we'll check if the server requires auth
-    console.log('🧪 Testing API endpoint: GET /api/equipment/:id/status-history\n');
+    console.log('🧪 Testing API endpoint: GET /api/asset/:id/status-history\n');
 
     try {
-      const url = `http://localhost:3000/api/equipment/${equipmentId}/status-history?limit=10`;
+      const url = `http://localhost:3000/api/asset/${assetId}/status-history?limit=10`;
       console.log(`📡 Request URL: ${url}\n`);
 
       const response = await axios.get(url, {
@@ -91,10 +91,10 @@ async function testHistoryAPI() {
             console.log(`   Duration: ${latest.duration} minutes`);
           }
           
-          // Verify this entry belongs to the correct equipment
-          console.log(`\n   ✅ Equipment ID match: ${latest.equipment === equipmentId || latest.equipment.toString() === equipmentId}`);
+          // Verify this entry belongs to the correct asset
+          console.log(`\n   ✅ Asset ID match: ${latest.asset === assetId || latest.asset.toString() === assetId}`);
         } else {
-          console.log('ℹ️  No history entries found for this equipment');
+          console.log('ℹ️  No history entries found for this asset');
         }
       } else {
         console.log(`❌ Unexpected status code: ${response.status}`);

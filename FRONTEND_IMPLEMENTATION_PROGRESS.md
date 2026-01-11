@@ -7,7 +7,7 @@
 
 ## ✅ FICHIERS CRÉÉS (8/12)
 
-### 1. **Client API** : `client/src/api/equipmentParts.ts` ✅
+### 1. **Client API** : `client/src/api/assetParts.ts` ✅
 **Lignes**: 350+  
 **Contenu**:
 - Types TypeScript complets
@@ -17,10 +17,10 @@
 
 **Types exportés**:
 ```typescript
-- EquipmentPart
+- AssetPart
 - ReplacementHistoryEntry
-- CreateEquipmentPartData
-- UpdateEquipmentPartData
+- CreateAssetPartData
+- UpdateAssetPartData
 - GlobalStockCalculation
 - GlobalStockResponse
 - ReorderAlert
@@ -30,15 +30,15 @@
 
 **Fonctions API**:
 ```typescript
-- getEquipmentParts()
-- getEquipmentPartsByEquipment()
-- getEquipmentPartsByPart()
+- getAssetParts()
+- getAssetPartsByAsset()
+- getAssetPartsByPart()
 - calculateGlobalStock() ⭐
 - getReorderAlerts() ⚠️
-- getEquipmentPart()
-- createEquipmentPart()
-- updateEquipmentPart()
-- deleteEquipmentPart()
+- getAssetPart()
+- createAssetPart()
+- updateAssetPart()
+- deleteAssetPart()
 - recordReplacement() 🔧
 ```
 
@@ -58,7 +58,7 @@
 
 ---
 
-### 2. **Composant Liste** : `client/src/components/EquipmentPartsList.tsx` ✅
+### 2. **Composant Liste** : `client/src/components/AssetPartsList.tsx` ✅
 **Lignes**: 300+  
 **Fonctionnalités**:
 - ✅ Affichage des pièces d'un équipement
@@ -71,8 +71,8 @@
 
 **Props**:
 ```typescript
-interface EquipmentPartsListProps {
-  equipmentId: string
+interface AssetPartsListProps {
+  assetId: string
 }
 ```
 
@@ -85,7 +85,7 @@ interface EquipmentPartsListProps {
 
 ---
 
-### 3. **Formulaire** : `client/src/components/EquipmentPartFormDialog.tsx` ✅
+### 3. **Formulaire** : `client/src/components/AssetPartFormDialog.tsx` ✅
 **Lignes**: 400+  
 **Fonctionnalités**:
 - ✅ Création d'association
@@ -158,7 +158,7 @@ interface ReorderAlertsWidgetProps {
 
 ---
 
-### 6. **Composant Équipements** : `client/src/components/PartEquipmentsList.tsx` ✅
+### 6. **Composant Équipements** : `client/src/components/PartAssetsList.tsx` ✅
 **Lignes**: 200+  
 **Fonctionnalités**:
 - ✅ Liste des équipements utilisant une pièce
@@ -204,7 +204,7 @@ interface ReorderAlertsWidgetProps {
 - ✅ Stock actuel et limites
 - ✅ Commandes en cours
 - ✅ Intégration GlobalStockCard
-- ✅ Intégration PartEquipmentsList
+- ✅ Intégration PartAssetsList
 - ✅ Sections pour historique (à venir)
 - ✅ Sections pour graphiques (à venir)
 
@@ -242,15 +242,15 @@ interface ReorderAlertsWidgetProps {
 
 ---
 
-### 11. **Intégration Équipement** : Mise à jour de `pages/Equipment.tsx` ⏳
+### 11. **Intégration Équipement** : Mise à jour de `pages/Asset.tsx` ⏳
 **Modifications prévues**:
 - Ajouter onglet "Pièces" dans les détails
-- Intégrer EquipmentPartsList
+- Intégrer AssetPartsList
 - Afficher les alertes de pièces
 
 ---
 
-### 12. **Tests E2E** : `tests/equipmentParts.spec.ts` ⏳
+### 12. **Tests E2E** : `tests/assetParts.spec.ts` ⏳
 **Tests prévus**:
 - Création d'association
 - Modification d'association
@@ -290,14 +290,14 @@ interface ReorderAlertsWidgetProps {
 ## 🎯 PROCHAINES ÉTAPES
 
 ### Immédiat (Aujourd'hui) ✅
-1. ✅ Créer PartEquipmentsList.tsx
+1. ✅ Créer PartAssetsList.tsx
 2. ✅ Créer GlobalStockCard.tsx
 3. ✅ Créer page PartDetails.tsx
 
 ### Court terme (Prochaine session)
 4. ⏳ Créer page ReorderAlerts.tsx
 5. ⏳ Intégrer dans Dashboard
-6. ⏳ Intégrer dans Equipment details
+6. ⏳ Intégrer dans Asset details
 7. ⏳ Ajouter route dans React Router
 
 ### Moyen terme (Cette semaine)
@@ -310,10 +310,10 @@ interface ReorderAlertsWidgetProps {
 ## 🧪 TESTS MANUELS À FAIRE
 
 ### Composants créés
-- [ ] Tester EquipmentPartsList avec équipement ayant 0 pièces
-- [ ] Tester EquipmentPartsList avec équipement ayant 10+ pièces
-- [ ] Tester EquipmentPartFormDialog en création
-- [ ] Tester EquipmentPartFormDialog en modification
+- [ ] Tester AssetPartsList avec équipement ayant 0 pièces
+- [ ] Tester AssetPartsList avec équipement ayant 10+ pièces
+- [ ] Tester AssetPartFormDialog en création
+- [ ] Tester AssetPartFormDialog en modification
 - [ ] Tester RecordReplacementDialog avec stock suffisant
 - [ ] Tester RecordReplacementDialog avec stock insuffisant
 - [ ] Tester ReorderAlertsWidget avec 0 alertes
@@ -345,8 +345,8 @@ interface ReorderAlertsWidgetProps {
 ## 💡 AMÉLIORATIONS FUTURES
 
 ### Court terme
-- [ ] Ajouter recherche dans EquipmentPartsList
-- [ ] Ajouter tri dans EquipmentPartsList
+- [ ] Ajouter recherche dans AssetPartsList
+- [ ] Ajouter tri dans AssetPartsList
 - [ ] Ajouter pagination si > 20 pièces
 - [ ] Ajouter export Excel des pièces
 
@@ -380,7 +380,7 @@ interface ReorderAlertsWidgetProps {
 - Fichiers en PascalCase.tsx
 - Props interfaces suffixées par "Props"
 - Hooks personnalisés préfixés par "use"
-- Types exportés depuis api/equipmentParts.ts
+- Types exportés depuis api/assetParts.ts
 
 ### Performance
 - Utilisation de React.memo pour composants lourds (à faire)
@@ -418,9 +418,9 @@ interface ReorderAlertsWidgetProps {
 ## 📚 RESSOURCES
 
 ### Fichiers créés
-1. `client/src/api/equipmentParts.ts`
-2. `client/src/components/EquipmentPartsList.tsx`
-3. `client/src/components/EquipmentPartFormDialog.tsx`
+1. `client/src/api/assetParts.ts`
+2. `client/src/components/AssetPartsList.tsx`
+3. `client/src/components/AssetPartFormDialog.tsx`
 4. `client/src/components/RecordReplacementDialog.tsx`
 5. `client/src/components/ReorderAlertsWidget.tsx`
 
@@ -432,7 +432,7 @@ interface ReorderAlertsWidgetProps {
 ---
 
 **Progression**: 40% ✅  
-**Prochaine étape**: Créer PartEquipmentsList.tsx
+**Prochaine étape**: Créer PartAssetsList.tsx
 
 ---
 

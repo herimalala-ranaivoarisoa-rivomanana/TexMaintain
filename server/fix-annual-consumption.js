@@ -4,9 +4,9 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { EquipmentPart } = require('./models/EquipmentPart');
-const { Equipment } = require('./models/Equipment');
-const { EquipmentType } = require('./models/EquipmentType');
+const { AssetPart } = require('./models/AssetPart');
+const { Asset } = require('./models/Asset');
+const { SubCategory } = require('./models/SubCategory');
 const { Part } = require('./models/Part');
 
 async function fixAnnualConsumption() {
@@ -18,8 +18,8 @@ async function fixAnnualConsumption() {
 
     console.log('🔍 Recherche des associations avec des incohérences...\n');
 
-    const associations = await EquipmentPart.find()
-      .populate('equipment', 'model serialNumber')
+    const associations = await AssetPart.find()
+      .populate('asset', 'model serialNumber')
       .populate('part', 'name type');
 
     let fixed = 0;
@@ -30,7 +30,7 @@ async function fixAnnualConsumption() {
       
       if (Math.abs(assoc.annualConsumption - expectedAnnualConsumption) > 0.01) {
         console.log(`❌ Incohérence détectée:`);
-        console.log(`   Équipement: ${assoc.equipment?.model}`);
+        console.log(`   Équipement: ${assoc.asset?.model}`);
         console.log(`   Pièce: ${assoc.part?.name} (${assoc.part?.type})`);
         console.log(`   Quantité: ${assoc.quantityPerMachine}`);
         console.log(`   Fréquence: ${assoc.replacementFrequencyPerYear}/an`);
@@ -41,7 +41,7 @@ async function fixAnnualConsumption() {
         await assoc.save();
         
         // Recharger pour vérifier
-        const updated = await EquipmentPart.findById(assoc._id);
+        const updated = await AssetPart.findById(assoc._id);
         console.log(`   ✅ Corrigé: ${updated.annualConsumption}\n`);
         fixed++;
       } else {

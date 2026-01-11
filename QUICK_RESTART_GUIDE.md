@@ -80,10 +80,10 @@ netstat -ano | findstr :5173
 
 ```powershell
 # Test simple avec curl (si installé)
-curl http://localhost:5000/api/equipment
+curl http://localhost:5000/api/asset
 
 # Ou ouvrir dans le navigateur
-start http://localhost:5000/api/equipment
+start http://localhost:5000/api/asset
 ```
 
 ## Ordre de démarrage recommandé
@@ -120,7 +120,7 @@ Les logs du serveur s'affichent dans le terminal où vous avez lancé `npm run d
 
 2. **MongoDB non connecté** :
    ```
-   MongooseError: Operation `equipment.find()` buffering timed out
+   MongooseError: Operation `asset.find()` buffering timed out
    ```
    **Solution**: Démarrez MongoDB avec `npm run db:up`
 
@@ -133,7 +133,7 @@ Les logs du serveur s'affichent dans le terminal où vous avez lancé `npm run d
 ## Après le redémarrage
 
 1. ✅ Vérifiez que le serveur démarre sans erreur
-2. ✅ Testez la création d'équipement sur `/equipment`
+2. ✅ Testez la création d'équipement sur `/asset`
 3. ✅ Vérifiez les logs du serveur pour toute erreur
 4. ✅ Testez les nouvelles pages de personnel de maintenance
 

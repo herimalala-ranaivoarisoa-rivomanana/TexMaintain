@@ -1,4 +1,4 @@
-# 🔧 CORRECTION - Pages Equipment Parts/Consumables
+# 🔧 CORRECTION - Pages Asset Parts/Consumables
 
 **Date**: 1er Novembre 2025  
 **Problèmes**: 
@@ -12,11 +12,11 @@
 ## 🐛 PROBLÈMES IDENTIFIÉS
 
 ### Problème 1 : Listes vides
-**Symptôme** : Les listes de pièces et consommables ne s'affichent pas sur `/equipment/:id/parts` et `/equipment/:id/consumable`
+**Symptôme** : Les listes de pièces et consommables ne s'affichent pas sur `/asset/:id/parts` et `/asset/:id/consumable`
 
 **Causes identifiées** :
 1. ❌ Le `useEffect` ne se re-déclenchait pas quand le prop `type` changeait
-2. ❌ L'interface TypeScript `EquipmentPart.part` n'incluait pas le champ `type`
+2. ❌ L'interface TypeScript `AssetPart.part` n'incluait pas le champ `type`
 
 ### Problème 2 : Boutons redondants
 **Symptôme** : Deux boutons "Ajouter" qui font la même chose
@@ -31,20 +31,20 @@
 
 ### 1. Correction du useEffect
 
-**Fichier** : `client/src/components/EquipmentPartsList.tsx`
+**Fichier** : `client/src/components/AssetPartsList.tsx`
 
 #### Avant
 ```typescript
 useEffect(() => {
   fetchParts()
-}, [equipmentId])
+}, [assetId])
 ```
 
 #### Après
 ```typescript
 useEffect(() => {
   fetchParts()
-}, [equipmentId, type])
+}, [assetId, type])
 ```
 
 **Explication** : Ajout de `type` dans les dépendances pour recharger les données quand on change de type (part → consumable ou vice versa).
@@ -53,7 +53,7 @@ useEffect(() => {
 
 ### 2. Correction de l'interface TypeScript
 
-**Fichier** : `client/src/api/equipmentParts.ts`
+**Fichier** : `client/src/api/assetParts.ts`
 
 #### Avant
 ```typescript
@@ -88,7 +88,7 @@ part: {
 
 ### 3. Suppression du bouton redondant
 
-**Fichier** : `client/src/components/EquipmentPartsList.tsx`
+**Fichier** : `client/src/components/AssetPartsList.tsx`
 
 #### Avant
 ```typescript
@@ -129,8 +129,8 @@ part: {
 ## 📊 RÉSUMÉ DES CHANGEMENTS
 
 ### Fichiers Modifiés : 2
-1. ✅ `client/src/components/EquipmentPartsList.tsx` (2 modifications)
-2. ✅ `client/src/api/equipmentParts.ts` (1 modification)
+1. ✅ `client/src/components/AssetPartsList.tsx` (2 modifications)
+2. ✅ `client/src/api/assetParts.ts` (1 modification)
 
 ### Total des Modifications : 3
 
@@ -138,14 +138,14 @@ part: {
 
 ## 🎯 FONCTIONNEMENT APRÈS CORRECTION
 
-### Page Equipment Parts (`/equipment/:id/parts`)
+### Page Asset Parts (`/asset/:id/parts`)
 
 1. **Affichage** : Liste uniquement les pièces de rechange (type='part')
 2. **Filtrage** : Effectué côté client après récupération des données
 3. **Bouton Ajouter** : Un seul bouton dans le header
 4. **État vide** : Message avec indication vers le bouton
 
-### Page Equipment Consumables (`/equipment/:id/consumable`)
+### Page Asset Consumables (`/asset/:id/consumable`)
 
 1. **Affichage** : Liste uniquement les consommables (type='consumable')
 2. **Filtrage** : Effectué côté client après récupération des données
@@ -156,20 +156,20 @@ part: {
 
 ## 🔍 LOGIQUE DE FILTRAGE
 
-### Dans EquipmentPartsList.tsx
+### Dans AssetPartsList.tsx
 
 ```typescript
 const fetchParts = async () => {
   try {
     setLoading(true)
-    const response = await getEquipmentPartsByEquipment(equipmentId)
+    const response = await getAssetPartsByAsset(assetId)
     
     // Récupération de toutes les associations
     const allParts = response.associations || []
     
     // Filtrage par type (part ou consumable)
     const filteredParts = allParts.filter(
-      (assoc: EquipmentPart) => assoc.part.type === type
+      (assoc: AssetPart) => assoc.part.type === type
     )
     
     setParts(filteredParts)
@@ -180,7 +180,7 @@ const fetchParts = async () => {
 ```
 
 **Flux** :
-1. Appel API : `/api/equipment-parts/equipment/:id`
+1. Appel API : `/api/asset-parts/asset/:id`
 2. Réception : Toutes les associations (parts + consumables)
 3. Filtrage : Selon le prop `type` ('part' ou 'consumable')
 4. Affichage : Liste filtrée
@@ -191,7 +191,7 @@ const fetchParts = async () => {
 
 ### Test 1 : Affichage des pièces
 ```bash
-1. Aller sur /equipment/[id]/parts
+1. Aller sur /asset/[id]/parts
 2. Vérifier que seules les pièces de rechange s'affichent
 3. Vérifier qu'il n'y a qu'un seul bouton "Ajouter"
 4. Si aucune pièce : vérifier le message d'état vide
@@ -199,7 +199,7 @@ const fetchParts = async () => {
 
 ### Test 2 : Affichage des consommables
 ```bash
-1. Aller sur /equipment/[id]/consumable
+1. Aller sur /asset/[id]/consumable
 2. Vérifier que seuls les consommables s'affichent
 3. Vérifier qu'il n'y a qu'un seul bouton "Ajouter"
 4. Si aucun consommable : vérifier le message d'état vide
@@ -207,7 +207,7 @@ const fetchParts = async () => {
 
 ### Test 3 : Ajout d'une pièce
 ```bash
-1. Sur /equipment/[id]/parts
+1. Sur /asset/[id]/parts
 2. Cliquer sur "Ajouter"
 3. Sélectionner une pièce de type "part"
 4. Remplir le formulaire
@@ -217,7 +217,7 @@ const fetchParts = async () => {
 
 ### Test 4 : Ajout d'un consommable
 ```bash
-1. Sur /equipment/[id]/consumable
+1. Sur /asset/[id]/consumable
 2. Cliquer sur "Ajouter"
 3. Sélectionner une pièce de type "consumable"
 4. Remplir le formulaire
@@ -227,9 +227,9 @@ const fetchParts = async () => {
 
 ### Test 5 : Navigation entre les pages
 ```bash
-1. Aller sur /equipment/[id]/parts
+1. Aller sur /asset/[id]/parts
 2. Vérifier l'affichage des pièces
-3. Aller sur /equipment/[id]/consumable
+3. Aller sur /asset/[id]/consumable
 4. Vérifier l'affichage des consommables
 5. Vérifier que les listes sont différentes
 ```
@@ -257,17 +257,17 @@ const fetchParts = async () => {
 ## 🔄 FLUX DE DONNÉES
 
 ```
-Page EquipmentParts/Consumables
+Page AssetParts/Consumables
          ↓
     (prop type='part' ou 'consumable')
          ↓
-EquipmentPartsList Component
+AssetPartsList Component
          ↓
-    useEffect [equipmentId, type]
+    useEffect [assetId, type]
          ↓
     fetchParts()
          ↓
-API: GET /api/equipment-parts/equipment/:id
+API: GET /api/asset-parts/asset/:id
          ↓
 Response: { associations: [...] }
          ↓
@@ -313,7 +313,7 @@ Dans le modèle `Part` (backend) :
 
 ### Architecture du Composant
 
-Le composant `EquipmentPartsList` est **générique** :
+Le composant `AssetPartsList` est **générique** :
 - Accepte un prop `type` pour filtrer
 - Affiche le bon label selon le type
 - Utilise le même formulaire d'ajout

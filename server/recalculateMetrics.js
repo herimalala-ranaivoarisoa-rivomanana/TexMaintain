@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const EquipmentMetricsService = require('./services/equipmentMetricsService');
-const { Equipment } = require('./models/Equipment');
+const AssetMetricsService = require('./services/assetMetricsService');
+const { Asset } = require('./models/Asset');
 
 // Load env vars
 dotenv.config();
@@ -20,8 +20,8 @@ const run = async () => {
     await connectDB();
     console.log('Starting metrics recalculation...');
     try {
-        const count = await EquipmentMetricsService.recalculateAll();
-        console.log(`Successfully recalculated metrics for ${count} equipment.`);
+        const count = await AssetMetricsService.recalculateAll();
+        console.log(`Successfully recalculated metrics for ${count} asset.`);
     } catch (error) {
         console.error('Error recalculating metrics:', error);
     } finally {

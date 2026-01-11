@@ -24,7 +24,7 @@ Appliquer **exactement la même logique** que pour "In Production" avec le machi
   disabled={
     isSaving || 
     !newStatus || 
-    newStatus === selectedEquipmentForStatus?.currentStatus || 
+    newStatus === selectedAssetForStatus?.currentStatus || 
     (newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId)
   }
 >
@@ -38,7 +38,7 @@ Appliquer **exactement la même logique** que pour "In Production" avec le machi
 
 ## 🔧 Application aux Statuts de Maintenance
 
-### Dans EquipmentStatusDialog.tsx
+### Dans AssetStatusDialog.tsx
 
 ```typescript
 // 1. Définir les statuts nécessitant du personnel

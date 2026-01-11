@@ -14,14 +14,14 @@ ALL French expressions have been translated to English, including formatting fun
 ## 📝 Final Files Modified (7 files)
 
 ### Backend (2 files)
-1. ✅ `server/routes/equipmentPartsRoutes.js`
-2. ✅ `server/routes/equipmentRoutes.js`
+1. ✅ `server/routes/assetPartsRoutes.js`
+2. ✅ `server/routes/assetRoutes.js`
 
 ### Frontend (5 files)
-3. ✅ `client/src/components/EquipmentPartFormDialog.tsx`
-4. ✅ `client/src/components/EquipmentPartsList.tsx`
-5. ✅ `client/src/components/PartEquipmentsList.tsx`
-6. ✅ `client/src/api/equipmentParts.ts` ⭐ **NEW**
+3. ✅ `client/src/components/AssetPartFormDialog.tsx`
+4. ✅ `client/src/components/AssetPartsList.tsx`
+5. ✅ `client/src/components/PartAssetsList.tsx`
+6. ✅ `client/src/api/assetParts.ts` ⭐ **NEW**
 7. ✅ `client/src/components/RecordReplacementDialog.tsx` ⭐ **NEW**
 8. ✅ `client/src/components/RecordUsageDialog.tsx` ⭐ **NEW**
 
@@ -85,7 +85,7 @@ ALL French expressions have been translated to English, including formatting fun
 - **Dialog titles**: 2
 - **Stock terms**: 7
 - **Consumption terms**: 5
-- **Equipment terms**: 5
+- **Asset terms**: 5
 - **Time terms**: 2
 - **Status terms**: 4
 - **Messages**: 10+
@@ -102,15 +102,15 @@ ALL French expressions have been translated to English, including formatting fun
 
 ## 🎯 Pages 100% Translated
 
-### Equipment Pages
-- ✅ `/equipment/:id/parts` - **100% English**
+### Asset Pages
+- ✅ `/asset/:id/parts` - **100% English**
   - Title: "Spare Parts"
   - Button: "📝 Record a replacement"
   - All labels in English
   - Frequency: "X times/year"
   - Consumption: "X pieces"
 
-- ✅ `/equipment/:id/consumables` - **100% English**
+- ✅ `/asset/:id/consumables` - **100% English**
   - Title: "Consumables"
   - Button: "📝 Record usage"
   - All labels in English
@@ -120,11 +120,11 @@ ALL French expressions have been translated to English, including formatting fun
 ### Dialogs
 - ✅ Record Replacement Dialog - **100% English**
 - ✅ Record Usage Dialog - **100% English**
-- ✅ Equipment Part Form Dialog - **100% English**
+- ✅ Asset Part Form Dialog - **100% English**
 
 ### Inventory Pages
 - ✅ `/inventory/:id` - **100% English**
-  - "Equipment using this part" section
+  - "Asset using this part" section
   - All labels in English
 
 ---
@@ -133,7 +133,7 @@ ALL French expressions have been translated to English, including formatting fun
 
 ### Test 1: Spare Parts Page
 ```bash
-1. Go to /equipment/[id]/parts
+1. Go to /asset/[id]/parts
 2. Verify:
    ✓ Title: "Spare Parts"
    ✓ Button: "Add"
@@ -145,7 +145,7 @@ ALL French expressions have been translated to English, including formatting fun
 
 ### Test 2: Consumables Page
 ```bash
-1. Go to /equipment/[id]/consumables
+1. Go to /asset/[id]/consumables
 2. Verify:
    ✓ Title: "Consumables"
    ✓ Button: "Add"

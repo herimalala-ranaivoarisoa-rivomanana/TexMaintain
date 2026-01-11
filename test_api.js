@@ -39,14 +39,14 @@ async function test() {
         if (line.sections) {
             line.sections.forEach(section => {
                 console.log(`\nSection: ${section.sectionId.name}`);
-                if (section.sectionId.equipment) {
-                    section.sectionId.equipment.forEach(item => {
-                        console.log(`  - Equipment ID: ${item.equipmentId._id}`);
-                        console.log(`    Name: ${item.equipmentId.name}`);
-                        console.log(`    Model: ${item.equipmentId.model}`);
+                if (section.sectionId.asset) {
+                    section.sectionId.asset.forEach(item => {
+                        console.log(`  - Asset ID: ${item.assetId._id}`);
+                        console.log(`    Name: ${item.assetId.name}`);
+                        console.log(`    Model: ${item.assetId.model}`);
                         // Check if type is populated
-                        console.log(`    Type: ${item.equipmentId.type ? (item.equipmentId.type.name || 'Type Name Missing') : 'Type Missing'}`);
-                        console.log(`    Full Object:`, JSON.stringify(item.equipmentId, null, 2));
+                        console.log(`    Type: ${item.assetId.type ? (item.assetId.type.name || 'Type Name Missing') : 'Type Missing'}`);
+                        console.log(`    Full Object:`, JSON.stringify(item.assetId, null, 2));
                     });
                 }
             });

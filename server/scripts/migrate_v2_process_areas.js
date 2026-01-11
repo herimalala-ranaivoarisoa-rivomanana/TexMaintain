@@ -88,10 +88,10 @@ const migrate = async () => {
             }
         }
 
-        // 4. Update Equipment
-        console.log('Updating Equipment schema fields...');
-        const equipment = await db.collection('equipment').find({}).toArray();
-        for (const eq of equipment) {
+        // 4. Update Asset
+        console.log('Updating Asset schema fields...');
+        const asset = await db.collection('asset').find({}).toArray();
+        for (const eq of asset) {
             let updated = false;
             const updateDoc = {};
             const unsetDoc = {};
@@ -119,7 +119,7 @@ const migrate = async () => {
             }
 
             if (updated) {
-                await db.collection('equipment').updateOne({ _id: eq._id }, { $set: updateDoc, $unset: unsetDoc });
+                await db.collection('asset').updateOne({ _id: eq._id }, { $set: updateDoc, $unset: unsetDoc });
             }
         }
 

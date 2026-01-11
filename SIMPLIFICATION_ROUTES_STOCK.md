@@ -14,7 +14,7 @@ La route `/part-details/:id` faisait **doublon** avec `/inventory/:id` (PartDeta
 /inventory              → Liste des pièces
 /inventory/:id          → Détails d'une pièce (simple)
 /part-details/:id       → ❌ DOUBLON - Détails avancés
-/equipment/:id/parts    → Pièces d'un équipement
+/asset/:id/parts    → Pièces d'un équipement
 /reorder-alerts         → Alertes de réapprovisionnement
 ```
 
@@ -32,7 +32,7 @@ La route `/part-details/:id` faisait **doublon** avec `/inventory/:id` (PartDeta
 ```
 /inventory              → Liste des pièces
 /inventory/:id          → ✅ Détails COMPLETS d'une pièce
-/equipment/:id/parts    → Pièces d'un équipement
+/asset/:id/parts    → Pièces d'un équipement
 /reorder-alerts         → Alertes de réapprovisionnement
 ```
 
@@ -79,7 +79,7 @@ La route `/part-details/:id` faisait **doublon** avec `/inventory/:id` (PartDeta
 ```typescript
 import { StockStatusCard } from "@/components/StockStatusCard"
 import { GlobalStockCard } from "@/components/GlobalStockCard"
-import { PartEquipmentsList } from "@/components/PartEquipmentsList"
+import { PartAssetsList } from "@/components/PartAssetsList"
 ```
 
 #### Intégration des Composants
@@ -100,7 +100,7 @@ import { PartEquipmentsList } from "@/components/PartEquipmentsList"
   <GlobalStockCard partId={id} />
 
   {/* Équipements utilisant cette pièce */}
-  <PartEquipmentsList partId={id} />
+  <PartAssetsList partId={id} />
 </div>
 ```
 
@@ -180,7 +180,7 @@ import { PartEquipmentsList } from "@/components/PartEquipmentsList"
 
 ### Depuis un Équipement
 ```
-/equipment/:id/parts
+/asset/:id/parts
   ↓ Clic sur une pièce (à implémenter)
 /inventory/:id
   → Vue complète
@@ -254,12 +254,12 @@ Ajouter des badges de statut dans `/inventory` :
 })}
 ```
 
-### Amélioration de EquipmentParts
+### Amélioration de AssetParts
 
 Ajouter des liens vers les détails :
 
 ```typescript
-// Dans EquipmentPartsList.tsx
+// Dans AssetPartsList.tsx
 <div className="flex items-center justify-between">
   <h4>{part.part.name}</h4>
   <Link to={`/inventory/${part.part._id}`}>
@@ -331,7 +331,7 @@ Ajouter des liens vers les détails :
 - [x] Liens dans ReorderAlerts mis à jour
 - [x] StockStatusCard intégré dans PartDetail
 - [x] GlobalStockCard intégré dans PartDetail
-- [x] PartEquipmentsList intégré dans PartDetail
+- [x] PartAssetsList intégré dans PartDetail
 - [x] Fonction handleRefresh ajoutée
 - [x] Interface améliorée avec padding et espacement
 - [ ] Tests effectués

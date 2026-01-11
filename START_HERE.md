@@ -69,7 +69,7 @@ Devrait retourner :
 
 ### Test 2 : Compression
 ```bash
-curl -H "Accept-Encoding: gzip" -I http://localhost:3000/api/equipment
+curl -H "Accept-Encoding: gzip" -I http://localhost:3000/api/asset
 ```
 
 Devrait contenir : `Content-Encoding: gzip`

@@ -6,16 +6,26 @@ const { validateEnv } = require("./config/validateEnv");
 validateEnv();
 
 const mongoose = require("mongoose");
-const express = require('express'); // Force restart 1
-const session = require("express-session");
-const MongoStore = require('connect-mongo');
+const express = require('express');
+const cors = require("cors");
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const compression = require('compression');
+const mongoSanitize = require('express-mongo-sanitize');
+const pino = require('pino');
+const pinoHttp = require('pino-http');
+const path = require('path');
+const fs = require('fs');
+
+// Route imports
 const basicRoutes = require("./routes/index");
 const healthRoutes = require("./routes/healthRoutes");
 const authRoutes = require("./routes/authRoutes");
 const seedRoutes = require("./routes/seedRoutes");
-const equipmentRoutes = require("./routes/equipmentRoutes");
-const equipmentCategoriesRoutes = require("./routes/equipmentCategoriesRoutes");
-const equipmentTypesRoutes = require("./routes/equipmentTypesRoutes");
+const assetRoutes = require("./routes/assetRoutes"); // Refactored
+const categoryRoutes = require("./routes/categoryRoutes"); // Refactored
+const subCategoryRoutes = require("./routes/subCategoryRoutes"); // Refactored
+const assetClassRoutes = require("./routes/assetClassRoutes"); // New
 const brandsRoutes = require("./routes/brandsRoutes");
 const interventionsRoutes = require("./routes/interventionsRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
@@ -27,21 +37,15 @@ const mechanicRoutes = require("./routes/mechanicRoutes");
 const electricianRoutes = require("./routes/electricianRoutes");
 const maintenanceWorkerRoutes = require("./routes/maintenanceWorkerRoutes");
 const breakdownMediaRoutes = require("./routes/breakdownMedia");
-const equipmentPartsRoutes = require("./routes/equipmentPartsRoutes");
+const assetPartsRoutes = require("./routes/assetPartsRoutes");
 const reportsRoutes = require("./routes/reportsRoutes");
 const procurementRoutes = require("./routes/procurementRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const personnelRoutes = require("./routes/personnelRoutes");
+const factoriesRoutes = require("./routes/factoriesRoutes");
+
 const { connectDB } = require("./config/database");
 const backfillInterventions = require("./backfill_interventions_v2");
-const cors = require("cors");
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const compression = require('compression');
-const mongoSanitize = require('express-mongo-sanitize');
-const pino = require('pino');
-const pinoHttp = require('pino-http');
-const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -104,6 +108,16 @@ app.use(mongoSanitize({
   }
 }));
 
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+const statusMediaDir = path.join(uploadsDir, 'status-media');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+if (!fs.existsSync(statusMediaDir)) {
+  fs.mkdirSync(statusMediaDir, { recursive: true });
+}
+
 // Serve static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -131,9 +145,13 @@ app.use('/api/auth', authRoutes);
 // Seed Routes
 app.use('/api/seed', seedRoutes);
 // Domain Routes
-app.use('/api/equipment', equipmentRoutes);
-app.use('/api/equipment-categories', equipmentCategoriesRoutes);
-app.use('/api/equipment-types', equipmentTypesRoutes);
+app.use('/api/assets', assetRoutes); // Renamed
+app.use('/api/asset', assetRoutes); // Alias
+app.use('/api/categories', categoryRoutes); // Renamed
+app.use('/api/asset-categories', categoryRoutes); // Alias
+app.use('/api/sub-categories', subCategoryRoutes); // Renamed
+app.use('/api/asset-types', subCategoryRoutes); // Alias
+app.use('/api/asset-classes', assetClassRoutes); // New
 app.use('/api/brands', brandsRoutes);
 app.use('/api/interventions', interventionsRoutes);
 app.use('/api/inventory', inventoryRoutes);
@@ -145,12 +163,13 @@ app.use('/api/mechanics', mechanicRoutes);
 app.use('/api/electricians', electricianRoutes);
 app.use('/api/maintenance-workers', maintenanceWorkerRoutes);
 app.use('/api/breakdown-media', breakdownMediaRoutes);
-app.use('/api/equipment-parts', equipmentPartsRoutes);
+app.use('/api/asset-parts', assetPartsRoutes);
 app.use('/api/media', require("./routes/mediaRoutes"));
 app.use('/api/reports', reportsRoutes);
 app.use('/api/procurement', procurementRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/personnel', personnelRoutes);
+app.use('/api/factories', factoriesRoutes);
 
 // If no routes handled the request, it's a 404
 app.use((req, res, next) => {
@@ -163,5 +182,3 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).send("There was an error serving your request.");
 });
-
-// Forced restart for KPI fix

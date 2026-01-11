@@ -41,13 +41,13 @@ client/src/
 - JWT + refresh tokens
 - isActive flag
 
-### 2. Equipment (Core)
+### 2. Asset (Core)
 - 10 statuts avec transitions validées
 - Catégories: production, maintenance, out_of_service
 - **NOUVEAU**: lastBreakdownType, lastBreakdownDescription
 - Métriques: MTBF, MTTR, availability
 
-### 3. EquipmentStatusHistory
+### 3. AssetStatusHistory
 - Historique complet des changements
 - Personnel associé (Machinist, Mechanic, Electrician, MaintenanceWorker)
 - Durées calculées automatiquement
@@ -59,7 +59,7 @@ client/src/
 ### 5. BreakdownMedia (NOUVEAU)
 - 8 types de pannes
 - Upload photos/vidéos (Multer)
-- Association avec Equipment
+- Association avec Asset
 
 ---
 
@@ -97,14 +97,14 @@ client/src/
 3. **Requêtes N+1** → Utiliser aggregate
 4. **Pas de CDN** → S3 + CloudFront pour uploads
 5. **Lazy loading manquant** → React.lazy pour pages
-6. **Indexes manquants** sur EquipmentStatusHistory, Intervention
+6. **Indexes manquants** sur AssetStatusHistory, Intervention
 
 ---
 
 ## 🎯 FONCTIONNALITÉS
 
 ### Implémentées ✅
-1. **Equipment Management**: CRUD + 10 statuts + transitions
+1. **Asset Management**: CRUD + 10 statuts + transitions
 2. **Status Management**: Historique + personnel requis + **suggestion auto**
 3. **Breakdown Management**: Types + description + médias
 4. **Personnel**: 4 types avec CRUD complet
@@ -118,7 +118,7 @@ client/src/
 **Auto-Suggestion de Personnel**:
 - Breakdown (electrical) → Under Repair → Suggère Electrician
 - Breakdown (mechanical) → In Workshop → Suggère Mechanic
-- Stockage du type de panne dans Equipment
+- Stockage du type de panne dans Asset
 - Toast notification + pré-sélection
 
 ---

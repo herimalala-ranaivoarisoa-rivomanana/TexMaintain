@@ -100,7 +100,7 @@ Translate all French terms to English in the inventory detail page (`/inventory/
 - Commander X pièce(s) → Order X piece(s)
 - Annuelle/Mensuelle/Hebdomadaire/Journalière → Annual/Monthly/Weekly/Daily
 - Criticité moyenne pondérée → Weighted average criticality
-- Répartition par équipement → Distribution by equipment
+- Répartition par équipement → Distribution by asset
 
 ### CreateOrderDialog.tsx (TODO)
 

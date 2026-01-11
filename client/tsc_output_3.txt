@@ -1,0 +1,204 @@
+src/api/assetClasses.ts(1,17): error TS2307: Cannot find module './axios' or its corresponding type declarations.
+src/api/assets.ts(1,17): error TS2307: Cannot find module './axios' or its corresponding type declarations.
+src/api/auth.ts(13,28): error TS2339: Property 'response' does not exist on type '{}'.
+src/api/auth.ts(13,55): error TS18046: 'error' is of type 'unknown'.
+src/api/auth.ts(26,28): error TS2339: Property 'response' does not exist on type '{}'.
+src/api/auth.ts(26,55): error TS18046: 'error' is of type 'unknown'.
+src/api/auth.ts(39,28): error TS2339: Property 'response' does not exist on type '{}'.
+src/api/auth.ts(39,55): error TS18046: 'error' is of type 'unknown'.
+src/api/auth.ts(51,28): error TS2339: Property 'response' does not exist on type '{}'.
+src/api/auth.ts(51,55): error TS18046: 'error' is of type 'unknown'.
+src/api/categories.ts(1,17): error TS2307: Cannot find module './axios' or its corresponding type declarations.
+src/api/seed.ts(12,28): error TS2339: Property 'response' does not exist on type '{}'.
+src/api/seed.ts(12,55): error TS18046: 'error' is of type 'unknown'.
+src/api/seed.ts(25,28): error TS2339: Property 'response' does not exist on type '{}'.
+src/api/seed.ts(25,55): error TS18046: 'error' is of type 'unknown'.
+src/api/seed.ts(38,28): error TS2339: Property 'response' does not exist on type '{}'.
+src/api/seed.ts(38,55): error TS18046: 'error' is of type 'unknown'.
+src/api/seed.ts(51,28): error TS2339: Property 'response' does not exist on type '{}'.
+src/api/seed.ts(51,55): error TS18046: 'error' is of type 'unknown'.
+src/api/seed.ts(64,28): error TS2339: Property 'response' does not exist on type '{}'.
+src/api/seed.ts(64,55): error TS18046: 'error' is of type 'unknown'.
+src/api/seed.ts(77,28): error TS2339: Property 'response' does not exist on type '{}'.
+src/api/seed.ts(77,55): error TS18046: 'error' is of type 'unknown'.
+src/api/seed.ts(90,28): error TS2339: Property 'response' does not exist on type '{}'.
+src/api/seed.ts(90,55): error TS18046: 'error' is of type 'unknown'.
+src/api/subCategories.ts(1,17): error TS2307: Cannot find module './axios' or its corresponding type declarations.
+src/App.tsx(35,1): error TS6133: 'PartDetails' is declared but its value is never read.
+src/components/dashboard/ProcessAreasDashboard.tsx(10,5): error TS6133: 'MoreVertical' is declared but its value is never read.
+src/components/dashboard/ProjectsDashboard.tsx(11,5): error TS6133: 'Clock' is declared but its value is never read.
+src/components/AssetPartFormDialog.tsx(2,1): error TS6133: 'X' is declared but its value is never read.
+src/components/AssetPartFormDialog.tsx(171,11): error TS2353: Object literal may only specify known properties, and 'duplicateToSameType' does not exist in type 'CreateAssetPartData'.
+src/components/AssetPartsList.tsx(18,3): error TS6133: 'isReplacementOverdue' is declared but its value is never read.
+src/components/AssetPartsList.tsx(19,3): error TS6133: 'isReplacementDueSoon' is declared but its value is never read.
+src/components/AssetStatusHistory.tsx(2,41): error TS6133: 'CardTitle' is declared but its value is never read.
+src/components/AssetStatusHistory.tsx(2,52): error TS6133: 'CardDescription' is declared but its value is never read.
+src/components/AssetStatusHistory.tsx(8,1): error TS6192: All imports in import declaration are unused.
+src/components/AssetStatusHistory.tsx(18,3): error TS6133: 'Package' is declared but its value is never read.
+src/components/AssetStatusHistory.tsx(19,3): error TS6133: 'Droplet' is declared but its value is never read.
+src/components/AssetStatusHistory.tsx(20,3): error TS6133: 'Activity' is declared but its value is never read.
+src/components/AssetTimeline.tsx(6,1): error TS6133: 'Separator' is declared but its value is never read.
+src/components/AssetTimeline.tsx(8,39): error TS6133: 'TabsContent' is declared but its value is never read.
+src/components/AssetTimeline.tsx(16,3): error TS6133: 'FileText' is declared but its value is never read.
+src/components/GlobalStockCard.tsx(4,1): error TS6133: 'Badge' is declared but its value is never read.
+src/components/Header.tsx(1,10): error TS6133: 'Bell' is declared but its value is never read.
+src/components/PartAssetsList.tsx(9,3): error TS6133: 'getAssetPartsByPart' is declared but its value is never read.
+src/components/PartAssetsList.tsx(153,56): error TS2339: Property 'status' does not exist on type '{ _id: string; name?: string | undefined; model: string; serialNumber: string; location: string; status: string; } | { _id: string; name: string; code?: string | undefined; }'.
+  Property 'status' does not exist on type '{ _id: string; name: string; code?: string | undefined; }'.
+src/components/PartAssetsList.tsx(166,32): error TS2339: Property 'code' does not exist on type '{ _id: string; name?: string | undefined; model: string; serialNumber: string; location: string; status: string; } | { _id: string; name: string; code?: string | undefined; }'.
+  Property 'code' does not exist on type '{ _id: string; name?: string | undefined; model: string; serialNumber: string; location: string; status: string; }'.
+src/components/PartAssetsList.tsx(168,36): error TS2339: Property 'code' does not exist on type '{ _id: string; name?: string | undefined; model: string; serialNumber: string; location: string; status: string; } | { _id: string; name: string; code?: string | undefined; }'.
+  Property 'code' does not exist on type '{ _id: string; name?: string | undefined; model: string; serialNumber: string; location: string; status: string; }'.
+src/components/PartAssetsList.tsx(171,32): error TS2339: Property 'serialNumber' does not exist on type '{ _id: string; name?: string | undefined; model: string; serialNumber: string; location: string; status: string; } | { _id: string; name: string; code?: string | undefined; }'.
+  Property 'serialNumber' does not exist on type '{ _id: string; name: string; code?: string | undefined; }'.
+src/components/PartAssetsList.tsx(173,36): error TS2339: Property 'serialNumber' does not exist on type '{ _id: string; name?: string | undefined; model: string; serialNumber: string; location: string; status: string; } | { _id: string; name: string; code?: string | undefined; }'.
+  Property 'serialNumber' does not exist on type '{ _id: string; name: string; code?: string | undefined; }'.
+src/components/PartAssetsList.tsx(177,49): error TS2339: Property 'status' does not exist on type '{ _id: string; name?: string | undefined; model: string; serialNumber: string; location: string; status: string; } | { _id: string; name: string; code?: string | undefined; }'.
+  Property 'status' does not exist on type '{ _id: string; name: string; code?: string | undefined; }'.
+src/components/PartAssetsList.tsx(181,35): error TS2339: Property 'location' does not exist on type '{ _id: string; name?: string | undefined; model: string; serialNumber: string; location: string; status: string; } | { _id: string; name: string; code?: string | undefined; }'.
+  Property 'location' does not exist on type '{ _id: string; name: string; code?: string | undefined; }'.
+src/components/production/UpdateStatsDialog.tsx(6,38): error TS2307: Cannot find module '@/api/productionLines' or its corresponding type declarations.
+src/components/QRCodeScanner.tsx(38,30): error TS6133: 'errorMessage' is declared but its value is never read.
+src/components/ui/calendar.tsx(56,20): error TS6133: 'props' is declared but its value is never read.
+src/components/ui/calendar.tsx(57,21): error TS6133: 'props' is declared but its value is never read.
+src/contexts/AuthContext.tsx(78,30): error TS2339: Property 'message' does not exist on type '{}'.
+src/contexts/AuthContext.tsx(92,30): error TS2339: Property 'message' does not exist on type '{}'.
+src/pages/Assets.tsx(31,10): error TS2305: Module '"@/components/AssetStatusDialog"' has no exported member 'AssetStatusDialog'.
+src/pages/Assets.tsx(68,11): error TS6196: 'Asset' is declared but never used.
+src/pages/Assets.tsx(85,29): error TS6133: 'setSubCategoryFilter' is declared but its value is never read.
+src/pages/Assets.tsx(319,33): error TS2339: Property 'machinistId' does not exist on type 'Asset'.
+src/pages/Assets.tsx(320,32): error TS2339: Property 'mechanicId' does not exist on type 'Asset'.
+src/pages/Assets.tsx(321,35): error TS2339: Property 'electricianId' does not exist on type 'Asset'.
+src/pages/Assets.tsx(322,41): error TS2339: Property 'maintenanceWorkerId' does not exist on type 'Asset'.
+src/pages/Assets.tsx(324,25): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(325,29): error TS2339: Property 'lastBreakdownType' does not exist on type 'Asset'.
+src/pages/Assets.tsx(326,36): error TS2339: Property 'lastBreakdownDescription' does not exist on type 'Asset'.
+src/pages/Assets.tsx(413,149): error TS2339: Property 'IN_WORKSHOP' does not exist on type '{ readonly STORED: "stored"; readonly IN_PRODUCTION: "in_production"; readonly SCHEDULED_MAINTENANCE: "scheduled_maintenance"; readonly UNDER_REPAIR: "under_repair"; readonly BREAKDOWN: "breakdown"; ... 9 more ...; readonly PENDING_VALIDATION: "pending_validation"; }'.
+src/pages/Assets.tsx(435,15): error TS6133: 'prev' is declared but its value is never read.
+src/pages/Assets.tsx(515,15): error TS6133: 'tempId' is declared but its value is never read.
+src/pages/Assets.tsx(827,27): error TS2339: Property 'processArea' does not exist on type 'Asset'.
+src/pages/Assets.tsx(828,79): error TS2339: Property 'processArea' does not exist on type 'Asset'.
+src/pages/Assets.tsx(830,27): error TS2339: Property 'processDepartment' does not exist on type 'Asset'.
+src/pages/Assets.tsx(831,68): error TS2339: Property 'processDepartment' does not exist on type 'Asset'.
+src/pages/Assets.tsx(833,28): error TS2339: Property 'processArea' does not exist on type 'Asset'.
+src/pages/Assets.tsx(833,49): error TS2339: Property 'processDepartment' does not exist on type 'Asset'.
+src/pages/Assets.tsx(862,55): error TS2339: Property 'chipNumber' does not exist on type 'Asset'.
+src/pages/Assets.tsx(880,80): error TS2339: Property 'timeSinceAcquisition' does not exist on type 'Asset'.
+src/pages/Assets.tsx(884,80): error TS2339: Property 'operatingTime' does not exist on type 'Asset'.
+src/pages/Assets.tsx(902,69): error TS2339: Property 'lastMaintenance' does not exist on type 'Asset'.
+src/pages/Assets.tsx(908,38): error TS2339: Property 'nextMaintenance' does not exist on type 'Asset'.
+src/pages/Assets.tsx(979,48): error TS2339: Property 'statusMedia' does not exist on type 'Asset'.
+src/pages/Assets.tsx(1027,32): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1027,77): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1027,131): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1058,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1061,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1064,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1067,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1070,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1078,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1081,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1084,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1087,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1090,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1093,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1096,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1099,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1107,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1110,38): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1118,30): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1146,16): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1146,49): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1146,86): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1146,128): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Assets.tsx(1239,30): error TS2304: Cannot find name 'EQUIPMENT_STATUSES'.
+src/pages/Brands.tsx(3,1): error TS6133: 'Badge' is declared but its value is never read.
+src/pages/Brands.tsx(15,3): error TS6133: 'CheckCircle' is declared but its value is never read.
+src/pages/Brands.tsx(16,3): error TS6133: 'AlertTriangle' is declared but its value is never read.
+src/pages/Categories.tsx(1,10): error TS2300: Duplicate identifier 'useEffect'.
+src/pages/Categories.tsx(1,21): error TS2300: Duplicate identifier 'useState'.
+src/pages/Categories.tsx(2,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Categories.tsx(2,17): error TS2300: Duplicate identifier 'useState'.
+src/pages/Categories.tsx(2,27): error TS2300: Duplicate identifier 'useEffect'.
+src/pages/Categories.tsx(3,24): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/Categories.tsx(3,61): error TS6133: 'CheckCircle' is declared but its value is never read.
+src/pages/Categories.tsx(3,74): error TS6133: 'AlertTriangle' is declared but its value is never read.
+src/pages/Categories.tsx(7,28): error TS2307: Cannot find module '@/components/Breadcrumb' or its corresponding type declarations.
+src/pages/Categories.tsx(8,26): error TS2307: Cannot find module '@/components/ui/use-toast' or its corresponding type declarations.
+src/pages/Categories.tsx(141,35): error TS2339: Property 'assetClass' does not exist on type 'Category'.
+src/pages/Categories.tsx(141,70): error TS2339: Property 'assetClass' does not exist on type 'Category'.
+src/pages/Categories.tsx(141,96): error TS2339: Property 'assetClass' does not exist on type 'Category'.
+src/pages/Categories.tsx(249,29): error TS2339: Property 'assetClass' does not exist on type 'Category'.
+src/pages/Categories.tsx(252,42): error TS2339: Property 'assetClass' does not exist on type 'Category'.
+src/pages/Categories.tsx(252,77): error TS2339: Property 'assetClass' does not exist on type 'Category'.
+src/pages/Categories.tsx(273,76): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(280,69): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(281,37): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(283,46): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(291,79): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(297,79): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(310,53): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(310,114): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(316,53): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(316,112): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(322,53): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(322,110): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(328,53): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Categories.tsx(328,108): error TS2339: Property 'statistics' does not exist on type 'Category'.
+src/pages/Interventions.tsx(448,17): error TS2304: Cannot find name 'changeAssetStatus'.
+src/pages/Interventions.tsx(477,17): error TS2304: Cannot find name 'changeAssetStatus'.
+src/pages/Login.tsx(43,37): error TS18046: 'error' is of type 'unknown'.
+src/pages/Login.tsx(47,29): error TS2339: Property 'message' does not exist on type '{}'.
+src/pages/PartDetails.tsx(3,36): error TS6133: 'Trash2' is declared but its value is never read.
+src/pages/ProcessAreaDetail.tsx(7,1): error TS6133: 'Progress' is declared but its value is never read.
+src/pages/ProcessAreaDetail.tsx(12,5): error TS6133: 'DialogDescription' is declared but its value is never read.
+src/pages/ProcessAreaDetail.tsx(16,1): error TS6192: All imports in import declaration are unused.
+src/pages/ProcessAreaDetail.tsx(154,13): error TS2322: Type 'CollisionDetection' is not assignable to type 'KeyboardCoordinateGetter'.
+  Types of parameters 'args' and 'event' are incompatible.
+    Type 'KeyboardEvent' is missing the following properties from type '{ active: Active; collisionRect: ClientRect; droppableRects: RectMap; droppableContainers: DroppableContainer[]; pointerCoordinates: Coordinates | null; }': active, collisionRect, droppableRects, droppableContainers, pointerCoordinates
+src/pages/ProcessAreaDetail.tsx(267,84): error TS2339: Property 'performance' does not exist on type '{ totalAsset: number; activeInterventions: number; criticalParts: number; pendingOrders: number; mttr: number; mtbf: number; availability: number; oee: number; }'.
+src/pages/ProcessAreas.tsx(12,3): error TS6133: 'ArrowLeft' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(15,3): error TS6133: 'Wrench' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(16,3): error TS6133: 'Trash' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(21,46): error TS6133: 'updateProcessArea' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(21,65): error TS6133: 'deleteProcessArea' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(22,10): error TS6133: 'getProcessDepartments' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(22,58): error TS6133: 'updateProcessDepartment' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(25,10): error TS6133: 'EQUIPMENT_STATUSES' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(25,89): error TS6133: 'StatusMetadata' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(27,1): error TS6133: 'getStatusMetadata' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(28,39): error TS2307: Cannot find module '@/components/AssetStatusDialog' or its corresponding type declarations.
+src/pages/ProcessAreas.tsx(75,11): error TS6196: 'ProcessDepartment' is declared but never used.
+src/pages/ProcessAreas.tsx(155,11): error TS2339: Property 'token' does not exist on type 'AuthContextType'.
+src/pages/ProcessAreas.tsx(155,18): error TS6133: 'user' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(191,7): error TS2322: Type 'CollisionDetection' is not assignable to type 'KeyboardCoordinateGetter'.
+  Types of parameters 'args' and 'event' are incompatible.
+    Type 'KeyboardEvent' is missing the following properties from type '{ active: Active; collisionRect: ClientRect; droppableRects: RectMap; droppableContainers: DroppableContainer[]; pointerCoordinates: Coordinates | null; }': active, collisionRect, droppableRects, droppableContainers, pointerCoordinates
+src/pages/ProcessAreas.tsx(281,29): error TS2345: Argument of type 'Asset[]' is not assignable to parameter of type 'SetStateAction<Asset[]>'.
+  Type 'Asset[]' is not assignable to type 'Asset[]'.
+    Property 'type' is missing in type 'Asset' but required in type 'Asset'.
+src/pages/ProcessAreas.tsx(311,11): error TS2353: Object literal may only specify known properties, and 'processArea' does not exist in type 'Partial<CreateAssetData>'.
+src/pages/ProcessAreas.tsx(479,26): error TS7006: Parameter 'open' implicitly has an 'any' type.
+src/pages/ProjectDetails.tsx(7,21): error TS6133: 'Calendar' is declared but its value is never read.
+src/pages/ProjectDetails.tsx(7,31): error TS6133: 'DollarSign' is declared but its value is never read.
+src/pages/ProjectDetails.tsx(15,24): error TS2305: Module '"@/api/inventory"' has no exported member 'Part'.
+src/pages/Projects.tsx(104,48): error TS2345: Argument of type 'CreateProjectData' is not assignable to parameter of type 'Partial<Project>'.
+  Types of property 'status' are incompatible.
+    Type 'string' is not assignable to type '"Planned" | "In Progress" | "Completed" | "On Hold" | undefined'.
+src/pages/Register.tsx(86,29): error TS2339: Property 'message' does not exist on type '{}'.
+src/pages/Settings.tsx(47,22): error TS18046: 'error' is of type 'unknown'.
+src/pages/Settings.tsx(67,22): error TS18046: 'error' is of type 'unknown'.
+src/pages/Settings.tsx(87,22): error TS18046: 'error' is of type 'unknown'.
+src/pages/Settings.tsx(107,22): error TS18046: 'error' is of type 'unknown'.
+src/pages/Settings.tsx(127,22): error TS18046: 'error' is of type 'unknown'.
+src/pages/Settings.tsx(147,22): error TS18046: 'error' is of type 'unknown'.
+src/pages/Settings.tsx(167,22): error TS18046: 'error' is of type 'unknown'.
+src/pages/Settings.tsx(579,35): error TS2322: Type '{ className: string; }' is not assignable to type 'IntrinsicAttributes'.
+  Property 'className' does not exist on type 'IntrinsicAttributes'.
+src/pages/SubCategories.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/SubCategories.tsx(2,61): error TS6133: 'Clock' is declared but its value is never read.
+src/pages/SubCategories.tsx(6,28): error TS2307: Cannot find module '@/components/Breadcrumb' or its corresponding type declarations.
+src/pages/SubCategories.tsx(7,26): error TS2307: Cannot find module '@/components/ui/use-toast' or its corresponding type declarations.
+src/pages/SubCategories.tsx(15,3): error TS6133: 'DialogTrigger' is declared but its value is never read.
+src/pages/SubCategories.tsx(21,1): error TS6192: All imports in import declaration are unused.
+src/pages/SubCategories.tsx(22,1): error TS6133: 'Progress' is declared but its value is never read.

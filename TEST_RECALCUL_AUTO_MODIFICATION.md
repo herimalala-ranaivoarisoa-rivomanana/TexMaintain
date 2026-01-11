@@ -28,7 +28,7 @@ Association sur DLM125469 (14587954):
 ### Test 1: Modification du Délai d'Appro
 
 ```bash
-1. Aller sur /equipment/[id]/parts
+1. Aller sur /asset/[id]/parts
    (Exemple: l'équipement DLM125469)
 
 2. Cliquer sur "Modifier" pour "Rotary Cutter 45mm"
@@ -53,7 +53,7 @@ Association sur DLM125469 (14587954):
 ### Test 2: Modification de la Quantité
 
 ```bash
-1. Aller sur /equipment/[id]/parts
+1. Aller sur /asset/[id]/parts
 
 2. Cliquer sur "Modifier" pour une pièce
 
@@ -74,7 +74,7 @@ Association sur DLM125469 (14587954):
 ### Test 3: Modification de la Fréquence
 
 ```bash
-1. Aller sur /equipment/[id]/parts
+1. Aller sur /asset/[id]/parts
 
 2. Cliquer sur "Modifier" pour une pièce
 
@@ -117,7 +117,7 @@ Cela signifie que le recalcul n'a pas été déclenché. Vérifiez :
    ```
 
 2. **Le code est-il bien présent ?**
-   - Vérifier `server/routes/equipmentPartsRoutes.js` ligne 383-400
+   - Vérifier `server/routes/assetPartsRoutes.js` ligne 383-400
 
 3. **Y a-t-il des erreurs ?**
    - Regarder les logs du serveur pour des erreurs
@@ -157,7 +157,7 @@ Résultat attendu:
 2. **Vérifier la réponse de l'API**
    ```javascript
    // Dans l'onglet Network (F12)
-   // Chercher la requête PATCH /api/equipment-parts/[id]
+   // Chercher la requête PATCH /api/asset-parts/[id]
    // Vérifier la réponse:
    {
      "success": true,
@@ -197,7 +197,7 @@ Ctrl+Shift+R (ou Cmd+Shift+R sur Mac)
 
 ```bash
 # Vérifier que le fichier contient bien le code de recalcul
-cat server/routes/equipmentPartsRoutes.js | grep -A 10 "Recalculer automatiquement"
+cat server/routes/assetPartsRoutes.js | grep -A 10 "Recalculer automatiquement"
 ```
 
 ---

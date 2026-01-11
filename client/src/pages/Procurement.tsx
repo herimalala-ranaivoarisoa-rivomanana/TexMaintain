@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { toast } from "sonner"
+import { useToast } from "@/hooks/useToast"
 import { format, isPast } from "date-fns"
 import { useFactory } from "@/contexts/FactoryContext"
 
@@ -21,6 +21,7 @@ export function Procurement() {
   const [searchParams] = useSearchParams()
   const activeFilter = searchParams.get('filter')
   const { currentFactory } = useFactory()
+  const { toast } = useToast()
 
   // New Request State
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false)
@@ -51,7 +52,11 @@ export function Procurement() {
       setParts(inventoryData?.parts || [])
     } catch (error) {
       console.error("Error fetching procurement data:", error)
-      toast.error("Failed to load procurement data")
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load procurement data"
+      })
       setOrders([])
       setParts([])
     } finally {
@@ -73,7 +78,10 @@ export function Procurement() {
         notes: requestData.notes
       })
 
-      toast.success("Purchase request created successfully")
+      toast({
+        title: "Success",
+        description: "Purchase request created successfully"
+      })
       setIsNewRequestOpen(false)
       setRequestData({
         partId: '',
@@ -84,7 +92,11 @@ export function Procurement() {
       })
       fetchData() // Refresh list
     } catch (error) {
-      toast.error("Failed to create purchase request")
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create purchase request"
+      })
     }
   }
 
@@ -95,12 +107,19 @@ export function Procurement() {
         quantity: splitQuantity,
         reference: reference
       })
-      toast.success(`Order updated successfully`)
+      toast({
+        title: "Success",
+        description: "Order updated successfully"
+      })
       setIsViewOrderOpen(false)
       setSelectedOrder(null)
       fetchData()
     } catch (error) {
-      toast.error("Failed to update order status")
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update order status"
+      })
     }
   }
 

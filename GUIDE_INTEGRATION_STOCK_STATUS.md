@@ -255,15 +255,15 @@ db.parts.updateMany(
 
 ### Problème 4 : Calcul Min/Max ne fonctionne pas
 
-**Symptômes** : Message "No equipment associations found"
+**Symptômes** : Message "No asset associations found"
 
 **Solutions** :
 ```bash
 # Vérifier qu'il y a des associations
-db.equipmentparts.find({ part: ObjectId("[PART_ID]") })
+db.assetparts.find({ part: ObjectId("[PART_ID]") })
 
 # Si aucune, créer des associations via l'interface:
-/equipment/[ID]/parts → Ajouter
+/asset/[ID]/parts → Ajouter
 ```
 
 ---

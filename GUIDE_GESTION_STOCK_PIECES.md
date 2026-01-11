@@ -2,7 +2,7 @@
 
 **Date**: 1er Novembre 2025  
 **Version**: 1.0.0  
-**Module**: Equipment Parts Management
+**Module**: Asset Parts Management
 
 ---
 
@@ -100,12 +100,12 @@ Puis ajuster selon la consommation réelle sur 3-6 mois.
 
 ## 🗄️ STRUCTURE DE DONNÉES
 
-### Modèle `EquipmentPart` (Association)
+### Modèle `AssetPart` (Association)
 
 ```javascript
 {
   // === RÉFÉRENCES ===
-  equipment: ObjectId → Equipment (requis)
+  asset: ObjectId → Asset (requis)
   part: ObjectId → Part (requis)
   
   // === PARAMÈTRES DE CONSOMMATION ===
@@ -150,10 +150,10 @@ Puis ajuster selon la consommation réelle sur 3-6 mois.
 
 ```javascript
 // Index unique pour éviter les doublons
-{ equipment: 1, part: 1 } (unique)
+{ asset: 1, part: 1 } (unique)
 
 // Index pour les requêtes fréquentes
-{ equipment: 1 }
+{ asset: 1 }
 { part: 1 }
 ```
 
@@ -164,9 +164,9 @@ Puis ajuster selon la consommation réelle sur 3-6 mois.
 ### 1. Lister toutes les associations
 
 ```http
-GET /api/equipment-parts
+GET /api/asset-parts
 Query params:
-  - equipment: ObjectId (optionnel)
+  - asset: ObjectId (optionnel)
   - part: ObjectId (optionnel)
   - criticality: low|medium|high|critical (optionnel)
   - page: Number (défaut: 1)
@@ -188,7 +188,7 @@ Response:
 ### 2. Pièces d'un équipement
 
 ```http
-GET /api/equipment-parts/equipment/:equipmentId
+GET /api/asset-parts/asset/:assetId
 
 Response:
 {
@@ -216,7 +216,7 @@ Response:
 ### 3. Équipements utilisant une pièce
 
 ```http
-GET /api/equipment-parts/part/:partId
+GET /api/asset-parts/part/:partId
 
 Response:
 {
@@ -224,7 +224,7 @@ Response:
   "associations": [
     {
       "_id": "...",
-      "equipment": {
+      "asset": {
         "model": "DDL-8700",
         "serialNumber": "DDL-001",
         "location": "Ligne 1"
@@ -242,7 +242,7 @@ Response:
 ### 4. Calcul du stock global pour une pièce ⭐
 
 ```http
-GET /api/equipment-parts/part/:partId/global-stock
+GET /api/asset-parts/part/:partId/global-stock
 
 Response:
 {
@@ -261,10 +261,10 @@ Response:
     "globalSafetyStock": 2,
     "globalReorderPoint": 3,
     "recommendedInitialStock": 3,
-    "equipmentCount": 5,
+    "assetCount": 5,
     "details": [
       {
-        "equipment": { "model": "DDL-8700", ... },
+        "asset": { "model": "DDL-8700", ... },
         "quantityPerMachine": 1,
         "replacementFrequencyPerYear": 2,
         "annualConsumption": 2,
@@ -281,7 +281,7 @@ Response:
 ### 5. Alertes de réapprovisionnement ⚠️
 
 ```http
-GET /api/equipment-parts/reorder-alerts
+GET /api/asset-parts/reorder-alerts
 
 Response:
 {
@@ -298,7 +298,7 @@ Response:
       "safetyStock": 2,
       "deficit": 2,
       "urgency": "critical", // critical | warning
-      "equipmentCount": 5
+      "assetCount": 5
     }
   ],
   "count": 8,
@@ -310,13 +310,13 @@ Response:
 ### 6. Créer une association
 
 ```http
-POST /api/equipment-parts
+POST /api/asset-parts
 Authorization: Bearer <token>
 Roles: admin, maintenance_manager
 
 Body:
 {
-  "equipment": "6905d34141b95fdd650e50b7",
+  "asset": "6905d34141b95fdd650e50b7",
   "part": "6905d231c5e8f0db48d9b3c5",
   "quantityPerMachine": 1,
   "replacementFrequencyPerYear": 2,
@@ -338,7 +338,7 @@ Response:
 ### 7. Modifier une association
 
 ```http
-PATCH /api/equipment-parts/:id
+PATCH /api/asset-parts/:id
 Authorization: Bearer <token>
 Roles: admin, maintenance_manager
 
@@ -353,7 +353,7 @@ Body: (tous les champs optionnels)
 ### 8. Supprimer une association
 
 ```http
-DELETE /api/equipment-parts/:id
+DELETE /api/asset-parts/:id
 Authorization: Bearer <token>
 Roles: admin, maintenance_manager
 ```
@@ -361,7 +361,7 @@ Roles: admin, maintenance_manager
 ### 9. Enregistrer un remplacement 🔧
 
 ```http
-POST /api/equipment-parts/:id/record-replacement
+POST /api/asset-parts/:id/record-replacement
 Authorization: Bearer <token>
 
 Body:
@@ -414,10 +414,10 @@ const stats = association.getConsumptionStats();
 
 ```javascript
 // Calculer le stock global pour une pièce
-const globalStock = await EquipmentPart.calculateGlobalStock(partId);
+const globalStock = await AssetPart.calculateGlobalStock(partId);
 
 // Trouver les pièces nécessitant un réapprovisionnement
-const alerts = await EquipmentPart.findPartsNeedingReorder();
+const alerts = await AssetPart.findPartsNeedingReorder();
 ```
 
 ---
@@ -575,7 +575,7 @@ Stock initial = 2 pièces
 ## ✅ CHECKLIST D'IMPLÉMENTATION
 
 ### Backend ✅
-- [x] Modèle `EquipmentPart` avec tous les champs
+- [x] Modèle `AssetPart` avec tous les champs
 - [x] Hook `pre-save` pour calculs automatiques
 - [x] Méthodes d'instance (recordReplacement, isReplacementDue, etc.)
 - [x] Méthodes statiques (calculateGlobalStock, findPartsNeedingReorder)
@@ -584,15 +584,15 @@ Stock initial = 2 pièces
 - [x] Authentification et autorisation
 
 ### Frontend ⏳ (À faire)
-- [ ] Client API TypeScript (`equipmentParts.ts`)
-- [ ] Composant `EquipmentPartsList` (liste des pièces d'un équipement)
-- [ ] Composant `EquipmentPartForm` (créer/modifier association)
-- [ ] Composant `PartEquipmentsList` (équipements utilisant une pièce)
+- [ ] Client API TypeScript (`assetParts.ts`)
+- [ ] Composant `AssetPartsList` (liste des pièces d'un équipement)
+- [ ] Composant `AssetPartForm` (créer/modifier association)
+- [ ] Composant `PartAssetsList` (équipements utilisant une pièce)
 - [ ] Composant `GlobalStockCalculator` (affichage du stock global)
 - [ ] Composant `ReorderAlerts` (alertes de réapprovisionnement)
 - [ ] Composant `RecordReplacementDialog` (enregistrer un remplacement)
 - [ ] Page `PartDetails` avec calcul global
-- [ ] Intégration dans `EquipmentDetails`
+- [ ] Intégration dans `AssetDetails`
 - [ ] Dashboard avec alertes
 
 ### Tests ⏳ (À faire)
@@ -616,8 +616,8 @@ Stock initial = 2 pièces
 
 ## 📚 RESSOURCES
 
-- **Modèle**: `server/models/EquipmentPart.js`
-- **Routes**: `server/routes/equipmentPartsRoutes.js`
+- **Modèle**: `server/models/AssetPart.js`
+- **Routes**: `server/routes/assetPartsRoutes.js`
 - **Documentation API**: Ce fichier
 
 ---

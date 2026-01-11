@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { Intervention } = require('./models/Intervention');
-const { Equipment } = require('./models/Equipment');
-const EquipmentMetricsService = require('./services/equipmentMetricsService');
+const { Asset } = require('./models/Asset');
+const AssetMetricsService = require('./services/assetMetricsService');
 require('dotenv').config();
 
 async function backfillInterventions() {
@@ -53,38 +53,38 @@ async function backfillInterventions() {
         });
         console.log(`Remaining missing completedDate: ${remaining}`);
 
-        // --- PART 2: Backfill equipmentId from equipment string ---
-        console.log('\n--- Starting Equipment ID Backfill ---');
+        // --- PART 2: Backfill assetId from asset string ---
+        console.log('\n--- Starting Asset ID Backfill ---');
         const interventionsMissingId = await Intervention.find({
-            equipmentId: { $exists: false }
+            assetId: { $exists: false }
         });
-        console.log(`Found ${interventionsMissingId.length} interventions missing equipmentId.`);
+        console.log(`Found ${interventionsMissingId.length} interventions missing assetId.`);
 
         let matched = 0;
         for (const intervention of interventionsMissingId) {
-            if (intervention.equipment) {
-                // Try to find equipment by location matching intervention.equipment
+            if (intervention.asset) {
+                // Try to find asset by location matching intervention.asset
                 // Or by name if location fails? The migration script used location.
-                const equipment = await Equipment.findOne({
-                    location: { $regex: new RegExp(`^${intervention.equipment}$`, 'i') }
+                const asset = await Asset.findOne({
+                    location: { $regex: new RegExp(`^${intervention.asset}$`, 'i') }
                 });
 
-                if (equipment) {
+                if (asset) {
                     await Intervention.updateOne(
                         { _id: intervention._id },
-                        { $set: { equipmentId: equipment._id } }
+                        { $set: { assetId: asset._id } }
                     );
                     matched++;
                 }
             }
         }
-        console.log(`✅ Backfilled ${matched} equipmentIds.`);
+        console.log(`✅ Backfilled ${matched} assetIds.`);
 
         // --- PART 3: Recalculate Metrics (Conditional) ---
         if (updatedCount > 0 || matched > 0) {
             console.log('\n--- Starting Metrics Recalculation (Triggered by backfill) ---');
-            const count = await EquipmentMetricsService.recalculateAll();
-            console.log(`✅ Recalculated metrics for ${count} equipment.`);
+            const count = await AssetMetricsService.recalculateAll();
+            console.log(`✅ Recalculated metrics for ${count} asset.`);
         } else {
             console.log('\n--- Skipping Metrics Recalculation (No backfill changes) ---');
         }

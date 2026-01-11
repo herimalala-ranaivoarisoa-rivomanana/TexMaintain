@@ -5,8 +5,8 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { EquipmentPart } = require('./models/EquipmentPart');
-const { Equipment } = require('./models/Equipment');
+const { AssetPart } = require('./models/AssetPart');
+const { Asset } = require('./models/Asset');
 const { Part } = require('./models/Part');
 
 async function recalculate() {
@@ -18,7 +18,7 @@ async function recalculate() {
     console.log('✅ Connecté à MongoDB\n');
 
     console.log('📊 Récupération des associations...');
-    const associations = await EquipmentPart.find({});
+    const associations = await AssetPart.find({});
     console.log(`   Trouvé: ${associations.length} association(s)\n`);
 
     console.log('🔄 Recalcul en cours...');
@@ -28,8 +28,8 @@ async function recalculate() {
     for (const assoc of associations) {
       try {
         // Charger avec les relations
-        const populated = await EquipmentPart.findById(assoc._id)
-          .populate('equipment', 'model serialNumber')
+        const populated = await AssetPart.findById(assoc._id)
+          .populate('asset', 'model serialNumber')
           .populate('part', 'name partNumber');
 
         // Afficher avant
@@ -42,7 +42,7 @@ async function recalculate() {
           reorder: populated.reorderPoint
         };
 
-        console.log(`\n   📦 ${populated.equipment?.model || 'Unknown'} + ${populated.part?.name || 'Unknown'}`);
+        console.log(`\n   📦 ${populated.asset?.model || 'Unknown'} + ${populated.part?.name || 'Unknown'}`);
         console.log(`      Params: qty=${before.qty}, freq=${before.freq}/an`);
         console.log(`      AVANT:  annual=${before.annual}, daily=${before.daily?.toFixed(3) || 0}, safety=${before.safety}, reorder=${before.reorder}`);
 
@@ -50,7 +50,7 @@ async function recalculate() {
         await assoc.save();
 
         // Recharger pour voir les nouvelles valeurs
-        const updated_assoc = await EquipmentPart.findById(assoc._id);
+        const updated_assoc = await AssetPart.findById(assoc._id);
 
         const after = {
           annual: updated_assoc.annualConsumption,

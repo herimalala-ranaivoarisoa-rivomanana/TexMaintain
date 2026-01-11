@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
-const EquipmentMetricsService = require('./services/equipmentMetricsService');
+const AssetMetricsService = require('./services/assetMetricsService');
 
 async function migrate() {
     try {
@@ -9,9 +9,9 @@ async function migrate() {
         console.log('Connected.');
 
         console.log('Starting metrics migration...');
-        const count = await EquipmentMetricsService.recalculateAll();
+        const count = await AssetMetricsService.recalculateAll();
 
-        console.log(`Successfully recalculated metrics for ${count} equipment.`);
+        console.log(`Successfully recalculated metrics for ${count} asset.`);
 
         process.exit(0);
     } catch (error) {

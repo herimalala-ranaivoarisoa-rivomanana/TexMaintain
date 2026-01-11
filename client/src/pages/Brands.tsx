@@ -23,7 +23,7 @@ import { useFactory } from "@/contexts/FactoryContext"
 import { getBrandStatistics, createBrand, updateBrand, deleteBrand } from "@/api/brands"
 
 interface BrandStatistics {
-  totalEquipment: number
+  totalAsset: number
   avgMtbf: number
   avgMttr: number
   avgAvailability: number
@@ -144,7 +144,7 @@ export function Brands() {
             Brands
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Manage equipment brands for your factory
+            Manage asset brands for your factory
           </p>
         </div>
         {(user?.role === 'admin' || user?.role === 'maintenance_manager') && (
@@ -186,10 +186,10 @@ export function Brands() {
             <CardContent className="flex-1 flex flex-col justify-end">
               <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100">
                 <div className="space-y-1">
-                  <p className="text-xs text-slate-500">Total Equipment</p>
+                  <p className="text-xs text-slate-500">Total Asset</p>
                   <div className="flex items-center gap-1.5 font-medium">
                     <Tag className="h-3.5 w-3.5 text-slate-600" />
-                    {brand.statistics?.totalEquipment || 0}
+                    {brand.statistics?.totalAsset || 0}
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -219,12 +219,12 @@ export function Brands() {
               </div>
 
               {/* Status Mini Bar */}
-              {(brand.statistics?.totalEquipment || 0) > 0 && (
+              {(brand.statistics?.totalAsset || 0) > 0 && (
                 <div className="mt-4 flex h-1.5 w-full rounded-full overflow-hidden">
-                  <div className="bg-green-500" style={{ width: `${(brand.statistics!.statusBreakdown.in_production / brand.statistics!.totalEquipment) * 100}%` }} title="In Production" />
-                  <div className="bg-orange-400" style={{ width: `${(brand.statistics!.statusBreakdown.maintenance / brand.statistics!.totalEquipment) * 100}%` }} title="Maintenance" />
-                  <div className="bg-red-500" style={{ width: `${(brand.statistics!.statusBreakdown.breakdown / brand.statistics!.totalEquipment) * 100}%` }} title="Breakdown" />
-                  <div className="bg-slate-300" style={{ width: `${(brand.statistics!.statusBreakdown.offline / brand.statistics!.totalEquipment) * 100}%` }} title="Offline" />
+                  <div className="bg-green-500" style={{ width: `${(brand.statistics!.statusBreakdown.in_production / brand.statistics!.totalAsset) * 100}%` }} title="In Production" />
+                  <div className="bg-orange-400" style={{ width: `${(brand.statistics!.statusBreakdown.maintenance / brand.statistics!.totalAsset) * 100}%` }} title="Maintenance" />
+                  <div className="bg-red-500" style={{ width: `${(brand.statistics!.statusBreakdown.breakdown / brand.statistics!.totalAsset) * 100}%` }} title="Breakdown" />
+                  <div className="bg-slate-300" style={{ width: `${(brand.statistics!.statusBreakdown.offline / brand.statistics!.totalAsset) * 100}%` }} title="Offline" />
                 </div>
               )}
             </CardContent>
@@ -237,7 +237,7 @@ export function Brands() {
           <CardContent className="p-12 text-center">
             <Tag className="mx-auto h-12 w-12 text-slate-400 mb-4" />
             <h3 className="text-lg font-medium text-slate-900 mb-2">No brands found</h3>
-            <p className="text-slate-600">Start by adding your first equipment brand.</p>
+            <p className="text-slate-600">Start by adding your first asset brand.</p>
           </CardContent>
         </Card>
       )}

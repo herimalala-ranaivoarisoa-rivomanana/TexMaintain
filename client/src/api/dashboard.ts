@@ -3,7 +3,7 @@ import api from './api';
 // Description: Get dashboard KPIs and metrics
 // Endpoint: GET /api/dashboard/kpis
 // Request: {}
-// Response: { kpis: { mttr: number, mtbf: number, oee: number, availability: number, totalEquipment: number, activeInterventions: number, criticalParts: number, pendingOrders: number } }
+// Response: { kpis: { mttr: number, mtbf: number, oee: number, availability: number, totalAsset: number, activeInterventions: number, criticalParts: number, pendingOrders: number } }
 export const getDashboardKPIs = async () => {
   const response = await api.get('/api/dashboard/kpis');
   return response.data;

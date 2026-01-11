@@ -19,18 +19,18 @@ ALL remaining French terms have been translated, including:
 ## 📝 Final Files Modified (10 files total)
 
 ### Backend (2 files)
-1. ✅ `server/routes/equipmentPartsRoutes.js`
-2. ✅ `server/routes/equipmentRoutes.js`
+1. ✅ `server/routes/assetPartsRoutes.js`
+2. ✅ `server/routes/assetRoutes.js`
 
 ### Frontend (7 files)
-3. ✅ `client/src/components/EquipmentPartFormDialog.tsx`
-4. ✅ `client/src/components/EquipmentPartsList.tsx`
-5. ✅ `client/src/components/PartEquipmentsList.tsx`
-6. ✅ `client/src/api/equipmentParts.ts`
+3. ✅ `client/src/components/AssetPartFormDialog.tsx`
+4. ✅ `client/src/components/AssetPartsList.tsx`
+5. ✅ `client/src/components/PartAssetsList.tsx`
+6. ✅ `client/src/api/assetParts.ts`
 7. ✅ `client/src/components/RecordReplacementDialog.tsx`
 8. ✅ `client/src/components/RecordUsageDialog.tsx`
-9. ✅ `client/src/pages/EquipmentParts.tsx` ⭐ **NEW**
-10. ✅ `client/src/pages/EquipmentConsumables.tsx` ⭐ **NEW**
+9. ✅ `client/src/pages/AssetParts.tsx` ⭐ **NEW**
+10. ✅ `client/src/pages/AssetConsumables.tsx` ⭐ **NEW**
 
 ### Database
 11. ✅ Notes updated via script
@@ -67,7 +67,7 @@ ALL remaining French terms have been translated, including:
 ### Database Notes
 | French | English |
 |--------|---------|
-| Auto-dupliqué depuis équipement de référence | Auto-duplicated from reference equipment |
+| Auto-dupliqué depuis équipement de référence | Auto-duplicated from reference asset |
 
 ---
 
@@ -83,7 +83,7 @@ ALL remaining French terms have been translated, including:
 - **Dialog titles**: 2
 - **Stock terms**: 7
 - **Consumption terms**: 5
-- **Equipment terms**: 5
+- **Asset terms**: 5
 - **Time terms**: 2
 - **Status terms**: 4
 - **Messages**: 10+
@@ -102,7 +102,7 @@ ALL remaining French terms have been translated, including:
 
 ## 🎯 Complete Page Translation
 
-### Equipment Parts Page (`/equipment/:id/parts`)
+### Asset Parts Page (`/asset/:id/parts`)
 ```
 ✅ Back button: "Back"
 ✅ Title: "Spare Parts"
@@ -114,10 +114,10 @@ ALL remaining French terms have been translated, including:
 ✅ Frequency: "X times/year"
 ✅ Consumption: "X pieces"
 ✅ Action button: "📝 Record a replacement"
-✅ Notes: "Auto-duplicated from reference equipment"
+✅ Notes: "Auto-duplicated from reference asset"
 ```
 
-### Equipment Consumables Page (`/equipment/:id/consumables`)
+### Asset Consumables Page (`/asset/:id/consumables`)
 ```
 ✅ Back button: "Back"
 ✅ Title: "Consumables"
@@ -129,7 +129,7 @@ ALL remaining French terms have been translated, including:
 ✅ Frequency: "X times/year"
 ✅ Consumption: "X pieces"
 ✅ Action button: "📝 Record usage"
-✅ Notes: "Auto-duplicated from reference equipment"
+✅ Notes: "Auto-duplicated from reference asset"
 ```
 
 ---
@@ -157,7 +157,7 @@ After:  "Back" + "Spare Parts" + "Advanced parts management..."
 ### Test 4: Database Notes ✅
 ```
 Before: "Auto-dupliqué depuis équipement de référence"
-After:  "Auto-duplicated from reference equipment"
+After:  "Auto-duplicated from reference asset"
 Result: 2 notes updated in database
 ```
 
@@ -170,7 +170,7 @@ Result: 2 notes updated in database
 - Files: 3
 - Terms: 30
 
-### Session 2 (Equipment Pages)
+### Session 2 (Asset Pages)
 - Coverage: 85%
 - Files: 5
 - Terms: 50
@@ -268,7 +268,7 @@ After:  2 pieces, 1000 pieces ✅
 #### Notes
 ```
 Before: "Auto-dupliqué depuis équipement de référence"
-After:  "Auto-duplicated from reference equipment" ✅
+After:  "Auto-duplicated from reference asset" ✅
 ```
 
 ---

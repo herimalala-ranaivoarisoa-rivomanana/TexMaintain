@@ -18,7 +18,7 @@ maxStock = globalReorderPoint
 
 ### Formule 2 : Recalcul Automatique
 ```javascript
-// Dans EquipmentPartsService.recalculateMinMaxForPart()
+// Dans AssetPartsService.recalculateMinMaxForPart()
 minStock = Σ(reorderPoint de chaque association)
 maxStock = Σ(reorderPoint + optimalOrderQuantity)
 ```
@@ -33,7 +33,7 @@ Maintenant, **les deux utilisent la même formule** :
 
 ```javascript
 // Formule unifiée (basée sur calculateGlobalStock)
-const globalStock = await EquipmentPart.calculateGlobalStock(partId)
+const globalStock = await AssetPart.calculateGlobalStock(partId)
 
 minStock = globalSafetyStock
 maxStock = globalReorderPoint
@@ -43,7 +43,7 @@ maxStock = globalReorderPoint
 
 ## 📐 Formule Détaillée
 
-### Calcul Global (EquipmentPart.calculateGlobalStock)
+### Calcul Global (AssetPart.calculateGlobalStock)
 
 ```javascript
 // 1. Consommation totale
@@ -186,12 +186,12 @@ Recalcul automatique:
 
 ### Fichier Modifié
 
-**`server/services/equipmentPartsService.js`**
+**`server/services/assetPartsService.js`**
 
 ```javascript
 // AVANT (formule différente)
 static async recalculateMinMaxForPart(partId) {
-  const associations = await EquipmentPart.find({ part: partId })
+  const associations = await AssetPart.find({ part: partId })
   
   let totalMinStock = 0
   let totalMaxStock = 0
@@ -211,7 +211,7 @@ static async recalculateMinMaxForPart(partId) {
 // APRÈS (même formule que le bouton)
 static async recalculateMinMaxForPart(partId) {
   // Utiliser la même méthode que le bouton "Calculer Min/Max"
-  const globalStock = await EquipmentPart.calculateGlobalStock(partId)
+  const globalStock = await AssetPart.calculateGlobalStock(partId)
   
   const minStock = Math.ceil(globalStock.globalSafetyStock)
   const maxStock = Math.ceil(globalStock.globalReorderPoint)
@@ -256,7 +256,7 @@ static async recalculateMinMaxForPart(partId) {
 ### Test 2: Modifier une Association
 
 ```bash
-1. Aller sur /equipment/[id]/parts
+1. Aller sur /asset/[id]/parts
 2. Modifier une association (ex: délai d'appro)
 3. Observer le toast avec les nouvelles valeurs
 4. Aller sur /inventory/[piece-id]

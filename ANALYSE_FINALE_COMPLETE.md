@@ -86,19 +86,19 @@ Frontend Dev:      Port 5173 (Vite)
 
 ### Modèles Principaux
 
-1. **Equipment** (Équipement)
+1. **Asset** (Équipement)
    - 14 statuts organisés en 3 catégories
    - KPI (MTBF, MTTR)
    - Spécifications flexibles (JSON)
    - Historisation automatique
 
-2. **EquipmentStatusHistory** (Historique)
+2. **AssetStatusHistory** (Historique)
    - Traçabilité complète
    - Transitions validées
    - Calcul automatique des durées
    - Assignation de personnel
 
-3. **EquipmentPart** (Association Équip-Pièce) ⭐
+3. **AssetPart** (Association Équip-Pièce) ⭐
    - Calcul automatique du stock optimal
    - Formules mathématiques avancées
    - Criticité pondérée
@@ -125,8 +125,8 @@ Frontend Dev:      Port 5173 (Vite)
 ### Modèles Secondaires
 
 7. **BreakdownMedia**: Upload médias de panne
-8. **EquipmentCategory**: Catégories d'équipements
-9. **EquipmentType**: Types d'équipements
+8. **Category**: Catégories d'équipements
+9. **SubCategory**: Types d'équipements
 10. **Brand**: Marques
 11. **ProductionLine**: Lignes de production
 12. **ProductionSection**: Sections de production
@@ -180,7 +180,7 @@ Criticité Moyenne (CM) = Σ(Score × Importance) / Σ(Importance)
 - MTBF (Mean Time Between Failures)
 - MTTR (Mean Time To Repair)
 - Taux de disponibilité
-- OEE estimé (Overall Equipment Effectiveness)
+- OEE estimé (Overall Asset Effectiveness)
 - Répartition par statut
 - Répartition par catégorie
 
@@ -254,15 +254,15 @@ Criticité Moyenne (CM) = Σ(Score × Importance) / Σ(Importance)
 - **Dark/Light mode**: Thème adaptatif
 
 ### Composants Clés
-1. **EquipmentStatusDialog** (18KB): Changement de statut avancé
-2. **EquipmentPartFormDialog** (13KB): Formulaire avec calculs temps réel
-3. **EquipmentPartsList** (12KB): Liste des pièces d'un équipement
+1. **AssetStatusDialog** (18KB): Changement de statut avancé
+2. **AssetPartFormDialog** (13KB): Formulaire avec calculs temps réel
+3. **AssetPartsList** (12KB): Liste des pièces d'un équipement
 4. **GlobalStockCard** (10KB): Affichage du stock global calculé
 5. **ReorderAlertsWidget** (6KB): Widget d'alertes dashboard
 
 ### Pages Principales
 1. **Dashboard** (10KB): KPI et statistiques
-2. **Equipment** (61KB): Gestion équipements (page la plus complexe)
+2. **Asset** (61KB): Gestion équipements (page la plus complexe)
 3. **Inventory** (35KB): Gestion stock
 4. **ProductionLines** (72KB): Lignes de production
 5. **Settings** (30KB): Paramètres

@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const breakdownMediaSchema = new mongoose.Schema({
-  equipment: {
+  asset: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Equipment',
+    ref: 'Asset', // Migrated from Asset to Asset
     required: true
   },
   breakdownType: {

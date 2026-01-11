@@ -19,20 +19,20 @@ const seedDatabase = async () => {
 
         // 3. LOOKUP DATA
         await SeedService.seedBrands();
-        await SeedService.seedEquipmentCategories();
-        await SeedService.seedEquipmentTypes();
+        await SeedService.seedAssetCategories();
+        await SeedService.seedSubCategorys();
 
         // 4. INVENTORY
         await SeedService.seedParts(); // Now per-factory
 
         // 5. ASSETS
-        await SeedService.seedEquipment(); // Already factory-aware
-        await SeedService.seedEquipmentParts(); // Associations
+        await SeedService.seedAsset(); // Already factory-aware
+        await SeedService.seedAssetParts(); // Associations
 
         // 6. OPERATIONAL DATA
         await SeedService.seedProjects(); // Now per-factory
         await SeedService.seedMaintenancePersonnel();
-        await SeedService.seedInterventions(); // Now linked to equipment factory
+        await SeedService.seedInterventions(); // Now linked to asset factory
 
         console.log('✅✅ FULL RESET AND RESEED COMPLETED SUCCESSFULLY! ✅✅');
         process.exit(0);

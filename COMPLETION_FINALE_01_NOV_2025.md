@@ -28,7 +28,7 @@
 7. ✅ Script Pythagora.ai
 
 ### 🆕 BACKEND : 100% ✅
-- ✅ Modèle EquipmentPart (348 lignes)
+- ✅ Modèle AssetPart (348 lignes)
 - ✅ 9 endpoints API REST
 - ✅ Calculs automatiques (hook pre-save)
 - ✅ Méthodes statiques puissantes
@@ -38,11 +38,11 @@
 ### 🎨 FRONTEND : 92% ✅
 **9 fichiers créés** (2150+ lignes) :
 1. ✅ Client API TypeScript (350+ lignes)
-2. ✅ EquipmentPartsList (300+ lignes)
-3. ✅ EquipmentPartFormDialog (400+ lignes)
+2. ✅ AssetPartsList (300+ lignes)
+3. ✅ AssetPartFormDialog (400+ lignes)
 4. ✅ RecordReplacementDialog (150+ lignes)
 5. ✅ ReorderAlertsWidget (200+ lignes)
-6. ✅ PartEquipmentsList (200+ lignes)
+6. ✅ PartAssetsList (200+ lignes)
 7. ✅ GlobalStockCard (250+ lignes)
 8. ✅ PartDetails page (300+ lignes)
 9. ✅ ReorderAlerts page (400+ lignes)
@@ -131,7 +131,7 @@ SR = ceil(SS + CJ × Délai)
 
 ## 🎯 COMPOSANTS CRÉÉS
 
-### 1. EquipmentPartsList
+### 1. AssetPartsList
 **Objectif** : Afficher les pièces d'un équipement
 
 **Features** :
@@ -141,7 +141,7 @@ SR = ceil(SS + CJ × Délai)
 - Statut du prochain remplacement (en retard, bientôt, ok)
 - État vide avec CTA
 
-### 2. EquipmentPartFormDialog
+### 2. AssetPartFormDialog
 **Objectif** : Créer/Modifier une association
 
 **Features** :
@@ -171,7 +171,7 @@ SR = ceil(SS + CJ × Délai)
 - Bouton commander par alerte
 - Lien "Voir tout"
 
-### 5. PartEquipmentsList
+### 5. PartAssetsList
 **Objectif** : Liste des équipements utilisant une pièce
 
 **Features** :
@@ -219,18 +219,18 @@ SR = ceil(SS + CJ × Délai)
 ## 🔧 API ENDPOINTS CRÉÉS
 
 ### CRUD de base
-1. `GET /api/equipment-parts` - Liste paginée
-2. `GET /api/equipment-parts/:id` - Détails
-3. `POST /api/equipment-parts` - Créer
-4. `PATCH /api/equipment-parts/:id` - Modifier
-5. `DELETE /api/equipment-parts/:id` - Supprimer
+1. `GET /api/asset-parts` - Liste paginée
+2. `GET /api/asset-parts/:id` - Détails
+3. `POST /api/asset-parts` - Créer
+4. `PATCH /api/asset-parts/:id` - Modifier
+5. `DELETE /api/asset-parts/:id` - Supprimer
 
 ### Endpoints spécialisés
-6. `GET /api/equipment-parts/equipment/:id` - Pièces d'un équipement
-7. `GET /api/equipment-parts/part/:id` - Équipements utilisant une pièce
-8. `GET /api/equipment-parts/part/:id/global-stock` ⭐ - Calcul stock global
-9. `GET /api/equipment-parts/reorder-alerts` ⚠️ - Alertes de réappro
-10. `POST /api/equipment-parts/:id/record-replacement` 🔧 - Enregistrer remplacement
+6. `GET /api/asset-parts/asset/:id` - Pièces d'un équipement
+7. `GET /api/asset-parts/part/:id` - Équipements utilisant une pièce
+8. `GET /api/asset-parts/part/:id/global-stock` ⭐ - Calcul stock global
+9. `GET /api/asset-parts/reorder-alerts` ⚠️ - Alertes de réappro
+10. `POST /api/asset-parts/:id/record-replacement` 🔧 - Enregistrer remplacement
 
 ---
 
@@ -541,8 +541,8 @@ import ReorderAlerts from '@/pages/ReorderAlerts'
 Tous les fichiers sont dans `c:\Users\hrivo\Documents\TexMaintain\`
 
 ### Code source
-- Backend : `server/models/EquipmentPart.js`, `server/routes/equipmentPartsRoutes.js`
-- Frontend : `client/src/api/equipmentParts.ts`, `client/src/components/*`, `client/src/pages/*`
+- Backend : `server/models/AssetPart.js`, `server/routes/assetPartsRoutes.js`
+- Frontend : `client/src/api/assetParts.ts`, `client/src/components/*`, `client/src/pages/*`
 
 ### Pour toute question
 1. Consulter la documentation

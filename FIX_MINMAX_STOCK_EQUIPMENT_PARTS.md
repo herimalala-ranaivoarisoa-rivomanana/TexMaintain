@@ -1,4 +1,4 @@
-# 🔧 FIX - Min/Max Stock dans Equipment Parts
+# 🔧 FIX - Min/Max Stock dans Asset Parts
 
 **Date**: 1er Novembre 2025  
 **Statut**: ✅ CORRIGÉ
@@ -7,7 +7,7 @@
 
 ## 🐛 PROBLÈME IDENTIFIÉ
 
-Les valeurs `minStock` et `maxStock` n'étaient pas retournées par l'API dans les routes equipment-parts, donc elles n'étaient pas disponibles dans le frontend pour afficher le statut du stock correctement.
+Les valeurs `minStock` et `maxStock` n'étaient pas retournées par l'API dans les routes asset-parts, donc elles n'étaient pas disponibles dans le frontend pour afficher le statut du stock correctement.
 
 ### Symptômes
 - `part.part.minStock` était `undefined`
@@ -28,7 +28,7 @@ Les valeurs `minStock` et `maxStock` doivent être les **mêmes** que celles de 
 
 ### 1. Backend - Route par Équipement
 
-**Fichier**: `server/routes/equipmentPartsRoutes.js` (ligne 85)
+**Fichier**: `server/routes/assetPartsRoutes.js` (ligne 85)
 
 ```javascript
 // ❌ AVANT
@@ -42,7 +42,7 @@ Les valeurs `minStock` et `maxStock` doivent être les **mêmes** que celles de 
 
 ### 2. Backend - Route Principale
 
-**Fichier**: `server/routes/equipmentPartsRoutes.js` (ligne 51)
+**Fichier**: `server/routes/assetPartsRoutes.js` (ligne 51)
 
 ```javascript
 // ❌ AVANT
@@ -56,7 +56,7 @@ Les valeurs `minStock` et `maxStock` doivent être les **mêmes** que celles de 
 
 ### 3. Frontend - Interface TypeScript
 
-**Fichier**: `client/src/api/equipmentParts.ts` (lignes 16-27)
+**Fichier**: `client/src/api/assetParts.ts` (lignes 16-27)
 
 ```typescript
 // ❌ AVANT
@@ -176,13 +176,13 @@ Ces valeurs sont maintenant disponibles dans :
    part.maxStock  // ✅ Direct depuis Part
    ```
 
-3. **`/equipment/:id/parts`** - Pièces d'un équipement
+3. **`/asset/:id/parts`** - Pièces d'un équipement
    ```javascript
    association.part.minStock  // ✅ Via populate
    association.part.maxStock  // ✅ Via populate
    ```
 
-4. **`/equipment/:id/consumable`** - Consommables d'un équipement
+4. **`/asset/:id/consumable`** - Consommables d'un équipement
    ```javascript
    association.part.minStock  // ✅ Via populate
    association.part.maxStock  // ✅ Via populate
@@ -197,7 +197,7 @@ Ces valeurs sont maintenant disponibles dans :
 **Méthode 1 - Avec curl** :
 ```bash
 # Remplacer [EQUIPMENT_ID] par un ID valide
-curl -X GET "http://localhost:3000/api/equipment-parts/equipment/[EQUIPMENT_ID]" \
+curl -X GET "http://localhost:3000/api/asset-parts/asset/[EQUIPMENT_ID]" \
   -H "Authorization: Bearer [YOUR_TOKEN]"
 ```
 
@@ -234,7 +234,7 @@ curl -X GET "http://localhost:3000/api/equipment-parts/equipment/[EQUIPMENT_ID]"
 2. Vider le cache du navigateur
    F12 → Application → Clear storage
 
-3. Aller sur /equipment/[id]/parts
+3. Aller sur /asset/[id]/parts
 
 4. Ouvrir la console (F12)
 
@@ -306,7 +306,7 @@ cd server
 npm run dev
 ```
 
-**IMPORTANT** : Les modifications dans `equipmentPartsRoutes.js` nécessitent un redémarrage du serveur.
+**IMPORTANT** : Les modifications dans `assetPartsRoutes.js` nécessitent un redémarrage du serveur.
 
 ### Étape 2 : Vider le Cache
 ```bash
@@ -318,7 +318,7 @@ Ctrl+Shift+R (hard refresh)
 
 ### Étape 3 : Tester
 ```bash
-1. Aller sur /equipment/[id]/parts
+1. Aller sur /asset/[id]/parts
 2. Vérifier que les valeurs s'affichent correctement
 3. Vérifier que le badge de statut est correct
 ```
@@ -328,12 +328,12 @@ Ctrl+Shift+R (hard refresh)
 ## 📊 RÉSUMÉ DES FICHIERS MODIFIÉS
 
 ### Backend (1 fichier)
-1. ✅ `server/routes/equipmentPartsRoutes.js`
+1. ✅ `server/routes/assetPartsRoutes.js`
    - Ligne 51 : Ajout de `minStock maxStock unitPrice supplier` dans populate (route principale)
    - Ligne 85 : Ajout de `minStock maxStock` dans populate (route par équipement)
 
 ### Frontend (1 fichier)
-2. ✅ `client/src/api/equipmentParts.ts`
+2. ✅ `client/src/api/assetParts.ts`
    - Lignes 23-24 : Ajout de `minStock: number` et `maxStock: number` dans l'interface
 
 ### Total : 2 fichiers modifiés
@@ -361,7 +361,7 @@ Avant de considérer le fix comme complet :
 
 ### Avant le Fix
 ```
-/equipment/123/parts
+/asset/123/parts
 
 ┌────────────────────────────────────┐
 │ Courroie B123                      │
@@ -373,7 +373,7 @@ Avant de considérer le fix comme complet :
 
 ### Après le Fix
 ```
-/equipment/123/parts
+/asset/123/parts
 
 ┌────────────────────────────────────┐
 │ Courroie B123                      │
@@ -388,7 +388,7 @@ Avant de considérer le fix comme complet :
 ## 💡 NOTES IMPORTANTES
 
 ### 1. Source Unique de Vérité
-Les valeurs `minStock` et `maxStock` sont stockées **uniquement** dans le modèle `Part`. Elles ne sont **jamais** dupliquées dans `EquipmentPart`.
+Les valeurs `minStock` et `maxStock` sont stockées **uniquement** dans le modèle `Part`. Elles ne sont **jamais** dupliquées dans `AssetPart`.
 
 ### 2. Calcul Automatique
 Ces valeurs peuvent être calculées automatiquement via :
@@ -396,14 +396,14 @@ Ces valeurs peuvent être calculées automatiquement via :
 POST /api/inventory/:id/calculate-min-max
 ```
 
-Cette route utilise les associations `EquipmentPart` pour calculer les valeurs optimales et les enregistre dans `Part`.
+Cette route utilise les associations `AssetPart` pour calculer les valeurs optimales et les enregistre dans `Part`.
 
 ### 3. Cohérence Garantie
 Comme il n'y a qu'une seule source, les valeurs sont **toujours cohérentes** partout dans l'application :
 - `/inventory` affiche les mêmes valeurs
 - `/inventory/:id` affiche les mêmes valeurs
-- `/equipment/:id/parts` affiche les mêmes valeurs
-- `/equipment/:id/consumable` affiche les mêmes valeurs
+- `/asset/:id/parts` affiche les mêmes valeurs
+- `/asset/:id/consumable` affiche les mêmes valeurs
 
 ---
 
@@ -427,7 +427,7 @@ db.parts.findOne({ _id: ObjectId("[PART_ID]") })
 ### Diagnostic 2 : Vérifier l'API
 ```bash
 # Tester directement l'API
-curl http://localhost:3000/api/equipment-parts/equipment/[ID] \
+curl http://localhost:3000/api/asset-parts/asset/[ID] \
   -H "Authorization: Bearer [token]" | jq '.associations[0].part'
 
 # Vérifier que minStock et maxStock sont présents
@@ -443,7 +443,7 @@ curl http://localhost:3000/api/equipment-parts/equipment/[ID] \
 ### Diagnostic 3 : Vérifier le Frontend
 ```javascript
 // Dans la console du navigateur
-// Sur /equipment/[id]/parts
+// Sur /asset/[id]/parts
 
 // Observer les logs
 console.log('Part data:', parts[0].part)

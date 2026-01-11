@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { getProjects, getProjectStats, createProject, updateProject, deleteProject, Project, ProjectStats, CreateProjectData } from "@/api/projects"
-import { toast } from "sonner"
+import { useToast } from "@/hooks/useToast"
 import { format } from "date-fns"
 import { useFactory } from "@/contexts/FactoryContext"
 
@@ -21,6 +21,7 @@ export function Projects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [stats, setStats] = useState<ProjectStats | null>(null)
   const { currentFactory } = useFactory()
+  const { toast } = useToast()
 
   // Dialog states
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -49,7 +50,11 @@ export function Projects() {
       setStats(statsData)
     } catch (error) {
       console.error("Error fetching projects:", error)
-      toast.error("Failed to load projects")
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load projects"
+      })
     } finally {
       setLoading(false)
     }
@@ -75,12 +80,19 @@ export function Projects() {
   const handleCreateProject = async () => {
     try {
       await createProject(formData)
-      toast.success("Project created successfully")
+      toast({
+        title: "Success",
+        description: "Project created successfully"
+      })
       setIsCreateOpen(false)
       resetForm()
       fetchData()
     } catch (error) {
-      toast.error("Failed to create project")
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create project"
+      })
     }
   }
 
@@ -102,12 +114,19 @@ export function Projects() {
     if (!selectedProject) return
     try {
       await updateProject(selectedProject._id, formData)
-      toast.success("Project updated successfully")
+      toast({
+        title: "Success",
+        description: "Project updated successfully"
+      })
       setIsEditOpen(false)
       resetForm()
       fetchData()
     } catch (error) {
-      toast.error("Failed to update project")
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update project"
+      })
     }
   }
 

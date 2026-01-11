@@ -8,12 +8,12 @@ const debug = async () => {
         await mongoose.connect(mongoUri);
         console.log('Connected to DB');
 
-        console.log('Running seedEquipment...');
+        console.log('Running seedAsset...');
         try {
-            const result = await SeedService.seedEquipment();
+            const result = await SeedService.seedAsset();
             console.log('Result:', result);
         } catch (e) {
-            console.error('Error in seedEquipment:', e);
+            console.error('Error in seedAsset:', e);
         }
 
         process.exit(0);

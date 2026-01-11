@@ -5,8 +5,8 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { EquipmentPart } = require('./models/EquipmentPart');
-const { Equipment } = require('./models/Equipment');
+const { AssetPart } = require('./models/AssetPart');
+const { Asset } = require('./models/Asset');
 const { Part } = require('./models/Part');
 
 async function initializeNextReplacementDates() {
@@ -19,11 +19,11 @@ async function initializeNextReplacementDates() {
     console.log('🔄 Recherche des associations avec lastReplacementDate...');
 
     // Trouver toutes les associations qui ont une date de dernier remplacement
-    const associations = await EquipmentPart.find({
+    const associations = await AssetPart.find({
       lastReplacementDate: { $exists: true, $ne: null },
       replacementFrequencyPerYear: { $gt: 0 }
     })
-    .populate('equipment', 'model serialNumber')
+    .populate('asset', 'model serialNumber')
     .populate('part', 'name partNumber');
 
     console.log(`📊 ${associations.length} association(s) trouvée(s)\n`);
@@ -38,7 +38,7 @@ async function initializeNextReplacementDates() {
           assoc.lastReplacementDate.getTime() + daysUntilNext * 24 * 60 * 60 * 1000
         );
 
-        console.log(`\n   📦 ${assoc.equipment?.model} + ${assoc.part?.name}`);
+        console.log(`\n   📦 ${assoc.asset?.model} + ${assoc.part?.name}`);
         console.log(`      Fréquence: ${assoc.replacementFrequencyPerYear}/an`);
         console.log(`      Dernier remplacement: ${assoc.lastReplacementDate.toLocaleDateString('fr-FR')}`);
         console.log(`      Jours jusqu'au prochain: ${daysUntilNext}`);

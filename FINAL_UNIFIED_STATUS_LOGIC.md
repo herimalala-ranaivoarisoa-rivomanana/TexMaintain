@@ -2,13 +2,13 @@
 
 ## 🎯 Résultat Final
 
-Les règles de changement de statut sont maintenant **IDENTIQUES** dans `/equipment` et `/process-area`.
+Les règles de changement de statut sont maintenant **IDENTIQUES** dans `/asset` et `/process-area`.
 
 ## 📊 Comparaison Finale
 
-| Fonctionnalité | `/equipment` | `/process-area` | Status |
+| Fonctionnalité | `/asset` | `/process-area` | Status |
 |----------------|--------------|---------------------|--------|
-| **API utilisée** | `changeEquipmentStatus` | `changeEquipmentStatus` | ✅ Identique |
+| **API utilisée** | `changeAssetStatus` | `changeAssetStatus` | ✅ Identique |
 | **Machinist pour In Production** | ✅ Requis | ✅ Requis | ✅ Identique |
 | **Personnel pour Maintenance** | ✅ Requis (≥1) | ✅ Requis (≥1) | ✅ Identique |
 | **Validation Client** | ✅ | ✅ | ✅ Identique |
@@ -19,7 +19,7 @@ Les règles de changement de statut sont maintenant **IDENTIQUES** dans `/equipm
 
 ## 🔧 Modifications Effectuées
 
-### 1. EquipmentStatusDialog.tsx
+### 1. AssetStatusDialog.tsx
 
 #### Imports
 ```typescript
@@ -47,12 +47,12 @@ const [selectedMaintenanceWorker, setSelectedMaintenanceWorker] = useState('');
 #### Chargement
 ```typescript
 useEffect(() => {
-  if (open && equipmentId) {
+  if (open && assetId) {
     fetchAllowedTransitions();
     fetchMachinists();           // ← Ajouté
     fetchMaintenancePersonnel();
   }
-}, [open, equipmentId]);
+}, [open, assetId]);
 
 const fetchMachinists = async () => {
   try {
@@ -90,9 +90,9 @@ const handleSubmit = async () => {
     }
   }
 
-  // Use changeEquipmentStatus API
-  await changeEquipmentStatus(equipmentId, {
-    status: selectedStatus as EquipmentStatus,
+  // Use changeAssetStatus API
+  await changeAssetStatus(assetId, {
+    status: selectedStatus as AssetStatus,
     reason,
     notes,
     machinistId: selectedMachinist || undefined,      // ← Ajouté
@@ -148,7 +148,7 @@ const isSubmitDisabled =
 
 #### Imports
 ```typescript
-import { getEquipment, updateEquipment, changeEquipmentStatus } from "@/api/equipment"
+import { getAsset, updateAsset, changeAssetStatus } from "@/api/asset"
 import { getMachinists } from "@/api/machinists"
 import { getMechanics } from "@/api/mechanics"
 import { getElectricians } from "@/api/electricians"
@@ -221,7 +221,7 @@ const handleChangeStatus = async () => {
     EQUIPMENT_STATUSES.UNDER_INSPECTION, 
     EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE
   ]
-  if (maintenanceStatuses.includes(newStatus as EquipmentStatus)) {
+  if (maintenanceStatuses.includes(newStatus as AssetStatus)) {
     if (!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId) {
       toast({
         title: 'Validation Error',
@@ -232,9 +232,9 @@ const handleChangeStatus = async () => {
     }
   }
   
-  // Use changeEquipmentStatus API
-  await changeEquipmentStatus(selectedEquipmentForStatus.id, {
-    status: newStatus as EquipmentStatus,
+  // Use changeAssetStatus API
+  await changeAssetStatus(selectedAssetForStatus.id, {
+    status: newStatus as AssetStatus,
     machinistId: selectedMachinistId || undefined,
     mechanicId: selectedMechanicId || undefined,
     electricianId: selectedElectricianId || undefined,
@@ -246,7 +246,7 @@ const handleChangeStatus = async () => {
 #### UI - Maintenance Section
 ```typescript
 {/* Maintenance Personnel Selection */}
-{[EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(newStatus as EquipmentStatus) && (
+{[EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(newStatus as AssetStatus) && (
   <div className={`space-y-4 p-4 border rounded-lg ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'bg-red-50 border-red-300' : 'bg-orange-50'}`}>
     <div className="flex items-center gap-2">
       <Wrench className={`h-5 w-5 ${!selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId ? 'text-red-600' : 'text-orange-600'}`} />
@@ -265,9 +265,9 @@ const handleChangeStatus = async () => {
   disabled={
     isSaving || 
     !newStatus || 
-    newStatus === selectedEquipmentForStatus?.currentStatus || 
+    newStatus === selectedAssetForStatus?.currentStatus || 
     (newStatus === EQUIPMENT_STATUSES.IN_PRODUCTION && !selectedMachinistId) ||
-    ([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(newStatus as EquipmentStatus) && !selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId)
+    ([EQUIPMENT_STATUSES.UNDER_REPAIR, EQUIPMENT_STATUSES.UNDER_INSPECTION, EQUIPMENT_STATUSES.SCHEDULED_MAINTENANCE].includes(newStatus as AssetStatus) && !selectedMechanicId && !selectedElectricianId && !selectedMaintenanceWorkerId)
   }
 >
   {isSaving ? 'Changing...' : 'Change Status'}
@@ -296,12 +296,12 @@ const handleChangeStatus = async () => {
 ## 🔒 Validation Backend (Inchangée)
 
 ```javascript
-// Route: POST /api/equipment/:id/change-status
+// Route: POST /api/asset/:id/change-status
 
 // In Production
 if (status === 'in_production' && !machinistId) {
   return res.status(400).json({ 
-    message: 'Machinist is required when setting equipment to In Production' 
+    message: 'Machinist is required when setting asset to In Production' 
   })
 }
 
@@ -318,7 +318,7 @@ if (maintenanceStatuses.includes(status)) {
 
 ## 📊 Tableau de Cohérence
 
-| Statut | Personnel | Validation Client | Validation Serveur | UI Equipment | UI Process areas |
+| Statut | Personnel | Validation Client | Validation Serveur | UI Asset | UI Process areas |
 |--------|-----------|-------------------|-------------------|--------------|---------------------|
 | **In Production** | Machinist (1) | ✅ | ✅ | ✅ Section | ✅ Section |
 | **Under Repair** | Maintenance (≥1) | ✅ | ✅ | ✅ Section | ✅ Section |
@@ -335,8 +335,8 @@ if (maintenanceStatuses.includes(status)) {
 
 ## ✅ Checklist de Validation
 
-### Tests `/equipment`
-- [ ] Ouvrir `/equipment`
+### Tests `/asset`
+- [ ] Ouvrir `/asset`
 - [ ] Cliquer "Change Status" sur un équipement
 - [ ] Sélectionner "In Production"
 - [ ] ✅ Section machinist apparaît
@@ -359,7 +359,7 @@ if (maintenanceStatuses.includes(status)) {
 - [ ] ✅ Statut changé avec succès
 
 ### Tests Maintenance
-- [ ] Dans `/equipment`, sélectionner "Under Repair"
+- [ ] Dans `/asset`, sélectionner "Under Repair"
 - [ ] ✅ Section rouge apparaît
 - [ ] ✅ 3 sélecteurs visibles
 - [ ] ✅ Bouton désactivé

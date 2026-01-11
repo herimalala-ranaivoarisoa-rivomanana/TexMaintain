@@ -25,7 +25,7 @@ PORT=3000
 ## Sécurité & Validation
 
 - Helmet et rate limiting activés côté serveur.
-- Validation d’entrée avec Zod pour Auth, Equipment, Inventory, Interventions.
+- Validation d’entrée avec Zod pour Auth, Asset, Inventory, Interventions.
 
 ## Démarrer l’application complète
 
@@ -69,20 +69,20 @@ Cette commande exécute automatiquement tous les seeders dans l'ordre correct.
 3) Appeler `Seed > Seed All` pour initialiser toute la base de données.
 4) Ou utiliser individuellement :
    - `Seed > Seed Admin` (utilisateur admin)
-   - `Seed > Seed Equipment Categories`
-   - `Seed > Seed Equipment Types`
-   - `Seed > Seed Equipment` (échantillons)
+   - `Seed > Seed Asset Categories`
+   - `Seed > Seed Asset Types`
+   - `Seed > Seed Asset` (échantillons)
    - `Seed > Seed Parts`
 
 ### Via interface web
 Une fois l'application démarrée, les administrateurs peuvent gérer :
-- **Catégories d'équipement** : `/equipment-categories`
-- **Types d'équipement** : `/equipment-types`
+- **Catégories d'équipement** : `/asset-categories`
+- **Types d'équipement** : `/asset-types`
 
 ## Tests API (Postman)
 Après initialisation, connecter avec l'utilisateur admin et tester :
 - Authentification (login/register)
-- Equipment, Inventory, Interventions (CRUD et stock)
+- Asset, Inventory, Interventions (CRUD et stock)
 - Gestion des catégories et types d'équipement
 
 ## Arrêter / logs DB
@@ -94,35 +94,35 @@ npm run db:down   # stop & remove
 
 ## Data Migration
 
-### Migrate Intervention Equipment References
-If you have existing interventions with string-based equipment references, run this migration to add strong ObjectId references:
+### Migrate Intervention Asset References
+If you have existing interventions with string-based asset references, run this migration to add strong ObjectId references:
 
 ```bash
-node server/migrations/migrateInterventionEquipmentId.js
+node server/migrations/migrateInterventionAssetId.js
 ```
 
 This migration will:
-- Match intervention.equipment strings with Equipment.location
-- Add equipmentId ObjectId references
+- Match intervention.asset strings with Asset.location
+- Add assetId ObjectId references
 - Report unmatched interventions for manual review
 
 ## Recent Improvements
 
-### Equipment Status & KPIs
-- Fixed equipment status checks to use `EQUIPMENT_STATUSES.IN_PRODUCTION` instead of legacy 'online' string
+### Asset Status & KPIs
+- Fixed asset status checks to use `EQUIPMENT_STATUSES.IN_PRODUCTION` instead of legacy 'online' string
 - Improved KPI calculations (MTBF, MTTR, availability) for accuracy
-- Dashboard now shows real-time availability based on equipment in production status
+- Dashboard now shows real-time availability based on asset in production status
 
-### Intervention-Equipment Linking
-- Added `equipmentId` ObjectId reference to Intervention model for strong typing
-- Maintained backward compatibility with string-based `equipment` field
-- API now accepts both `equipment` (string) and `equipmentId` (ObjectId)
-- Interventions now populate equipment details (location, status, category, type)
+### Intervention-Asset Linking
+- Added `assetId` ObjectId reference to Intervention model for strong typing
+- Maintained backward compatibility with string-based `asset` field
+- API now accepts both `asset` (string) and `assetId` (ObjectId)
+- Interventions now populate asset details (location, status, category, type)
 
 ### Dashboard KPIs
 - Real MTTR calculation from completed corrective/emergency interventions
 - Real MTBF calculation from failure intervals
-- Dynamic availability based on equipment production status
+- Dynamic availability based on asset production status
 - Estimated OEE calculation
 
 

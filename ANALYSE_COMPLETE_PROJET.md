@@ -26,11 +26,11 @@ TexMaintain/
 
 ## 🗄️ Modèles de Données (15 modèles)
 
-### Equipment (Équipements)
+### Asset (Équipements)
 ```javascript
 {
-  category: ObjectId → EquipmentCategory,
-  type: ObjectId → EquipmentType,
+  category: ObjectId → Category,
+  type: ObjectId → SubCategory,
   status: String (14 statuts),
   brand: ObjectId → Brand,
   location: String,
@@ -45,10 +45,10 @@ TexMaintain/
 - **Maintenance**: scheduled_maintenance, under_repair, in_workshop, waiting_spare_parts, testing_after_repair, under_inspection, pending_validation
 - **Hors Service**: stored, scrapped
 
-### EquipmentStatusHistory
+### AssetStatusHistory
 ```javascript
 {
-  equipment: ObjectId,
+  asset: ObjectId,
   previousStatus: String,
   newStatus: String,
   changedBy: ObjectId → User,
@@ -73,10 +73,10 @@ TexMaintain/
 }
 ```
 
-### EquipmentPart (Association)
+### AssetPart (Association)
 ```javascript
 {
-  equipment: ObjectId,
+  asset: ObjectId,
   part: ObjectId,
   quantity: Number,
   changedBy: ObjectId
@@ -102,33 +102,33 @@ TexMaintain/
 - **Machinist**
 
 ### Autres Modèles
-- **Intervention** (type, priority, status, equipmentId)
+- **Intervention** (type, priority, status, assetId)
 - **ProductionLine** (sections)
-- **ProductionSection** (equipment)
-- **Brand**, **EquipmentCategory**, **EquipmentType**
+- **ProductionSection** (asset)
+- **Brand**, **Category**, **SubCategory**
 
 ---
 
 ## 🔌 API Backend (18 routes)
 
-### Equipment (`/api/equipment`)
+### Asset (`/api/asset`)
 ```
-GET    /api/equipment
-POST   /api/equipment
-GET    /api/equipment/:id
-PUT    /api/equipment/:id
-DELETE /api/equipment/:id
+GET    /api/asset
+POST   /api/asset
+GET    /api/asset/:id
+PUT    /api/asset/:id
+DELETE /api/asset/:id
 
 # Statuts
-POST   /api/equipment/:id/change-status  ⚠️ Validation personnel
-GET    /api/equipment/:id/allowed-transitions
-GET    /api/equipment/:id/status-history
+POST   /api/asset/:id/change-status  ⚠️ Validation personnel
+GET    /api/asset/:id/allowed-transitions
+GET    /api/asset/:id/status-history
 
 # Parts/Consommables
-GET    /api/equipment/:id/part
-POST   /api/equipment/:id/part
-GET    /api/equipment/:id/consumable
-POST   /api/equipment/:id/consumable
+GET    /api/asset/:id/part
+POST   /api/asset/:id/part
+GET    /api/asset/:id/consumable
+POST   /api/asset/:id/consumable
 ```
 
 **Validation Spéciale**:
@@ -142,7 +142,7 @@ POST   /api/equipment/:id/consumable
 - `/api/dashboard` - KPIs (MTBF, MTTR, Availability, OEE)
 - `/api/process-area` - Lignes de production
 - `/api/mechanics`, `/api/electricians`, etc. - Personnel
-- `/api/equipment-categories`, `/api/equipment-types`, `/api/brands` - Référentiels
+- `/api/asset-categories`, `/api/asset-types`, `/api/brands` - Référentiels
 
 ---
 
@@ -150,12 +150,12 @@ POST   /api/equipment/:id/consumable
 
 ### Pages Principales
 1. **Dashboard** - KPIs en temps réel
-2. **Equipment** - Liste, filtres, changement statut
+2. **Asset** - Liste, filtres, changement statut
 3. **Inventory** - Parts/consommables, stock
 4. **Interventions** - Gestion interventions
 5. **Process areas** - Lignes et sections
 
-### Composant Clé: EquipmentStatusDialog
+### Composant Clé: AssetStatusDialog
 
 Dialogue de changement de statut avec:
 - Sélection nouveau statut (transitions autorisées)
@@ -175,11 +175,11 @@ Dialogue de changement de statut avec:
 2. Section orange apparaît (3 sélecteurs)
 3. Sélection ≥1 personnel
 4. Validation client (bouton activé)
-5. POST /api/equipment/:id/change-status
+5. POST /api/asset/:id/change-status
 6. Validation route
 7. Service: validation métier + vérification transition
-8. Création EquipmentStatusHistory
-9. Mise à jour Equipment.status
+8. Création AssetStatusHistory
+9. Mise à jour Asset.status
 10. Retour + toast succès
 ```
 
@@ -187,9 +187,9 @@ Dialogue de changement de statut avec:
 ```
 1. Clic icône Wrench/Droplet
 2. Sélection part + quantité
-3. POST /api/equipment/:id/part ou /consumable
+3. POST /api/asset/:id/part ou /consumable
 4. Vérification part.type === 'consumable' (pour consommables)
-5. Création EquipmentPart (index unique)
+5. Création AssetPart (index unique)
 6. Retour + toast succès
 ```
 
@@ -236,10 +236,10 @@ npm run seed
 ## 📊 Relations Clés
 
 ```
-Equipment → EquipmentStatusHistory (historique)
-Equipment → EquipmentPart → Part (parts/consommables)
-EquipmentStatusHistory → Mechanic/Electrician/MaintenanceWorker
-ProductionLine → ProductionSection → Equipment
+Asset → AssetStatusHistory (historique)
+Asset → AssetPart → Part (parts/consommables)
+AssetStatusHistory → Mechanic/Electrician/MaintenanceWorker
+ProductionLine → ProductionSection → Asset
 ```
 
 ---

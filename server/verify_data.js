@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { Factory } = require('./models/Factory');
-const { Equipment } = require('./models/Equipment');
+const { Asset } = require('./models/Asset');
 const { ProcessArea } = require('./models/ProcessArea');
 const { ProcessDepartment } = require('./models/ProcessDepartment');
 require('dotenv').config();
@@ -26,8 +26,8 @@ async function verify() {
             { $count: 'count' }
         ]);
         const deptCount = departments.length > 0 ? departments[0].count : 0;
-        const equip = await Equipment.countDocuments({ factory: f._id });
-        console.log(`- ${f.name} (${f.code}): ProcessAreas=${areas}, Departments=${deptCount}, Equipment=${equip}`);
+        const equip = await Asset.countDocuments({ factory: f._id });
+        console.log(`- ${f.name} (${f.code}): ProcessAreas=${areas}, Departments=${deptCount}, Asset=${equip}`);
     }
 
     await mongoose.disconnect();

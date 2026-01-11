@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/useToast'
-import { getReorderAlerts, type ReorderAlert } from '@/api/equipmentParts'
+import { getReorderAlerts, type ReorderAlert } from '@/api/assetParts'
 import { Link } from 'react-router-dom'
 
 interface ReorderAlertsWidgetProps {
@@ -177,7 +177,7 @@ export function ReorderAlertsWidget({ maxItems = 5, showViewAll = true, alerts: 
 
                 <div className="flex items-center justify-between pt-2 border-t">
                   <p className="text-xs text-slate-600">
-                    Used on {alert.equipmentCount} equipment
+                    Used on {alert.assetCount} asset
                   </p>
                   <Button size="sm" variant="outline" className="h-7 text-xs">
                     <ShoppingCart className="h-3 w-3 mr-1" />

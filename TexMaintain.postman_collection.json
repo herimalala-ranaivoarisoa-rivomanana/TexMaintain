@@ -136,7 +136,7 @@
           }
         },
         {
-          "name": "Seed Equipment",
+          "name": "Seed Asset",
           "request": {
             "method": "POST",
             "header": [
@@ -146,14 +146,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/seed/equipment-types",
+              "raw": "{{baseUrl}}/api/seed/asset-types",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "seed",
-                "equipment-types"
+                "asset-types"
               ]
             }
           }
@@ -184,7 +184,7 @@
       ]
     },
     {
-      "name": "Equipment",
+      "name": "Asset",
       "item": [
         {
           "name": "List",
@@ -197,13 +197,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/equipment",
+              "raw": "{{baseUrl}}/api/asset",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "equipment"
+                "asset"
               ]
             }
           }
@@ -223,13 +223,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/equipment",
+              "raw": "{{baseUrl}}/api/asset",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "equipment"
+                "asset"
               ]
             },
             "body": {
@@ -249,14 +249,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/equipment/{{equipmentId}}",
+              "raw": "{{baseUrl}}/api/asset/{{assetId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "equipment",
-                "{{equipmentId}}"
+                "asset",
+                "{{assetId}}"
               ]
             }
           }
@@ -276,14 +276,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/equipment/{{equipmentId}}",
+              "raw": "{{baseUrl}}/api/asset/{{assetId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "equipment",
-                "{{equipmentId}}"
+                "asset",
+                "{{assetId}}"
               ]
             },
             "body": {
@@ -303,14 +303,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/equipment/{{equipmentId}}",
+              "raw": "{{baseUrl}}/api/asset/{{assetId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "equipment",
-                "{{equipmentId}}"
+                "asset",
+                "{{assetId}}"
               ]
             }
           }
@@ -511,7 +511,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Belt Replacement\",\n  \"type\": \"Corrective\",\n  \"priority\": \"High\",\n  \"equipment\": \"Spinning Machine A1\"\n}"
+              "raw": "{\n  \"title\": \"Belt Replacement\",\n  \"type\": \"Corrective\",\n  \"priority\": \"High\",\n  \"asset\": \"Spinning Machine A1\"\n}"
             }
           }
         },
@@ -586,7 +586,7 @@
       "value": ""
     },
     {
-      "key": "equipmentId",
+      "key": "assetId",
       "value": ""
     },
     {

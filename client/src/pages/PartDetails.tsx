@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Package, Edit, Trash2, FileText } from 'lucide-react'
+import { ArrowLeft, Package, Edit, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/useToast'
 import { GlobalStockCard } from '@/components/GlobalStockCard'
-import { PartEquipmentsList } from '@/components/PartEquipmentsList'
+import { PartAssetsList } from '@/components/PartAssetsList'
 import { StockStatusCard } from '@/components/StockStatusCard'
 import api from '@/api/api'
 
@@ -258,7 +258,7 @@ export default function PartDetails() {
       <GlobalStockCard partId={partId} />
 
       {/* Équipements utilisant cette pièce */}
-      <PartEquipmentsList partId={partId} />
+      <PartAssetsList partId={partId} />
 
       {/* Historique des mouvements */}
       <Card>

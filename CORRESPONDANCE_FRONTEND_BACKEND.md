@@ -2,43 +2,43 @@
 
 ## 📋 Table de Correspondance Complète
 
-### 1. Equipment (Équipements)
+### 1. Asset (Équipements)
 
 #### Backend
-**Modèle**: `server/models/Equipment.js`
-**Route**: `server/routes/equipmentRoutes.js`
-**Service**: `server/services/equipmentStatusService.js`
+**Modèle**: `server/models/Asset.js`
+**Route**: `server/routes/assetRoutes.js`
+**Service**: `server/services/assetStatusService.js`
 
 #### Frontend
-**API Client**: `client/src/api/equipment.ts`
+**API Client**: `client/src/api/asset.ts`
 **Pages**: 
-- `client/src/pages/Equipment.tsx` (liste)
-- `client/src/pages/EquipmentDetail.tsx` (détails)
-- `client/src/pages/EquipmentParts.tsx` (parts)
-- `client/src/pages/EquipmentConsumables.tsx` (consommables)
-- `client/src/pages/EquipmentInterventions.tsx` (interventions)
+- `client/src/pages/Asset.tsx` (liste)
+- `client/src/pages/AssetDetail.tsx` (détails)
+- `client/src/pages/AssetParts.tsx` (parts)
+- `client/src/pages/AssetConsumables.tsx` (consommables)
+- `client/src/pages/AssetInterventions.tsx` (interventions)
 
 **Composants**:
-- `client/src/components/EquipmentStatusDialog.tsx` (changement statut)
+- `client/src/components/AssetStatusDialog.tsx` (changement statut)
 
 #### Endpoints ↔ Fonctions
 
 | Backend Endpoint | Frontend Function | Page/Composant |
 |-----------------|-------------------|----------------|
-| `GET /api/equipment` | `getEquipment()` | Equipment.tsx |
-| `POST /api/equipment` | `createEquipment()` | Equipment.tsx |
-| `GET /api/equipment/:id` | `getEquipmentById()` | EquipmentDetail.tsx |
-| `PUT /api/equipment/:id` | `updateEquipment()` | Equipment.tsx |
-| `DELETE /api/equipment/:id` | `deleteEquipment()` | Equipment.tsx |
-| `POST /api/equipment/:id/change-status` | `changeEquipmentStatus()` | EquipmentStatusDialog.tsx |
-| `GET /api/equipment/:id/allowed-transitions` | `getAllowedTransitions()` | EquipmentStatusDialog.tsx |
-| `GET /api/equipment/:id/status-history` | `getStatusHistory()` | EquipmentDetail.tsx |
-| `GET /api/equipment/:id/part` | `getEquipmentParts()` | EquipmentParts.tsx |
-| `POST /api/equipment/:id/part` | `addPartToEquipment()` | EquipmentParts.tsx |
-| `DELETE /api/equipment/:id/part/:partId` | `removePartFromEquipment()` | EquipmentParts.tsx |
-| `GET /api/equipment/:id/consumable` | `getEquipmentConsumables()` | EquipmentConsumables.tsx |
-| `POST /api/equipment/:id/consumable` | `addConsumableToEquipment()` | EquipmentConsumables.tsx |
-| `DELETE /api/equipment/:id/consumable/:partId` | `removeConsumableFromEquipment()` | EquipmentConsumables.tsx |
+| `GET /api/asset` | `getAsset()` | Asset.tsx |
+| `POST /api/asset` | `createAsset()` | Asset.tsx |
+| `GET /api/asset/:id` | `getAssetById()` | AssetDetail.tsx |
+| `PUT /api/asset/:id` | `updateAsset()` | Asset.tsx |
+| `DELETE /api/asset/:id` | `deleteAsset()` | Asset.tsx |
+| `POST /api/asset/:id/change-status` | `changeAssetStatus()` | AssetStatusDialog.tsx |
+| `GET /api/asset/:id/allowed-transitions` | `getAllowedTransitions()` | AssetStatusDialog.tsx |
+| `GET /api/asset/:id/status-history` | `getStatusHistory()` | AssetDetail.tsx |
+| `GET /api/asset/:id/part` | `getAssetParts()` | AssetParts.tsx |
+| `POST /api/asset/:id/part` | `addPartToAsset()` | AssetParts.tsx |
+| `DELETE /api/asset/:id/part/:partId` | `removePartFromAsset()` | AssetParts.tsx |
+| `GET /api/asset/:id/consumable` | `getAssetConsumables()` | AssetConsumables.tsx |
+| `POST /api/asset/:id/consumable` | `addConsumableToAsset()` | AssetConsumables.tsx |
+| `DELETE /api/asset/:id/consumable/:partId` | `removeConsumableFromAsset()` | AssetConsumables.tsx |
 
 ---
 
@@ -177,8 +177,8 @@
 | `POST /api/production-sections` | `createProductionSection()` | ProductionLines.tsx |
 | `PUT /api/production-sections/:id` | `updateProductionSection()` | ProductionLines.tsx |
 | `DELETE /api/production-sections/:id` | `deleteProductionSection()` | ProductionLines.tsx |
-| `POST /api/production-sections/:id/equipment` | `addEquipmentToSection()` | ProductionLines.tsx |
-| `DELETE /api/production-sections/:id/equipment/:equipmentId` | `removeEquipmentFromSection()` | ProductionLines.tsx |
+| `POST /api/production-sections/:id/asset` | `addAssetToSection()` | ProductionLines.tsx |
+| `DELETE /api/production-sections/:id/asset/:assetId` | `removeAssetFromSection()` | ProductionLines.tsx |
 
 ---
 
@@ -196,7 +196,7 @@
 
 | Backend Endpoint | Frontend Function | Page |
 |-----------------|-------------------|------|
-| `GET /api/mechanics` | `getMechanics()` | Mechanics.tsx + EquipmentStatusDialog.tsx |
+| `GET /api/mechanics` | `getMechanics()` | Mechanics.tsx + AssetStatusDialog.tsx |
 | `POST /api/mechanics` | `createMechanic()` | Mechanics.tsx |
 | `GET /api/mechanics/:id` | `getMechanicById()` | Mechanics.tsx |
 | `PUT /api/mechanics/:id` | `updateMechanic()` | Mechanics.tsx |
@@ -214,7 +214,7 @@
 
 | Backend Endpoint | Frontend Function | Page |
 |-----------------|-------------------|------|
-| `GET /api/electricians` | `getElectricians()` | Electricians.tsx + EquipmentStatusDialog.tsx |
+| `GET /api/electricians` | `getElectricians()` | Electricians.tsx + AssetStatusDialog.tsx |
 | `POST /api/electricians` | `createElectrician()` | Electricians.tsx |
 | `PUT /api/electricians/:id` | `updateElectrician()` | Electricians.tsx |
 | `DELETE /api/electricians/:id` | `deleteElectrician()` | Electricians.tsx |
@@ -231,7 +231,7 @@
 
 | Backend Endpoint | Frontend Function | Page |
 |-----------------|-------------------|------|
-| `GET /api/maintenance-workers` | `getMaintenanceWorkers()` | MaintenanceWorkers.tsx + EquipmentStatusDialog.tsx |
+| `GET /api/maintenance-workers` | `getMaintenanceWorkers()` | MaintenanceWorkers.tsx + AssetStatusDialog.tsx |
 | `POST /api/maintenance-workers` | `createMaintenanceWorker()` | MaintenanceWorkers.tsx |
 | `PUT /api/maintenance-workers/:id` | `updateMaintenanceWorker()` | MaintenanceWorkers.tsx |
 | `DELETE /api/maintenance-workers/:id` | `deleteMaintenanceWorker()` | MaintenanceWorkers.tsx |
@@ -257,39 +257,39 @@
 
 ### 9. Référentiels (3 modules identiques)
 
-#### 9.1 Equipment Categories
+#### 9.1 Asset Categories
 
 **Backend**
-- Modèle: `server/models/EquipmentCategory.js`
-- Route: `server/routes/equipmentCategoriesRoutes.js`
+- Modèle: `server/models/Category.js`
+- Route: `server/routes/assetCategoriesRoutes.js`
 
 **Frontend**
-- API: `client/src/api/equipmentCategories.ts`
-- Page: `client/src/pages/EquipmentCategories.tsx`
+- API: `client/src/api/assetCategories.ts`
+- Page: `client/src/pages/AssetCategories.tsx`
 
 | Backend Endpoint | Frontend Function | Page |
 |-----------------|-------------------|------|
-| `GET /api/equipment-categories` | `getEquipmentCategories()` | EquipmentCategories.tsx + Equipment.tsx |
-| `POST /api/equipment-categories` | `createEquipmentCategory()` | EquipmentCategories.tsx |
-| `PUT /api/equipment-categories/:id` | `updateEquipmentCategory()` | EquipmentCategories.tsx |
-| `DELETE /api/equipment-categories/:id` | `deleteEquipmentCategory()` | EquipmentCategories.tsx |
+| `GET /api/asset-categories` | `getAssetCategories()` | AssetCategories.tsx + Asset.tsx |
+| `POST /api/asset-categories` | `createCategory()` | AssetCategories.tsx |
+| `PUT /api/asset-categories/:id` | `updateCategory()` | AssetCategories.tsx |
+| `DELETE /api/asset-categories/:id` | `deleteCategory()` | AssetCategories.tsx |
 
-#### 9.2 Equipment Types
+#### 9.2 Asset Types
 
 **Backend**
-- Modèle: `server/models/EquipmentType.js`
-- Route: `server/routes/equipmentTypesRoutes.js`
+- Modèle: `server/models/SubCategory.js`
+- Route: `server/routes/assetTypesRoutes.js`
 
 **Frontend**
-- API: `client/src/api/equipmentTypes.ts`
-- Page: `client/src/pages/EquipmentTypes.tsx`
+- API: `client/src/api/assetTypes.ts`
+- Page: `client/src/pages/SubCategorys.tsx`
 
 | Backend Endpoint | Frontend Function | Page |
 |-----------------|-------------------|------|
-| `GET /api/equipment-types` | `getEquipmentTypes()` | EquipmentTypes.tsx + Equipment.tsx |
-| `POST /api/equipment-types` | `createEquipmentType()` | EquipmentTypes.tsx |
-| `PUT /api/equipment-types/:id` | `updateEquipmentType()` | EquipmentTypes.tsx |
-| `DELETE /api/equipment-types/:id` | `deleteEquipmentType()` | EquipmentTypes.tsx |
+| `GET /api/asset-types` | `getSubCategorys()` | SubCategorys.tsx + Asset.tsx |
+| `POST /api/asset-types` | `createSubCategory()` | SubCategorys.tsx |
+| `PUT /api/asset-types/:id` | `updateSubCategory()` | SubCategorys.tsx |
+| `DELETE /api/asset-types/:id` | `deleteSubCategory()` | SubCategorys.tsx |
 
 #### 9.3 Brands
 
@@ -303,7 +303,7 @@
 
 | Backend Endpoint | Frontend Function | Page |
 |-----------------|-------------------|------|
-| `GET /api/brands` | `getBrands()` | Brands.tsx + Equipment.tsx |
+| `GET /api/brands` | `getBrands()` | Brands.tsx + Asset.tsx |
 | `POST /api/brands` | `createBrand()` | Brands.tsx |
 | `PUT /api/brands/:id` | `updateBrand()` | Brands.tsx |
 | `DELETE /api/brands/:id` | `deleteBrand()` | Brands.tsx |
@@ -323,9 +323,9 @@
 |-----------------|-------------------|------|
 | `POST /api/seed/all` | `seedAll()` | Settings.tsx |
 | `POST /api/seed/admin` | `seedAdmin()` | Settings.tsx |
-| `POST /api/seed/equipment-categories` | `seedEquipmentCategories()` | Settings.tsx |
-| `POST /api/seed/equipment-types` | `seedEquipmentTypes()` | Settings.tsx |
-| `POST /api/seed/equipment` | `seedEquipment()` | Settings.tsx |
+| `POST /api/seed/asset-categories` | `seedAssetCategories()` | Settings.tsx |
+| `POST /api/seed/asset-types` | `seedSubCategorys()` | Settings.tsx |
+| `POST /api/seed/asset` | `seedAsset()` | Settings.tsx |
 | `POST /api/seed/parts` | `seedParts()` | Settings.tsx |
 
 ---
@@ -335,60 +335,60 @@
 ### Flux 1: Changement de Statut "Under Repair"
 
 ```
-Frontend: EquipmentStatusDialog.tsx
+Frontend: AssetStatusDialog.tsx
   ↓ Sélection statut
   ↓ Affichage section personnel (conditionnel)
   ↓ Sélection ≥1 personnel
   ↓ Validation client (bouton activé)
   ↓
-API: equipment.ts → changeEquipmentStatus()
-  ↓ POST /api/equipment/:id/change-status
+API: asset.ts → changeAssetStatus()
+  ↓ POST /api/asset/:id/change-status
   ↓ Body: { status, reason, notes, mechanicId, electricianId, maintenanceWorkerId }
   ↓
-Backend: equipmentRoutes.js
+Backend: assetRoutes.js
   ↓ Validation route: au moins 1 personnel
-  ↓ Appel EquipmentStatusService.changeStatus()
+  ↓ Appel AssetStatusService.changeStatus()
   ↓
-Service: equipmentStatusService.js
+Service: assetStatusService.js
   ↓ Validation métier
   ↓ Vérification transition autorisée
-  ↓ Création EquipmentStatusHistory
-  ↓ Mise à jour Equipment.status
+  ↓ Création AssetStatusHistory
+  ↓ Mise à jour Asset.status
   ↓ Population références
   ↓
-Response: { success, equipment, historyEntry }
+Response: { success, asset, historyEntry }
   ↓
-Frontend: EquipmentStatusDialog.tsx
+Frontend: AssetStatusDialog.tsx
   ↓ Toast succès
   ↓ Fermeture dialog
   ↓ Callback onStatusChanged()
   ↓
-Equipment.tsx
+Asset.tsx
   ↓ Rafraîchissement liste
 ```
 
 ### Flux 2: Association Consommable
 
 ```
-Frontend: EquipmentConsumables.tsx
+Frontend: AssetConsumables.tsx
   ↓ Clic "Ajouter Consommable"
   ↓ Sélection part (type='consumable')
   ↓ Saisie quantité
   ↓
-API: equipment.ts → addConsumableToEquipment()
-  ↓ POST /api/equipment/:id/consumable
+API: asset.ts → addConsumableToAsset()
+  ↓ POST /api/asset/:id/consumable
   ↓ Body: { partId, quantity, notes }
   ↓
-Backend: equipmentRoutes.js
-  ↓ Vérification equipment existe
+Backend: assetRoutes.js
+  ↓ Vérification asset existe
   ↓ Vérification part existe
   ↓ Vérification part.type === 'consumable'
-  ↓ Création EquipmentPart
-  ↓ Index unique { equipment, part }
+  ↓ Création AssetPart
+  ↓ Index unique { asset, part }
   ↓
-Response: { success, equipmentPart }
+Response: { success, assetPart }
   ↓
-Frontend: EquipmentConsumables.tsx
+Frontend: AssetConsumables.tsx
   ↓ Toast succès
   ↓ Ajout à la liste locale
 ```

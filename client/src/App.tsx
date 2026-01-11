@@ -8,10 +8,10 @@ import { Register } from "./pages/Register"
 import { ProtectedRoute } from "./components/ProtectedRoute"
 import { MainLayout } from "./components/MainLayout"
 import { Dashboard } from "./pages/Dashboard"
-import { Equipment } from "./pages/Equipment"
+import { Assets } from "./pages/Assets"
 import { Interventions } from "./pages/Interventions"
 import { Inventory } from "./pages/Inventory"
-import EquipmentDetailWrapper from "./pages/EquipmentDetail"
+import AssetDetailWrapper from "./pages/AssetDetail"
 import { Procurement } from "./pages/Procurement"
 import { Projects } from "./pages/Projects"
 import { ProjectDetailsPage } from "./pages/ProjectDetails"
@@ -20,8 +20,8 @@ import { Settings } from "./pages/Settings"
 import { BlankPage } from "./pages/BlankPage"
 import InterventionDetailWrapper from "./pages/InterventionDetail"
 import PartDetailWrapper from "./pages/PartDetail"
-import EquipmentCategoriesPageWrapper from "./pages/EquipmentCategories"
-import EquipmentTypesPageWrapper from "./pages/EquipmentTypes"
+import Categories from "./pages/Categories"
+import SubCategories from "./pages/SubCategories"
 import BrandsPageWrapper from "./pages/Brands"
 import ProcessAreasPageWrapper from "./pages/ProcessAreas"
 import { ProcessAreaDetail } from "./pages/ProcessAreaDetail"
@@ -29,10 +29,9 @@ import Machinists from "./pages/Machinists"
 import Mechanics from "./pages/Mechanics"
 import Electricians from "./pages/Electricians"
 import MaintenanceWorkers from "./pages/MaintenanceWorkers"
-import { EquipmentParts } from "./pages/EquipmentParts"
-import { EquipmentInterventions } from "./pages/EquipmentInterventions"
-import { EquipmentConsumables } from "./pages/EquipmentConsumables"
-import PartDetails from "./pages/PartDetails"
+import { AssetParts } from "./pages/AssetParts"
+import { AssetInterventions } from "./pages/AssetInterventions"
+import { AssetConsumables } from "./pages/AssetConsumables"
 import ReorderAlerts from "./pages/ReorderAlerts"
 
 function App() {
@@ -46,13 +45,13 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
-                <Route path="equipment" element={<Equipment />} />
-                <Route path="equipment/:id" element={<EquipmentDetailWrapper />} />
-                <Route path="equipment/:id/interventions" element={<EquipmentInterventions />} />
-                <Route path="equipment/:id/parts" element={<EquipmentParts />} />
-                <Route path="equipment/:id/consumable" element={<EquipmentConsumables />} />
-                <Route path="equipment-categories" element={<EquipmentCategoriesPageWrapper />} />
-                <Route path="equipment-types" element={<EquipmentTypesPageWrapper />} />
+                <Route path="assets" element={<Assets />} />
+                <Route path="assets/:id" element={<AssetDetailWrapper />} />
+                <Route path="assets/:id/interventions" element={<AssetInterventions />} />
+                <Route path="assets/:id/parts" element={<AssetParts />} />
+                <Route path="assets/:id/consumable" element={<AssetConsumables />} />
+                <Route path="categories" element={<Categories />} />
+                <Route path="sub-categories" element={<SubCategories />} />
                 <Route path="brands" element={<BrandsPageWrapper />} />
                 <Route path="process-areas" element={<ProcessAreasPageWrapper />} />
                 <Route path="process-areas/:id" element={<ProcessAreaDetail />} />

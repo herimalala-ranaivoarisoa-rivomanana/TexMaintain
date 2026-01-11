@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { Intervention } = require('./models/Intervention');
-const { Equipment } = require('./models/Equipment');
+const { Asset } = require('./models/Asset');
 require('dotenv').config();
 
 async function fixOrphans() {
@@ -8,21 +8,21 @@ async function fixOrphans() {
         await mongoose.connect('mongodb://localhost:27017/texmaintain');
         console.log('Connected to MongoDB');
 
-        // 1. Get valid equipment IDs
-        const allEquipment = await Equipment.find({}, '_id');
-        const validEquipmentIds = allEquipment.map(e => e._id.toString());
+        // 1. Get valid asset IDs
+        const allAsset = await Asset.find({}, '_id');
+        const validAssetIds = allAsset.map(e => e._id.toString());
 
-        if (validEquipmentIds.length === 0) {
-            console.log('No valid equipment found. Cannot reassign.');
+        if (validAssetIds.length === 0) {
+            console.log('No valid asset found. Cannot reassign.');
             return;
         }
 
-        const targetEquipmentId = validEquipmentIds[0];
-        console.log(`Target Equipment for reassignment: ${targetEquipmentId}`);
+        const targetAssetId = validAssetIds[0];
+        console.log(`Target Asset for reassignment: ${targetAssetId}`);
 
         // 2. Find orphans
         const orphans = await Intervention.find({
-            equipment: { $nin: validEquipmentIds }
+            asset: { $nin: validAssetIds }
         });
 
         console.log(`Found ${orphans.length} orphan interventions.`);
@@ -31,9 +31,9 @@ async function fixOrphans() {
         if (orphans.length > 0) {
             const result = await Intervention.updateMany(
                 { _id: { $in: orphans.map(o => o._id) } },
-                { $set: { equipment: targetEquipmentId } }
+                { $set: { asset: targetAssetId } }
             );
-            console.log(`Reassigned ${result.modifiedCount} interventions to ${targetEquipmentId}`);
+            console.log(`Reassigned ${result.modifiedCount} interventions to ${targetAssetId}`);
         }
 
     } catch (error) {

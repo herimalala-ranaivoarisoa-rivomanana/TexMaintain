@@ -74,11 +74,11 @@ TexMaintain/
 
 ## 🗄️ MODÈLES DE DONNÉES (16)
 
-### 1. Equipment (Équipement)
+### 1. Asset (Équipement)
 ```javascript
 {
-  category: ObjectId → EquipmentCategory
-  type: ObjectId → EquipmentType
+  category: ObjectId → Category
+  type: ObjectId → SubCategory
   brand: ObjectId → Brand
   status: String (14 statuts)
   statusCategory: 'production'|'maintenance'|'out_of_service'
@@ -95,12 +95,12 @@ TexMaintain/
 - 🟠 Maintenance: scheduled_maintenance, breakdown, under_repair, in_workshop, waiting_spare_parts, testing_after_repair, under_inspection, pending_validation
 - ⚫ Hors service: stored, offline, scrapped
 
-### 2. EquipmentPart (Association Équip-Pièce)
+### 2. AssetPart (Association Équip-Pièce)
 **Modèle le plus complexe (9.8KB)** - Calcul automatique du stock optimal
 
 ```javascript
 {
-  equipment: ObjectId
+  asset: ObjectId
   part: ObjectId
   quantityPerMachine: Number
   replacementFrequencyPerYear: Number
@@ -148,8 +148,8 @@ SR = ceil(SS + CJ × Délai)
   type: 'Corrective'|'Preventive'|'Emergency'
   priority: 'Low'|'Medium'|'High'|'Critical'
   status: 'Pending'|'In Progress'|'Completed'|'Cancelled'
-  equipment: String
-  equipmentId: ObjectId
+  asset: String
+  assetId: ObjectId
   assignedTo: String
   dueDate: Date
 }
@@ -169,10 +169,10 @@ SR = ceil(SS + CJ × Délai)
 **12 Rôles**: admin, maintenance_manager, mechanic, electrician, general_maintenance_agent, dockworker, assistant_maintenance_manager, factory_manager, production_manager, line_manager, foreman, procurement_manager, project_manager
 
 ### 6-16. Autres Modèles
-- **EquipmentStatusHistory**: Historique complet des changements
+- **AssetStatusHistory**: Historique complet des changements
 - **BreakdownMedia**: Upload médias de panne (max 5 fichiers, 10MB)
-- **EquipmentCategory**: Catégories d'équipements
-- **EquipmentType**: Types d'équipements
+- **Category**: Catégories d'équipements
+- **SubCategory**: Types d'équipements
 - **Brand**: Marques
 - **ProductionLine**: Lignes de production
 - **ProductionSection**: Sections de production
@@ -193,31 +193,31 @@ SR = ceil(SS + CJ × Délai)
 - GET `/api/auth/me` - Profil utilisateur
 
 ### Équipements (23 endpoints)
-- GET `/api/equipment` - Liste paginée
-- POST `/api/equipment` - Créer
-- GET `/api/equipment/:id` - Détails
-- PATCH `/api/equipment/:id` - Modifier
-- DELETE `/api/equipment/:id` - Supprimer
-- PATCH `/api/equipment/:id/status` - Changer statut
-- GET `/api/equipment/:id/status-history` - Historique
-- GET `/api/equipment/:id/interventions` - Interventions
-- GET `/api/equipment/:id/parts` - Pièces associées
-- GET `/api/equipment/stats/overview` - Statistiques
-- GET `/api/equipment/stats/by-status` - Par statut
-- GET `/api/equipment/stats/by-category` - Par catégorie
-- GET `/api/equipment/stats/kpi` - KPI (MTBF, MTTR)
+- GET `/api/asset` - Liste paginée
+- POST `/api/asset` - Créer
+- GET `/api/asset/:id` - Détails
+- PATCH `/api/asset/:id` - Modifier
+- DELETE `/api/asset/:id` - Supprimer
+- PATCH `/api/asset/:id/status` - Changer statut
+- GET `/api/asset/:id/status-history` - Historique
+- GET `/api/asset/:id/interventions` - Interventions
+- GET `/api/asset/:id/parts` - Pièces associées
+- GET `/api/asset/stats/overview` - Statistiques
+- GET `/api/asset/stats/by-status` - Par statut
+- GET `/api/asset/stats/by-category` - Par catégorie
+- GET `/api/asset/stats/kpi` - KPI (MTBF, MTTR)
 
 ### Pièces Détachées (10 endpoints)
-- GET `/api/equipment-parts` - Liste
-- POST `/api/equipment-parts` - Créer association
-- GET `/api/equipment-parts/:id` - Détails
-- PATCH `/api/equipment-parts/:id` - Modifier
-- DELETE `/api/equipment-parts/:id` - Supprimer
-- GET `/api/equipment-parts/equipment/:id` - Par équipement
-- GET `/api/equipment-parts/part/:id` - Par pièce
-- GET `/api/equipment-parts/part/:id/global-stock` - Stock global calculé
-- GET `/api/equipment-parts/reorder-alerts` - Alertes réappro
-- POST `/api/equipment-parts/:id/record-replacement` - Enregistrer remplacement
+- GET `/api/asset-parts` - Liste
+- POST `/api/asset-parts` - Créer association
+- GET `/api/asset-parts/:id` - Détails
+- PATCH `/api/asset-parts/:id` - Modifier
+- DELETE `/api/asset-parts/:id` - Supprimer
+- GET `/api/asset-parts/asset/:id` - Par équipement
+- GET `/api/asset-parts/part/:id` - Par pièce
+- GET `/api/asset-parts/part/:id/global-stock` - Stock global calculé
+- GET `/api/asset-parts/reorder-alerts` - Alertes réappro
+- POST `/api/asset-parts/:id/record-replacement` - Enregistrer remplacement
 
 ### Inventaire
 - GET `/api/inventory` - Liste pièces
@@ -236,7 +236,7 @@ SR = ceil(SS + CJ × Délai)
 
 ### Dashboard
 - GET `/api/dashboard/kpi` - KPI globaux
-- GET `/api/dashboard/equipment-status` - Statuts équipements
+- GET `/api/dashboard/asset-status` - Statuts équipements
 - GET `/api/dashboard/recent-interventions` - Interventions récentes
 - GET `/api/dashboard/alerts` - Alertes
 
@@ -245,7 +245,7 @@ SR = ceil(SS + CJ × Délai)
 - CRUD complet pour chaque type
 
 ### Autres
-- Equipment Categories, Equipment Types, Brands, Process areas
+- Asset Categories, Asset Types, Brands, Process areas
 - Breakdown Media (upload)
 - Seed (initialisation données)
 - Health check
@@ -256,8 +256,8 @@ SR = ceil(SS + CJ × Délai)
 
 ### Pages Principales (27)
 1. **Dashboard** - KPI et statistiques
-2. **Equipment** - Liste équipements (61KB!)
-3. **EquipmentDetail** - Détails + statut
+2. **Asset** - Liste équipements (61KB!)
+3. **AssetDetail** - Détails + statut
 4. **Interventions** - Gestion interventions
 5. **Inventory** - Gestion stock (35KB)
 6. **PartDetails** - Détails pièce + calculs
@@ -268,13 +268,13 @@ SR = ceil(SS + CJ × Délai)
 11. Configuration (Categories, Types, Brands)
 
 ### Composants Clés (14)
-1. **EquipmentStatusDialog** - Changement statut (18KB)
-2. **EquipmentPartsList** - Liste pièces équipement
-3. **EquipmentPartFormDialog** - Formulaire association
+1. **AssetStatusDialog** - Changement statut (18KB)
+2. **AssetPartsList** - Liste pièces équipement
+3. **AssetPartFormDialog** - Formulaire association
 4. **RecordReplacementDialog** - Enregistrer remplacement
 5. **ReorderAlertsWidget** - Widget alertes dashboard
 6. **GlobalStockCard** - Carte stock global
-7. **PartEquipmentsList** - Équipements utilisant une pièce
+7. **PartAssetsList** - Équipements utilisant une pièce
 8. **MainLayout** - Layout principal
 9. **Sidebar** - Menu latéral
 10. **TopNavigation** - Navigation supérieure

@@ -119,12 +119,12 @@ curl http://localhost:3000/api/live
 # Requête depuis une origine non autorisée (devrait échouer)
 curl -H "Origin: http://malicious-site.com" \
      -H "Access-Control-Request-Method: GET" \
-     -X OPTIONS http://localhost:3000/api/equipment
+     -X OPTIONS http://localhost:3000/api/asset
 
 # Requête depuis une origine autorisée (devrait réussir)
 curl -H "Origin: http://localhost:5173" \
      -H "Access-Control-Request-Method: GET" \
-     -X OPTIONS http://localhost:3000/api/equipment
+     -X OPTIONS http://localhost:3000/api/asset
 ```
 
 ### 3. Test Upload Sécurisé
@@ -133,7 +133,7 @@ curl -H "Origin: http://localhost:5173" \
 # Upload d'un fichier valide (image)
 curl -X POST http://localhost:3000/api/breakdown-media \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "equipmentId=123" \
+  -F "assetId=123" \
   -F "breakdownType=electrical" \
   -F "description=Test" \
   -F "files=@photo.jpg"
@@ -141,7 +141,7 @@ curl -X POST http://localhost:3000/api/breakdown-media \
 # Upload d'un fichier invalide (devrait échouer)
 curl -X POST http://localhost:3000/api/breakdown-media \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "equipmentId=123" \
+  -F "assetId=123" \
   -F "breakdownType=electrical" \
   -F "description=Test" \
   -F "files=@malicious.exe"
@@ -153,7 +153,7 @@ curl -X POST http://localhost:3000/api/breakdown-media \
 ```bash
 # Vérifier que la compression est active
 curl -H "Accept-Encoding: gzip" \
-     -I http://localhost:3000/api/equipment
+     -I http://localhost:3000/api/asset
 
 # Devrait contenir : Content-Encoding: gzip
 ```
@@ -268,11 +268,11 @@ curl http://localhost:3000/api/health | jq '.status'
 # Devrait retourner : "OK"
 
 # 2. Test CORS
-curl -I -H "Origin: http://localhost:5173" http://localhost:3000/api/equipment
+curl -I -H "Origin: http://localhost:5173" http://localhost:3000/api/asset
 # Devrait contenir : Access-Control-Allow-Origin: http://localhost:5173
 
 # 3. Test compression
-curl -I -H "Accept-Encoding: gzip" http://localhost:3000/api/equipment
+curl -I -H "Accept-Encoding: gzip" http://localhost:3000/api/asset
 # Devrait contenir : Content-Encoding: gzip
 
 # 4. Variables d'env

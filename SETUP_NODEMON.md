@@ -119,7 +119,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
    ```bash
    npm run dev
    ```
-4. **Testez la création d'équipement** sur `/equipment`
+4. **Testez la création d'équipement** sur `/asset`
 
 Maintenant, chaque fois que vous modifiez un fichier du serveur, il redémarrera automatiquement ! 🎉
 

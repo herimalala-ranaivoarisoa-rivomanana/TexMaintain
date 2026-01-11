@@ -27,7 +27,7 @@ Pour chacun de ces statuts, vous pouvez :
 
 ### 1. Backend - Service
 
-**Fichier**: `server/services/equipmentStatusService.js`
+**Fichier**: `server/services/assetStatusService.js`
 
 **Avant** (1 seul statut):
 ```javascript
@@ -45,7 +45,7 @@ const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_main
 if (maintenanceStatuses.includes(newStatus)) {
   if (!mechanicId && !electricianId && !maintenanceWorkerId) {
     const statusLabel = STATUS_METADATA[newStatus]?.label || newStatus;
-    throw new Error(`At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting equipment to ${statusLabel}`);
+    throw new Error(`At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting asset to ${statusLabel}`);
   }
 }
 ```
@@ -57,7 +57,7 @@ if (maintenanceStatuses.includes(newStatus)) {
 
 ### 2. Backend - Route
 
-**Fichier**: `server/routes/equipmentRoutes.js`
+**Fichier**: `server/routes/assetRoutes.js`
 
 **Avant**:
 ```javascript
@@ -70,17 +70,17 @@ if (status === 'under_repair' && !mechanicId && !electricianId && !maintenanceWo
 ```javascript
 const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance'];
 if (maintenanceStatuses.includes(status) && !mechanicId && !electricianId && !maintenanceWorkerId) {
-  const { STATUS_METADATA } = require('../models/EquipmentStatusHistory');
+  const { STATUS_METADATA } = require('../models/AssetStatusHistory');
   const statusLabel = STATUS_METADATA[status]?.label || status;
   return res.status(400).json({ 
-    message: `At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting equipment to ${statusLabel}` 
+    message: `At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting asset to ${statusLabel}` 
   });
 }
 ```
 
 ### 3. Frontend - Validation
 
-**Fichier**: `client/src/components/EquipmentStatusDialog.tsx`
+**Fichier**: `client/src/components/AssetStatusDialog.tsx`
 
 **Validation dans handleSubmit**:
 ```typescript
@@ -156,7 +156,7 @@ const isSubmitDisabled = loading || !selectedStatus || loadingTransitions ||
 ## 🔄 Flux Complet
 
 ```
-Frontend: EquipmentStatusDialog.tsx
+Frontend: AssetStatusDialog.tsx
   ↓
   1. Sélection d'un statut de maintenance
      (under_repair, under_inspection, ou scheduled_maintenance)
@@ -177,7 +177,7 @@ Frontend: EquipmentStatusDialog.tsx
   ↓
   9. Clic sur bouton → Validation client
   ↓
-  10. POST /api/equipment/:id/change-status
+  10. POST /api/asset/:id/change-status
       {
         status: "under_inspection",
         reason: "Inspection périodique",
@@ -186,23 +186,23 @@ Frontend: EquipmentStatusDialog.tsx
         electricianId: "..."
       }
   ↓
-Backend: equipmentRoutes.js
+Backend: assetRoutes.js
   ↓
   11. Validation route: statut dans maintenanceStatuses ?
   ↓
   12. Vérification: au moins 1 personnel ?
   ↓
-  13. Appel EquipmentStatusService.changeStatus()
+  13. Appel AssetStatusService.changeStatus()
   ↓
-Service: equipmentStatusService.js
+Service: assetStatusService.js
   ↓
   14. Validation métier: statut dans maintenanceStatuses ?
   ↓
   15. Vérification: au moins 1 personnel ?
   ↓
-  16. Création EquipmentStatusHistory
+  16. Création AssetStatusHistory
       {
-        equipment: ObjectId,
+        asset: ObjectId,
         previousStatus: "...",
         newStatus: "under_inspection",
         changedBy: userId,
@@ -213,11 +213,11 @@ Service: equipmentStatusService.js
         timestamp: Date
       }
   ↓
-  17. Mise à jour Equipment.status
+  17. Mise à jour Asset.status
   ↓
   18. Population des références
   ↓
-Response: { success, equipment, historyEntry }
+Response: { success, asset, historyEntry }
   ↓
 Frontend
   ↓
@@ -235,7 +235,7 @@ Frontend
 ### Exemple 1: Under Repair avec Mécanicien
 
 ```javascript
-POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
+POST /api/asset/6904ecd887e093f36b7cbd4b/change-status
 
 {
   "status": "under_repair",
@@ -250,7 +250,7 @@ POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
 ### Exemple 2: Under Inspection avec Mécanicien + Électricien
 
 ```javascript
-POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
+POST /api/asset/6904ecd887e093f36b7cbd4b/change-status
 
 {
   "status": "under_inspection",
@@ -266,7 +266,7 @@ POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
 ### Exemple 3: Scheduled Maintenance avec les 3 Personnes
 
 ```javascript
-POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
+POST /api/asset/6904ecd887e093f36b7cbd4b/change-status
 
 {
   "status": "scheduled_maintenance",
@@ -283,7 +283,7 @@ POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
 ### Exemple 4: Under Repair SANS Personnel
 
 ```javascript
-POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
+POST /api/asset/6904ecd887e093f36b7cbd4b/change-status
 
 {
   "status": "under_repair",
@@ -295,7 +295,7 @@ POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
 **Réponse**: ❌ 400 Bad Request
 ```json
 {
-  "message": "At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting equipment to Under Repair"
+  "message": "At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting asset to Under Repair"
 }
 ```
 
@@ -395,7 +395,7 @@ Avec cette traçabilité, on peut calculer :
 ## 🚀 Pour Tester
 
 ### Test 1: Under Repair
-1. Aller sur `/equipment`
+1. Aller sur `/asset`
 2. Sélectionner un équipement
 3. Cliquer "Change Status"
 4. Sélectionner **"Under Repair"**

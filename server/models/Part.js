@@ -200,13 +200,13 @@ schema.methods.updateOrderStatus = function (orderId, newStatus, options = {}) {
  * Calcule et met à jour automatiquement min/max basé sur les associations
  */
 schema.statics.updateMinMaxFromAssociations = async function (partId) {
-  const { EquipmentPart } = require('./EquipmentPart');
+  const { AssetPart } = require('./AssetPart');
 
   try {
     // Récupérer le calcul global de stock
-    const globalStock = await EquipmentPart.calculateGlobalStock(partId);
+    const globalStock = await AssetPart.calculateGlobalStock(partId);
 
-    if (globalStock.equipmentCount === 0) {
+    if (globalStock.assetCount === 0) {
       // Pas d'associations, garder les valeurs actuelles
       return null;
     }

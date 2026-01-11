@@ -4,12 +4,10 @@ import { ArrowLeft, Activity, Wrench, Package, Settings, Factory, Pencil } from 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/useToast"
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
@@ -22,7 +20,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { getProcessAreaById, getProcessAreaDashboardStats } from "@/api/processAreas"
-import { updateProcessDepartmentEquipment } from "@/api/processDepartments"
+import { updateProcessDepartmentAsset } from "@/api/processDepartments"
 import { UpdateProcessAreaStatsDialog } from "@/components/production/UpdateProcessAreaStatsDialog"
 import { UpdateDepartmentDialog } from "@/components/production/UpdateDepartmentDialog"
 import {
@@ -48,8 +46,8 @@ interface Department {
     departmentId: {
         _id: string
         name: string
-        equipment: Array<{
-            equipmentId: {
+        asset: Array<{
+            assetId: {
                 _id: string
                 name: string
                 status: string
@@ -76,7 +74,7 @@ interface ProcessArea {
 
 interface DashboardStats {
     kpis: {
-        totalEquipment: number
+        totalAsset: number
         activeInterventions: number
         criticalParts: number
         pendingOrders: number
@@ -84,19 +82,20 @@ interface DashboardStats {
         mtbf: number
         availability: number
         oee: number
+        performance?: number
     }
     details: {
         activeInterventions: any[]
         criticalParts: any[]
-        equipment: any[]
+        asset: any[]
     }
     reorderAlerts: any[]
     activities: any[]
 }
 
-interface SortableEquipmentProps {
+interface SortableAssetProps {
     id: string
-    equipment: {
+    asset: {
         _id: string
         name: string
         status: string
@@ -104,7 +103,7 @@ interface SortableEquipmentProps {
     }
 }
 
-const SortableEquipment = ({ id, equipment }: SortableEquipmentProps) => {
+const SortableAsset = ({ id, asset }: SortableAssetProps) => {
     const {
         attributes,
         listeners,
@@ -127,11 +126,11 @@ const SortableEquipment = ({ id, equipment }: SortableEquipmentProps) => {
             className="flex items-center justify-between p-2 mb-2 bg-muted/50 rounded-md cursor-grab active:cursor-grabbing hover:bg-muted"
         >
             <div className="flex flex-col">
-                <span className="font-medium text-sm">{equipment.name}</span>
-                <span className="text-xs text-muted-foreground">{equipment.type?.name}</span>
+                <span className="font-medium text-sm">{asset.name}</span>
+                <span className="text-xs text-muted-foreground">{asset.type?.name}</span>
             </div>
-            <Badge variant={equipment.status === 'in_production' ? 'default' : 'secondary'} className="text-[10px]">
-                {equipment.status}
+            <Badge variant={asset.status === 'in_production' ? 'default' : 'secondary'} className="text-[10px]">
+                {asset.status}
             </Badge>
         </div>
     )
@@ -191,21 +190,21 @@ export function ProcessAreaDetail() {
             if (departmentIndex === -1) return
 
             const department = processArea.departments[departmentIndex].departmentId
-            const oldIndex = department.equipment.findIndex((e) => e.equipmentId._id === active.id)
-            const newIndex = department.equipment.findIndex((e) => e.equipmentId._id === over?.id)
+            const oldIndex = department.asset.findIndex((e) => e.assetId._id === active.id)
+            const newIndex = department.asset.findIndex((e) => e.assetId._id === over?.id)
 
             // Optimistic update
             const newProcessArea = { ...processArea }
-            newProcessArea.departments[departmentIndex].departmentId.equipment = arrayMove(department.equipment, oldIndex, newIndex)
+            newProcessArea.departments[departmentIndex].departmentId.asset = arrayMove(department.asset, oldIndex, newIndex)
             setProcessArea(newProcessArea)
 
             // Server update
             try {
-                const equipmentList = newProcessArea.departments[departmentIndex].departmentId.equipment.map((e, index) => ({
-                    equipmentId: e.equipmentId._id,
+                const assetList = newProcessArea.departments[departmentIndex].departmentId.asset.map((e, index) => ({
+                    assetId: e.assetId._id,
                     order: index
                 }))
-                await updateProcessDepartmentEquipment(departmentId, equipmentList)
+                await updateProcessDepartmentAsset(departmentId, assetList)
             } catch (error) {
                 console.error(error)
                 toast({
@@ -325,17 +324,17 @@ export function ProcessAreaDetail() {
                                 onDragEnd={(e) => handleDragEnd(e, department._id)}
                             >
                                 <SortableContext
-                                    items={department.equipment.map(e => e.equipmentId._id)}
+                                    items={department.asset.map(e => e.assetId._id)}
                                     strategy={verticalListSortingStrategy}
                                 >
                                     <div className="space-y-2">
-                                        {department.equipment.length === 0 && (
+                                        {department.asset.length === 0 && (
                                             <div className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
-                                                No equipment
+                                                No asset
                                             </div>
                                         )}
-                                        {department.equipment.map(({ equipmentId }) => (
-                                            <SortableEquipment key={equipmentId._id} id={equipmentId._id} equipment={equipmentId} />
+                                        {department.asset.map(({ assetId }) => (
+                                            <SortableAsset key={assetId._id} id={assetId._id} asset={assetId} />
                                         ))}
                                     </div>
                                 </SortableContext>

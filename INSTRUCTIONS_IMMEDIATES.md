@@ -39,8 +39,8 @@ npm run dev
 
 Après le redémarrage:
 
-1. Ouvrez votre navigateur sur `http://localhost:5173/equipment`
-2. Cliquez sur **"Add Equipment"**
+1. Ouvrez votre navigateur sur `http://localhost:5173/asset`
+2. Cliquez sur **"Add Asset"**
 3. Remplissez le formulaire:
    - **Category**: Sélectionnez une catégorie
    - **Type**: Sélectionnez un type
@@ -101,7 +101,7 @@ npm run preview    # Prévisualiser la version de production
 ## 📁 Fichiers Créés/Modifiés
 
 ### Modifications du Bug:
-- ✅ `server/routes/equipmentRoutes.js` - Correction de la création d'équipement
+- ✅ `server/routes/assetRoutes.js` - Correction de la création d'équipement
 
 ### Configuration Nodemon:
 - ✅ `server/package.json` - Scripts et dépendances mis à jour
@@ -142,7 +142,7 @@ netstat -ano | findstr :5000
 netstat -ano | findstr :5173
 
 # Tester l'API
-curl http://localhost:5000/api/equipment
+curl http://localhost:5000/api/asset
 ```
 
 ## 🎯 Résumé

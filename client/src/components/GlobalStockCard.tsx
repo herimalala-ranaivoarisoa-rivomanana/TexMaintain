@@ -10,7 +10,7 @@ import {
   getCriticalityLabel,
   getCriticalityIcon,
   formatConsumption
-} from '@/api/equipmentParts'
+} from '@/api/assetParts'
 
 interface GlobalStockCardProps {
   partId: string
@@ -239,9 +239,9 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-500">Equipment</p>
+              <p className="text-xs text-slate-500">Assets</p>
               <p className="text-lg font-bold">
-                {data.globalStock.equipmentCount}
+                {data.globalStock.assetCount || data.globalStock.assetCount}
               </p>
             </div>
           </div>
@@ -259,18 +259,20 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
         {data.globalStock.details.length > 0 && (
           <div className="border rounded-lg p-4">
             <h3 className="font-semibold text-sm mb-3">
-              🏭 Distribution by equipment ({data.globalStock.details.length})
+              🏭 Distribution by assets ({data.globalStock.details.length})
             </h3>
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {data.globalStock.details.filter(detail => detail && detail.equipment).map((detail, index) => (
+              {data.globalStock.details.filter(detail => detail && (detail.asset || detail.asset)).map((detail, index) => {
+                const asset = detail.asset || detail.asset;
+                return (
                 <div
                   key={index}
                   className="flex items-center justify-between text-sm p-2 hover:bg-slate-50 rounded"
                 >
                   <div className="flex-1">
-                    <p className="font-medium">{detail.equipment.model}</p>
+                    <p className="font-medium">{asset.name || (asset as any).model || 'N/A'}</p>
                     <p className="text-xs text-slate-500">
-                      {detail.equipment.serialNumber}
+                      {asset.code || asset.serialNumber || (asset as any).serialNumber || ''}
                     </p>
                   </div>
                   <div className="text-right">
@@ -282,7 +284,8 @@ export function GlobalStockCard({ partId }: GlobalStockCardProps) {
                     </p>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

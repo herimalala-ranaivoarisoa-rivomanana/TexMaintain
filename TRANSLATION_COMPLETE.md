@@ -7,7 +7,7 @@
 
 ## 🎯 Summary
 
-All French expressions in the modified code have been translated to English, including the equipment parts/consumables pages.
+All French expressions in the modified code have been translated to English, including the asset parts/consumables pages.
 
 ---
 
@@ -15,26 +15,26 @@ All French expressions in the modified code have been translated to English, inc
 
 ### Backend (2 files)
 
-1. **`server/routes/equipmentPartsRoutes.js`**
-2. **`server/routes/equipmentRoutes.js`**
+1. **`server/routes/assetPartsRoutes.js`**
+2. **`server/routes/assetRoutes.js`**
 
 ### Frontend (3 files)
 
-3. **`client/src/components/EquipmentPartFormDialog.tsx`**
-4. **`client/src/components/EquipmentPartsList.tsx`** ⭐ NEW
-5. **`client/src/components/PartEquipmentsList.tsx`** ⭐ NEW
+3. **`client/src/components/AssetPartFormDialog.tsx`**
+4. **`client/src/components/AssetPartsList.tsx`** ⭐ NEW
+5. **`client/src/components/PartAssetsList.tsx`** ⭐ NEW
 
 ---
 
-## 🔄 New Translations (Equipment Pages)
+## 🔄 New Translations (Asset Pages)
 
-### EquipmentPartsList.tsx (`/equipment/:id/parts` and `/equipment/:id/consumables`)
+### AssetPartsList.tsx (`/asset/:id/parts` and `/asset/:id/consumables`)
 
 | French | English |
 |--------|---------|
 | Chargement... | Loading... |
 | Ajouter | Add |
-| Aucun {type} associé à cet équipement | No {type} associated with this equipment |
+| Aucun {type} associé à cet équipement | No {type} associated with this asset |
 | Utilisez le bouton "Ajouter" ci-dessus pour commencer | Use the "Add" button above to get started |
 | Commander | Order |
 | Stock actuel | Current stock |
@@ -55,16 +55,16 @@ All French expressions in the modified code have been translated to English, inc
 
 ---
 
-### PartEquipmentsList.tsx (Part detail page)
+### PartAssetsList.tsx (Part detail page)
 
 | French | English |
 |--------|---------|
-| Équipements utilisant cette pièce | Equipment using this part |
+| Équipements utilisant cette pièce | Asset using this part |
 | Chargement... | Loading... |
 | Importance | Importance |
 | Criticité | Criticality |
 | Consommation | Consumption |
-| Cette pièce n'est associée à aucun équipement | This part is not associated with any equipment |
+| Cette pièce n'est associée à aucun équipement | This part is not associated with any asset |
 | Quantité | Quantity |
 | pièce(s) | piece(s) |
 | Fréquence | Frequency |
@@ -100,8 +100,8 @@ All French expressions in the modified code have been translated to English, inc
 - Quantité → Quantity
 - Fréquence → Frequency
 
-#### Equipment Terms
-- Équipement(s) → Equipment
+#### Asset Terms
+- Équipement(s) → Asset
 - Pièce(s) → Part(s) / Piece(s)
 - Consommable(s) → Consumable(s)
 - Criticité → Criticality
@@ -123,18 +123,18 @@ All French expressions in the modified code have been translated to English, inc
 - Association supprimée → Association deleted
 - Min/Max recalculés → Min/Max recalculated
 - Aucun {type} associé → No {type} associated
-- Cette pièce n'est associée à aucun équipement → This part is not associated with any equipment
+- Cette pièce n'est associée à aucun équipement → This part is not associated with any asset
 
 ---
 
 ## ✅ Pages Affected
 
-### Equipment Pages
-- `/equipment/:id/parts` ✅ Fully translated
-- `/equipment/:id/consumables` ✅ Fully translated
+### Asset Pages
+- `/asset/:id/parts` ✅ Fully translated
+- `/asset/:id/consumables` ✅ Fully translated
 
 ### Inventory Pages
-- `/inventory/:id` ✅ Part details (PartEquipmentsList)
+- `/inventory/:id` ✅ Part details (PartAssetsList)
 
 ### Dialogs
 - Create/Edit Association Dialog ✅
@@ -144,9 +144,9 @@ All French expressions in the modified code have been translated to English, inc
 
 ## 🧪 Testing Checklist
 
-### Test 1: Equipment Parts Page
+### Test 1: Asset Parts Page
 ```bash
-1. Go to /equipment/[id]/parts
+1. Go to /asset/[id]/parts
 2. Verify all labels are in English:
    ✓ "Add" button
    ✓ "Current stock", "Min stock", "Max stock"
@@ -156,9 +156,9 @@ All French expressions in the modified code have been translated to English, inc
    ✓ "Last replacement", "Next replacement"
 ```
 
-### Test 2: Equipment Consumables Page
+### Test 2: Asset Consumables Page
 ```bash
-1. Go to /equipment/[id]/consumables
+1. Go to /asset/[id]/consumables
 2. Verify all labels are in English:
    ✓ Same as parts page
    ✓ "piece(s)" instead of "pièce(s)"
@@ -167,19 +167,19 @@ All French expressions in the modified code have been translated to English, inc
 ### Test 3: Part Detail Page
 ```bash
 1. Go to /inventory/[part-id]
-2. Scroll to "Equipment using this part" section
+2. Scroll to "Asset using this part" section
 3. Verify:
-   ✓ "Equipment using this part" title
+   ✓ "Asset using this part" title
    ✓ Sort buttons: "Importance", "Criticality", "Consumption"
    ✓ All labels in English
 ```
 
 ### Test 4: Create Association
 ```bash
-1. Click "Add" on equipment parts page
+1. Click "Add" on asset parts page
 2. Fill form and create
 3. Verify toast message:
-   ✓ "Created - Association created and duplicated to X equipment(s)..."
+   ✓ "Created - Association created and duplicated to X asset(s)..."
 ```
 
 ### Test 5: Update Association
@@ -219,7 +219,7 @@ All French expressions in the modified code have been translated to English, inc
 ✅ All labels in English
 ✅ All console logs in English
 ✅ All comments in English
-✅ Equipment pages fully translated
+✅ Asset pages fully translated
 ✅ Inventory pages fully translated
 ✅ Dialogs fully translated
 ✅ Server restarted

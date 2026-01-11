@@ -117,7 +117,7 @@ Nouvelle formule:
 
 ### Fichier Modifié
 
-**`server/services/equipmentPartsService.js`** (lignes 38-45)
+**`server/services/assetPartsService.js`** (lignes 38-45)
 
 ```javascript
 // Ancienne version

@@ -15,10 +15,10 @@ const processDepartmentSchema = new mongoose.Schema({
     ref: 'ProcessArea',
     required: true
   },
-  equipment: [{
-    equipmentId: {
+  asset: [{
+    assetId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Equipment'
+      ref: 'Asset'
     },
     order: {
       type: Number,

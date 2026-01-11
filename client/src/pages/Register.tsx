@@ -79,11 +79,12 @@ export function Register() {
       })
       navigate("/login")
     } catch (error) {
-      console.log("Register error:", error)
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      console.log("Register error:", errorMessage)
       toast({
         variant: "destructive",
         title: "Error",
-        description: error?.message,
+        description: errorMessage,
       })
     } finally {
       setLoading(false)

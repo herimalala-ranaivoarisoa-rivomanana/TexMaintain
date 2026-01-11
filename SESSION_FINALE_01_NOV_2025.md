@@ -26,7 +26,7 @@
 6. ✅ `FRONTEND_IMPLEMENTATION_PROGRESS.md` (400+ lignes)
 
 ### 🆕 BACKEND IMPLÉMENTÉ : 100%
-- ✅ Modèle `EquipmentPart` (348 lignes)
+- ✅ Modèle `AssetPart` (348 lignes)
 - ✅ Routes API (400+ lignes)
 - ✅ 9 endpoints complets
 - ✅ Calculs automatiques
@@ -43,17 +43,17 @@
 ## 📁 FICHIERS CRÉÉS AUJOURD'HUI
 
 ### Backend (3 fichiers)
-1. `server/models/EquipmentPart.js` - 348 lignes
-2. `server/routes/equipmentPartsRoutes.js` - 400+ lignes
+1. `server/models/AssetPart.js` - 348 lignes
+2. `server/routes/assetPartsRoutes.js` - 400+ lignes
 3. `server/server.js` - Modifié (2 lignes)
 
 ### Frontend (8 fichiers)
-1. `client/src/api/equipmentParts.ts` - 350+ lignes
-2. `client/src/components/EquipmentPartsList.tsx` - 300+ lignes
-3. `client/src/components/EquipmentPartFormDialog.tsx` - 400+ lignes
+1. `client/src/api/assetParts.ts` - 350+ lignes
+2. `client/src/components/AssetPartsList.tsx` - 300+ lignes
+3. `client/src/components/AssetPartFormDialog.tsx` - 400+ lignes
 4. `client/src/components/RecordReplacementDialog.tsx` - 150+ lignes
 5. `client/src/components/ReorderAlertsWidget.tsx` - 200+ lignes
-6. `client/src/components/PartEquipmentsList.tsx` - 200+ lignes
+6. `client/src/components/PartAssetsList.tsx` - 200+ lignes
 7. `client/src/components/GlobalStockCard.tsx` - 250+ lignes
 8. `client/src/pages/PartDetails.tsx` - 300+ lignes
 
@@ -67,8 +67,8 @@
 7. `SESSION_FINALE_01_NOV_2025.md` (ce fichier)
 
 ### Fichiers modifiés (6 fichiers)
-1. `server/routes/equipmentRoutes.js`
-2. `client/src/pages/Equipment.tsx`
+1. `server/routes/assetRoutes.js`
+2. `client/src/pages/Asset.tsx`
 3. `client/src/api/breakdownMedia.ts`
 4. `client/index.html`
 5. `server/.env.example`
@@ -149,7 +149,7 @@ SR = ceil(SS + CJ × Délai_appro)
 
 ## 🎨 COMPOSANTS REACT CRÉÉS
 
-### 1. EquipmentPartsList
+### 1. AssetPartsList
 **Objectif** : Afficher les pièces d'un équipement  
 **Features** :
 - Liste avec badges de criticité
@@ -157,7 +157,7 @@ SR = ceil(SS + CJ × Délai_appro)
 - Actions : Modifier, Supprimer, Enregistrer remplacement
 - Statut du prochain remplacement
 
-### 2. EquipmentPartFormDialog
+### 2. AssetPartFormDialog
 **Objectif** : Créer/Modifier une association  
 **Features** :
 - Formulaire complet
@@ -181,7 +181,7 @@ SR = ceil(SS + CJ × Délai_appro)
 - Compteurs et statistiques
 - Bouton commander
 
-### 5. PartEquipmentsList
+### 5. PartAssetsList
 **Objectif** : Liste des équipements utilisant une pièce  
 **Features** :
 - Tri par importance/criticité/consommation
@@ -212,34 +212,34 @@ SR = ceil(SS + CJ × Délai_appro)
 
 ## 🔧 API ENDPOINTS CRÉÉS
 
-### 1. GET /api/equipment-parts
+### 1. GET /api/asset-parts
 Liste paginée des associations
 
-### 2. GET /api/equipment-parts/equipment/:id
+### 2. GET /api/asset-parts/asset/:id
 Pièces d'un équipement
 
-### 3. GET /api/equipment-parts/part/:id
+### 3. GET /api/asset-parts/part/:id
 Équipements utilisant une pièce
 
-### 4. GET /api/equipment-parts/part/:id/global-stock ⭐
+### 4. GET /api/asset-parts/part/:id/global-stock ⭐
 Calcul du stock global (méthode clé)
 
-### 5. GET /api/equipment-parts/reorder-alerts ⚠️
+### 5. GET /api/asset-parts/reorder-alerts ⚠️
 Alertes de réapprovisionnement
 
-### 6. GET /api/equipment-parts/:id
+### 6. GET /api/asset-parts/:id
 Détails d'une association
 
-### 7. POST /api/equipment-parts
+### 7. POST /api/asset-parts
 Créer une association
 
-### 8. PATCH /api/equipment-parts/:id
+### 8. PATCH /api/asset-parts/:id
 Modifier une association
 
-### 9. DELETE /api/equipment-parts/:id
+### 9. DELETE /api/asset-parts/:id
 Supprimer une association
 
-### 10. POST /api/equipment-parts/:id/record-replacement 🔧
+### 10. POST /api/asset-parts/:id/record-replacement 🔧
 Enregistrer un remplacement
 
 ---
@@ -298,7 +298,7 @@ Enregistrer un remplacement
 ### Court terme (Prochaine session)
 1. ⏳ Créer page ReorderAlerts.tsx
 2. ⏳ Intégrer ReorderAlertsWidget dans Dashboard
-3. ⏳ Intégrer EquipmentPartsList dans Equipment details
+3. ⏳ Intégrer AssetPartsList dans Asset details
 4. ⏳ Ajouter route /part-details dans React Router
 5. ⏳ Tests manuels complets
 
@@ -473,8 +473,8 @@ Implémenter un système complet de gestion de stock de pièces avec calcul opti
 7. `SESSION_FINALE_01_NOV_2025.md` - Ce document
 
 ### Code
-- Backend : `server/models/EquipmentPart.js`, `server/routes/equipmentPartsRoutes.js`
-- Frontend : `client/src/api/equipmentParts.ts`, `client/src/components/*`
+- Backend : `server/models/AssetPart.js`, `server/routes/assetPartsRoutes.js`
+- Frontend : `client/src/api/assetParts.ts`, `client/src/components/*`
 
 ---
 

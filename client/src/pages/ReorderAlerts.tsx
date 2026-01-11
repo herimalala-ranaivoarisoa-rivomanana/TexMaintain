@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
-import { getReorderAlerts, type ReorderAlert } from '@/api/equipmentParts'
+import { getReorderAlerts, type ReorderAlert } from '@/api/assetParts'
 import { Link } from 'react-router-dom'
 import { useFactory } from "@/contexts/FactoryContext"
 
@@ -114,7 +114,7 @@ export default function ReorderAlerts() {
       alert.reorderPoint,
       alert.deficit,
       alert.urgency,
-      alert.equipmentCount
+      alert.assetCount
     ])
 
     const csv = [
@@ -379,7 +379,7 @@ export default function ReorderAlerts() {
                     <div>
                       <p className="text-xs text-slate-500 mb-1">Équipements</p>
                       <p className="text-lg font-semibold">
-                        {alert.equipmentCount}
+                        {alert.assetCount}
                       </p>
                     </div>
                   </div>

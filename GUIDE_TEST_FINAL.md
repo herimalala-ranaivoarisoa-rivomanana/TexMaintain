@@ -46,8 +46,8 @@
 
 5. **Affichage du Statut Partout**
    - Dans `/inventory/:id`
-   - Dans `/equipment/:id/parts`
-   - Dans `/equipment/:id/consumable`
+   - Dans `/asset/:id/parts`
+   - Dans `/asset/:id/consumable`
 
 6. **Terminologie Adaptée**
    - Parts : "Enregistrer un remplacement"
@@ -181,10 +181,10 @@ Après calcul : min = 8, max = 45
 
 ---
 
-### Test 7 : Statut dans Equipment Parts
+### Test 7 : Statut dans Asset Parts
 
 ```bash
-1. Aller sur /equipment
+1. Aller sur /asset
 2. Cliquer sur un équipement
 3. Aller sur l'onglet "Parts" ou "Consumables"
 4. Observer les cartes de pièces
@@ -207,9 +207,9 @@ Après calcul : min = 8, max = 45
 ### Test 8 : Terminologie Parts vs Consumables
 
 ```bash
-1. Sur /equipment/:id/parts
+1. Sur /asset/:id/parts
 2. Observer le bouton en bas de chaque carte
-3. Sur /equipment/:id/consumable
+3. Sur /asset/:id/consumable
 4. Observer le bouton en bas de chaque carte
 ```
 
@@ -230,7 +230,7 @@ Après calcul : min = 8, max = 45
 ### Test 9 : Enregistrer un Remplacement (Part)
 
 ```bash
-1. Sur /equipment/:id/parts
+1. Sur /asset/:id/parts
 2. Trouver une pièce
 3. Cliquer "📝 Enregistrer un remplacement"
 4. Remplir :
@@ -255,7 +255,7 @@ Après calcul : min = 8, max = 45
 ### Test 10 : Enregistrer une Utilisation (Consumable)
 
 ```bash
-1. Sur /equipment/:id/consumable
+1. Sur /asset/:id/consumable
 2. Trouver un consommable
 3. Cliquer "📝 Enregistrer une utilisation"
 4. Remplir :
@@ -276,10 +276,10 @@ Après calcul : min = 8, max = 45
 
 ---
 
-### Test 11 : Lien vers Détails depuis Equipment
+### Test 11 : Lien vers Détails depuis Asset
 
 ```bash
-1. Sur /equipment/:id/parts
+1. Sur /asset/:id/parts
 2. Cliquer sur l'icône 🔗 d'une pièce
 ```
 
@@ -288,7 +288,7 @@ Après calcul : min = 8, max = 45
 - ✅ Page de détails complète s'affiche
 - ✅ StockStatusCard visible
 - ✅ GlobalStockCard visible
-- ✅ PartEquipmentsList visible
+- ✅ PartAssetsList visible
 
 ---
 
@@ -335,7 +335,7 @@ Après calcul : min = 8, max = 45
 **Solutions :**
 ```bash
 1. Vérifier que l'API retourne minStock/maxStock
-2. Vérifier le populate dans equipmentPartsRoutes.js
+2. Vérifier le populate dans assetPartsRoutes.js
 3. Redémarrer le backend
 4. Vérifier dans MongoDB :
    db.parts.findOne({ _id: ObjectId("...") })
@@ -375,7 +375,7 @@ Après calcul : min = 8, max = 45
 ❌ Pas de statut de stock visible
 ❌ Pas de gestion des commandes
 ❌ Min/Max manuels uniquement
-❌ Pas de visibilité dans equipment parts
+❌ Pas de visibilité dans asset parts
 ❌ Terminologie incorrecte pour consumables
 ```
 
@@ -384,7 +384,7 @@ Après calcul : min = 8, max = 45
 ✅ Statut du stock partout (🔴🟠🟢🔵)
 ✅ Gestion complète des commandes
 ✅ Calcul automatique Min/Max
-✅ Visibilité dans equipment parts/consumables
+✅ Visibilité dans asset parts/consumables
 ✅ Terminologie adaptée (remplacement/utilisation)
 ✅ Bouton "Commander" si stock bas
 ✅ Alertes automatiques
@@ -448,7 +448,7 @@ Après calcul : min = 8, max = 45
 28. Statut recalculé : 🔵 Élevé (50 ≥ 40.5)
 
 ÉTAPE 8 : VÉRIFICATION EQUIPMENT
-29. Aller sur /equipment/[id]/parts
+29. Aller sur /asset/[id]/parts
 30. Trouver la pièce
 31. Vérifier :
     - Badge 🔵 "Élevé"
@@ -482,7 +482,7 @@ Après calcul : min = 8, max = 45
 - [ ] Test 3 : Créer une commande ✓
 - [ ] Test 4 : Suivre une commande ✓
 - [ ] Test 5 : Calculer Min/Max ✓
-- [ ] Test 6 : Statut dans equipment parts ✓
+- [ ] Test 6 : Statut dans asset parts ✓
 - [ ] Test 7 : Terminologie parts/consumables ✓
 - [ ] Test 8 : Enregistrer remplacement ✓
 - [ ] Test 9 : Enregistrer utilisation ✓
@@ -500,7 +500,7 @@ Si tous les tests passent :
 ✅ Statut du stock fonctionnel
 ✅ Gestion des commandes opérationnelle
 ✅ Calcul automatique Min/Max OK
-✅ Affichage dans equipment parts OK
+✅ Affichage dans asset parts OK
 ✅ Terminologie adaptée OK
 ✅ Navigation cohérente OK
 ✅ Traçabilité complète OK
@@ -531,7 +531,7 @@ npm run dev
 ```bash
 # MongoDB Compass ou CLI
 db.parts.find().pretty()
-db.equipmentparts.find().pretty()
+db.assetparts.find().pretty()
 ```
 
 ---

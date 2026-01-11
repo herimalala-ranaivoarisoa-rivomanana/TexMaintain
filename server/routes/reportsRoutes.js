@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
-const { Equipment } = require('../models/Equipment');
+const { Asset } = require('../models/Asset');
 const { Intervention } = require('../models/Intervention');
 const { Part } = require('../models/Part');
 
@@ -18,17 +18,17 @@ router.get('/stats', async (req, res) => {
     const factoryFilter = req.activeFactoryId ? { factory: new mongoose.Types.ObjectId(req.activeFactoryId) } : {};
 
     const [
-      equipmentCount,
+      assetCount,
       activeInterventions,
       lowStockPartsCount,
       parts,
-      equipmentFinancials
+      assetFinancials
     ] = await Promise.all([
-      Equipment.countDocuments(factoryFilter),
+      Asset.countDocuments(factoryFilter),
       Intervention.countDocuments({ ...factoryFilter, status: { $in: ['Pending', 'In Progress'] } }),
       Part.countDocuments({ ...factoryFilter, $expr: { $lte: ['$currentStock', '$minStock'] } }),
       Part.find(factoryFilter, 'currentStock unitPrice'), // Just needed for value calculation now
-      Equipment.aggregate([
+      Asset.aggregate([
         { $match: factoryFilter },
         {
           $group: {
@@ -46,13 +46,13 @@ router.get('/stats', async (req, res) => {
     });
 
     res.json({
-      equipmentCount,
+      assetCount,
       activeInterventions,
 
       lowStockParts: lowStockPartsCount, // Using the DB count for consistency
       totalStockValue: Math.round(totalStockValue * 100) / 100,
-      totalTCO: equipmentFinancials[0]?.totalTCO || 0,
-      totalAssetValue: equipmentFinancials[0]?.totalAssetValue || 0
+      totalTCO: assetFinancials[0]?.totalTCO || 0,
+      totalAssetValue: assetFinancials[0]?.totalAssetValue || 0
     });
   } catch (error) {
     console.error('Error fetching report stats:', error);
@@ -63,11 +63,11 @@ router.get('/stats', async (req, res) => {
 // GET /api/reports/maintenance - Maintenance Metrics
 router.get('/maintenance', async (req, res) => {
   try {
-    // Calculate averages for MTBF and MTTR from Equipment
+    // Calculate averages for MTBF and MTTR from Asset
     const factoryFilter = req.activeFactoryId ? { factory: new mongoose.Types.ObjectId(req.activeFactoryId) } : {};
 
-    // Calculate averages for MTBF and MTTR from Equipment
-    const equipmentMetrics = await Equipment.aggregate([
+    // Calculate averages for MTBF and MTTR from Asset
+    const assetMetrics = await Asset.aggregate([
       { $match: factoryFilter },
       {
         $group: {
@@ -133,8 +133,8 @@ router.get('/maintenance', async (req, res) => {
     }));
 
     res.json({
-      mtbf: equipmentMetrics[0]?.avgMtbf || 0,
-      mttr: equipmentMetrics[0]?.avgMttr || 0,
+      mtbf: assetMetrics[0]?.avgMtbf || 0,
+      mttr: assetMetrics[0]?.avgMttr || 0,
       byType: interventionsByType.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
       byStatus: interventionsByStatus.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {}),
       monthlyData
@@ -199,19 +199,19 @@ router.get('/financials', async (req, res) => {
   try {
     const factoryFilter = req.activeFactoryId ? { factory: new mongoose.Types.ObjectId(req.activeFactoryId) } : {};
 
-    // Top 5 costliest equipment by TCO
-    const topCostlyEquipment = await Equipment.find({ ...factoryFilter, tco: { $gt: 0 } })
+    // Top 5 costliest asset by TCO
+    const topCostlyAsset = await Asset.find({ ...factoryFilter, tco: { $gt: 0 } })
       .sort({ tco: -1 })
       .limit(5)
       .select('name tco purchasePrice totalMaintenanceCost')
       .lean();
 
     // Aggregate TCO by Category
-    const tcoByCategory = await Equipment.aggregate([
+    const tcoByCategory = await Asset.aggregate([
       { $match: factoryFilter },
       {
         $lookup: {
-          from: 'equipmentcategories',
+          from: 'assetcategories',
           localField: 'category',
           foreignField: '_id',
           as: 'categoryInfo'
@@ -229,7 +229,7 @@ router.get('/financials', async (req, res) => {
     ]);
 
     res.json({
-      topCostlyEquipment,
+      topCostlyAsset,
       tcoByCategory: tcoByCategory.map(c => ({
         name: c._id,
         value: c.totalTCO

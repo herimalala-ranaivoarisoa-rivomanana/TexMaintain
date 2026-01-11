@@ -7,38 +7,38 @@
 
 ## 🎯 Objective
 
-Consumables should be automatically duplicated to all equipment of the same type, just like parts.
+Consumables should be automatically duplicated to all asset of the same type, just like parts.
 
 ---
 
 ## ✅ Current Implementation
 
-### 1. Duplication Logic (equipmentPartsRoutes.js)
+### 1. Duplication Logic (assetPartsRoutes.js)
 
 ```javascript
 // Line 223: Duplication is enabled by default
 const { duplicateToSameType = true } = req.body; // Default: true
 
 // Line 259: Duplication works for ALL types (parts AND consumables)
-if (duplicateToSameType && equipment.type) {
-  // Find all other equipment of the same type
-  const sameTypeEquipments = await Equipment.find({
-    type: equipment.type._id,
-    _id: { $ne: data.equipment }
+if (duplicateToSameType && asset.type) {
+  // Find all other asset of the same type
+  const sameTypeAssets = await Asset.find({
+    type: asset.type._id,
+    _id: { $ne: data.asset }
   });
   
-  // Create associations for each equipment
-  for (const otherEquipment of sameTypeEquipments) {
+  // Create associations for each asset
+  for (const otherAsset of sameTypeAssets) {
     // Check if association doesn't already exist
-    const existingAssoc = await EquipmentPart.findOne({
-      equipment: otherEquipment._id,
+    const existingAssoc = await AssetPart.findOne({
+      asset: otherAsset._id,
       part: data.part
     });
     
     if (!existingAssoc) {
       // Create duplication (works for both parts and consumables)
       duplications.push({
-        equipment: otherEquipment._id,
+        asset: otherAsset._id,
         part: data.part,
         quantityPerMachine: data.quantityPerMachine,
         replacementFrequencyPerYear: data.replacementFrequencyPerYear,
@@ -47,14 +47,14 @@ if (duplicateToSameType && equipment.type) {
         leadTimeDays: data.leadTimeDays,
         safetyCoefficient: data.safetyCoefficient,
         isStandardPart: data.isStandardPart,
-        notes: 'Auto-duplicated from reference equipment',
+        notes: 'Auto-duplicated from reference asset',
         // ... calculated values
       });
     }
   }
   
   if (duplications.length > 0) {
-    await EquipmentPart.insertMany(duplications);
+    await AssetPart.insertMany(duplications);
     duplicatedCount = duplications.length;
   }
 }
@@ -65,14 +65,14 @@ if (duplicateToSameType && equipment.type) {
 ## 🔍 How It Works
 
 ### For Parts (Spare Parts)
-1. User adds a part to equipment A (type: Weaving Machine)
-2. System finds all other equipment of type "Weaving Machine"
+1. User adds a part to asset A (type: Weaving Machine)
+2. System finds all other asset of type "Weaving Machine"
 3. System creates the same association for all of them
 4. ✅ Part is duplicated automatically
 
 ### For Consumables
-1. User adds a consumable to equipment A (type: Weaving Machine)
-2. System finds all other equipment of type "Weaving Machine"
+1. User adds a consumable to asset A (type: Weaving Machine)
+2. System finds all other asset of type "Weaving Machine"
 3. System creates the same association for all of them
 4. ✅ Consumable is duplicated automatically
 
@@ -84,27 +84,27 @@ if (duplicateToSameType && equipment.type) {
 
 ### Initial State
 ```
-Equipment A (Weaving Machine #1)
+Asset A (Weaving Machine #1)
 - No associations
 
-Equipment B (Weaving Machine #2)
+Asset B (Weaving Machine #2)
 - No associations
 
-Equipment C (Cutting Machine)
+Asset C (Cutting Machine)
 - No associations
 ```
 
-### Action: Add MIG Welding Wire (consumable) to Equipment A
+### Action: Add MIG Welding Wire (consumable) to Asset A
 
 ### Result
 ```
-Equipment A (Weaving Machine #1)
+Asset A (Weaving Machine #1)
 - MIG Welding Wire ✅ (original)
 
-Equipment B (Weaving Machine #2)
+Asset B (Weaving Machine #2)
 - MIG Welding Wire ✅ (auto-duplicated)
 
-Equipment C (Cutting Machine)
+Asset C (Cutting Machine)
 - No associations (different type)
 ```
 
@@ -112,28 +112,28 @@ Equipment C (Cutting Machine)
 
 ## 🧪 Verification
 
-### Test 1: Add Consumable to Equipment
+### Test 1: Add Consumable to Asset
 
 ```bash
-1. Go to /equipment/[id]/consumables
+1. Go to /asset/[id]/consumables
 2. Click "Add"
 3. Select a consumable (e.g., MIG Welding Wire)
-4. Check "Duplicate to all equipment of the same type" (checked by default)
+4. Check "Duplicate to all asset of the same type" (checked by default)
 5. Fill the form and click "Create"
-6. Expected: Toast shows "Association created and duplicated to X equipment(s)"
-7. Go to another equipment of the same type
-8. Expected: The consumable is there with note "Auto-duplicated from reference equipment"
+6. Expected: Toast shows "Association created and duplicated to X asset(s)"
+7. Go to another asset of the same type
+8. Expected: The consumable is there with note "Auto-duplicated from reference asset"
 ```
 
 ### Test 2: Verify Database
 
 ```javascript
 // Find all associations for a consumable
-const associations = await EquipmentPart.find({ part: consumableId })
-  .populate('equipment', 'model type')
+const associations = await AssetPart.find({ part: consumableId })
+  .populate('asset', 'model type')
   .populate('part', 'name type');
 
-// Expected: Multiple associations for equipment of the same type
+// Expected: Multiple associations for asset of the same type
 // All with the same parameters
 // All consumables (part.type === 'consumable')
 ```
@@ -145,7 +145,7 @@ const associations = await EquipmentPart.find({ part: consumableId })
 ### Duplication Works For
 - ✅ Parts (type: 'part')
 - ✅ Consumables (type: 'consumable')
-- ✅ All equipment of the same type
+- ✅ All asset of the same type
 - ✅ Enabled by default
 - ✅ Can be disabled via checkbox
 - ✅ Skips existing associations
@@ -177,7 +177,7 @@ const associations = await EquipmentPart.find({ part: consumableId })
 ✅ Consumables ARE automatically duplicated
 ✅ Same logic as parts
 ✅ Enabled by default
-✅ Works for all equipment of the same type
+✅ Works for all asset of the same type
 ✅ Skips duplicates
 ✅ Recalculates Min/Max
 ✅ Already implemented and working
@@ -189,10 +189,10 @@ const associations = await EquipmentPart.find({ part: consumableId })
 ## 📝 Notes
 
 - The duplication is **type-agnostic** - it doesn't check if it's a part or consumable
-- It only checks the **equipment type** (e.g., Weaving Machine, Cutting Machine)
-- The checkbox "Duplicate to all equipment of the same type" is checked by default
-- The user can uncheck it if they want to add only to one equipment
-- The note "Auto-duplicated from reference equipment" is added automatically
+- It only checks the **asset type** (e.g., Weaving Machine, Cutting Machine)
+- The checkbox "Duplicate to all asset of the same type" is checked by default
+- The user can uncheck it if they want to add only to one asset
+- The note "Auto-duplicated from reference asset" is added automatically
 
 ---
 

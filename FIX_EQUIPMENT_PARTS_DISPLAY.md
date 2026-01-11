@@ -1,4 +1,4 @@
-# 🔧 FIX - Affichage des Listes Equipment Parts/Consumables
+# 🔧 FIX - Affichage des Listes Asset Parts/Consumables
 
 **Date**: 1er Novembre 2025  
 **Problème**: Les listes de parts/consumables ne s'affichent toujours pas
@@ -10,7 +10,7 @@
 Le problème était dans l'**API Backend** :
 
 ### Problème
-L'endpoint `/api/equipment-parts/equipment/:equipmentId` ne retournait **pas le champ `type`** de la pièce dans le populate.
+L'endpoint `/api/asset-parts/asset/:assetId` ne retournait **pas le champ `type`** de la pièce dans le populate.
 
 ```javascript
 // ❌ AVANT (ligne 85)
@@ -33,7 +33,7 @@ const filteredParts = allParts.filter((assoc) => assoc.part.type === type)
 
 ### 1. Backend - Route principale (ligne 51)
 
-**Fichier**: `server/routes/equipmentPartsRoutes.js`
+**Fichier**: `server/routes/assetPartsRoutes.js`
 
 ```javascript
 // ✅ APRÈS
@@ -44,7 +44,7 @@ const filteredParts = allParts.filter((assoc) => assoc.part.type === type)
 
 ### 2. Backend - Route par équipement (ligne 85)
 
-**Fichier**: `server/routes/equipmentPartsRoutes.js`
+**Fichier**: `server/routes/assetPartsRoutes.js`
 
 ```javascript
 // ✅ APRÈS
@@ -55,7 +55,7 @@ const filteredParts = allParts.filter((assoc) => assoc.part.type === type)
 
 ### 3. Frontend - Logs de débogage
 
-**Fichier**: `client/src/components/EquipmentPartsList.tsx`
+**Fichier**: `client/src/components/AssetPartsList.tsx`
 
 Ajout de logs détaillés pour diagnostiquer :
 ```typescript
@@ -79,7 +79,7 @@ cd server
 npm run dev
 ```
 
-**IMPORTANT** : Le serveur doit être redémarré pour que les changements dans `equipmentPartsRoutes.js` prennent effet.
+**IMPORTANT** : Le serveur doit être redémarré pour que les changements dans `assetPartsRoutes.js` prennent effet.
 
 ### Étape 2 : Vider le cache du navigateur
 
@@ -95,7 +95,7 @@ npm run dev
 
 ```bash
 1. Ouvrir la console du navigateur (F12 → Console)
-2. Aller sur /equipment/[id]/parts
+2. Aller sur /asset/[id]/parts
 3. Observer les logs :
    📦 Response from API: {...}
    📦 All parts before filter: X
@@ -113,7 +113,7 @@ npm run dev
 **Méthode 1 - Avec curl** :
 ```bash
 # Remplacer [EQUIPMENT_ID] par un ID valide
-curl -X GET "http://localhost:3000/api/equipment-parts/equipment/[EQUIPMENT_ID]" \
+curl -X GET "http://localhost:3000/api/asset-parts/asset/[EQUIPMENT_ID]" \
   -H "Authorization: Bearer [YOUR_TOKEN]"
 ```
 
@@ -138,14 +138,14 @@ curl -X GET "http://localhost:3000/api/equipment-parts/equipment/[EQUIPMENT_ID]"
 ```
 
 **Méthode 2 - Avec Postman** :
-1. GET `http://localhost:3000/api/equipment-parts/equipment/[EQUIPMENT_ID]`
+1. GET `http://localhost:3000/api/asset-parts/asset/[EQUIPMENT_ID]`
 2. Headers : `Authorization: Bearer [token]`
 3. Vérifier que `associations[0].part.type` existe
 
 ### Test 2 : Vérifier l'affichage frontend
 
 ```bash
-1. Aller sur /equipment/[id]/parts
+1. Aller sur /asset/[id]/parts
 2. Ouvrir la console (F12)
 3. Vérifier les logs :
    - "📦 All parts before filter: X" (X > 0)
@@ -158,14 +158,14 @@ curl -X GET "http://localhost:3000/api/equipment-parts/equipment/[EQUIPMENT_ID]"
 
 **Pièces de rechange** :
 ```bash
-URL: /equipment/[id]/parts
+URL: /asset/[id]/parts
 Type attendu: "part"
 Résultat: Liste des pièces de type "part"
 ```
 
 **Consommables** :
 ```bash
-URL: /equipment/[id]/consumable
+URL: /asset/[id]/consumable
 Type attendu: "consumable"
 Résultat: Liste des pièces de type "consumable"
 ```
@@ -182,7 +182,7 @@ Résultat: Liste des pièces de type "consumable"
 
 ```bash
 # Vérifier dans MongoDB
-db.equipmentparts.find({ equipment: ObjectId("[EQUIPMENT_ID]") })
+db.assetparts.find({ asset: ObjectId("[EQUIPMENT_ID]") })
 ```
 
 ### Scénario 2 : Le champ type n'est pas retourné
@@ -211,7 +211,7 @@ db.parts.updateMany(
 
 ### Scénario 3 : Erreur d'authentification
 
-**Symptôme** : `❌ Error fetching equipment parts: 401`
+**Symptôme** : `❌ Error fetching asset parts: 401`
 
 **Solution** :
 ```bash
@@ -227,10 +227,10 @@ db.parts.updateMany(
 **Solution** :
 ```bash
 # Vérifier l'ID dans l'URL
-console.log('Equipment ID:', equipmentId)
+console.log('Asset ID:', assetId)
 
 # Vérifier dans MongoDB
-db.equipments.findOne({ _id: ObjectId("[EQUIPMENT_ID]") })
+db.assets.findOne({ _id: ObjectId("[EQUIPMENT_ID]") })
 ```
 
 ---
@@ -238,16 +238,16 @@ db.equipments.findOne({ _id: ObjectId("[EQUIPMENT_ID]") })
 ## 📊 FICHIERS MODIFIÉS
 
 ### Backend
-1. ✅ `server/routes/equipmentPartsRoutes.js`
+1. ✅ `server/routes/assetPartsRoutes.js`
    - Ligne 51 : Ajout de `type` dans populate (route principale)
    - Ligne 85 : Ajout de `type` dans populate (route par équipement)
 
 ### Frontend
-2. ✅ `client/src/components/EquipmentPartsList.tsx`
+2. ✅ `client/src/components/AssetPartsList.tsx`
    - Lignes 40-67 : Ajout de logs de débogage
    - Ligne 62 : Amélioration du message d'erreur
 
-3. ✅ `client/src/api/equipmentParts.ts`
+3. ✅ `client/src/api/assetParts.ts`
    - Ligne 21 : Ajout du champ `type` dans l'interface TypeScript
 
 ---
@@ -271,11 +271,11 @@ Avant de tester, assurez-vous que :
 Si aucune association n'existe, créez-en via l'API :
 
 ```bash
-POST http://localhost:3000/api/equipment-parts
+POST http://localhost:3000/api/asset-parts
 Headers: Authorization: Bearer [token]
 Body:
 {
-  "equipment": "[EQUIPMENT_ID]",
+  "asset": "[EQUIPMENT_ID]",
   "part": "[PART_ID]",
   "quantityPerMachine": 2,
   "replacementFrequencyPerYear": 4,
@@ -288,7 +288,7 @@ Body:
 ```
 
 Ou via l'interface :
-1. Aller sur `/equipment/[id]/parts`
+1. Aller sur `/asset/[id]/parts`
 2. Cliquer sur "Ajouter"
 3. Remplir le formulaire
 4. Valider
@@ -342,7 +342,7 @@ Après avoir appliqué ces corrections et redémarré le serveur :
    ```bash
    # MongoDB
    db.parts.find({}, { name: 1, type: 1 })
-   db.equipmentparts.find({}, { part: 1, equipment: 1 })
+   db.assetparts.find({}, { part: 1, asset: 1 })
    ```
 
 ---

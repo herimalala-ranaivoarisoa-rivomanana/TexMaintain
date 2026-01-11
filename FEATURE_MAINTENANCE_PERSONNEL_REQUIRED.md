@@ -13,12 +13,12 @@ Comme pour le changement de statut vers **"In Production"** qui nécessite la s�
 ### Statut "In Production"
 ✅ **Requis:** 1 Machiniste
 - Le système refuse le changement si aucun machiniste n'est sélectionné
-- Message d'erreur: `"Machinist is required when setting equipment to In Production"`
+- Message d'erreur: `"Machinist is required when setting asset to In Production"`
 
 ### Statut "Under Repair"
 ✅ **Requis:** Au moins 1 personnel de maintenance (Mechanic OU Electrician OU Maintenance Worker)
 - Le système refuse le changement si aucun personnel n'est sélectionné
-- Message d'erreur: `"At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting equipment to Under Repair"`
+- Message d'erreur: `"At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting asset to Under Repair"`
 - **Possibilités:**
   - ✅ Sélectionner uniquement un mécanicien
   - ✅ Sélectionner uniquement un électricien
@@ -27,9 +27,9 @@ Comme pour le changement de statut vers **"In Production"** qui nécessite la s�
 
 ## 🔧 Modifications Techniques
 
-### 1. Modèle EquipmentStatusHistory
+### 1. Modèle AssetStatusHistory
 
-**Fichier:** `server/models/EquipmentStatusHistory.js`
+**Fichier:** `server/models/AssetStatusHistory.js`
 
 **Nouveaux champs ajoutés:**
 
@@ -53,21 +53,21 @@ maintenanceWorker: {
 
 Ces champs permettent de tracer **qui** a effectué la réparation.
 
-### 2. Service EquipmentStatusService
+### 2. Service AssetStatusService
 
-**Fichier:** `server/services/equipmentStatusService.js`
+**Fichier:** `server/services/assetStatusService.js`
 
 **Validation ajoutée:**
 
 ```javascript
 // Validate required personnel for specific statuses
 if (newStatus === 'in_production' && !machinistId) {
-  throw new Error('Machinist is required when setting equipment to In Production');
+  throw new Error('Machinist is required when setting asset to In Production');
 }
 
 if (newStatus === 'under_repair') {
   if (!mechanicId && !electricianId && !maintenanceWorkerId) {
-    throw new Error('At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting equipment to Under Repair');
+    throw new Error('At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting asset to Under Repair');
   }
 }
 ```
@@ -75,8 +75,8 @@ if (newStatus === 'under_repair') {
 **Création de l'historique mise à jour:**
 
 ```javascript
-const historyEntry = await EquipmentStatusHistory.create({
-  equipment: equipmentId,
+const historyEntry = await AssetStatusHistory.create({
+  asset: assetId,
   previousStatus: previousStatus || null,
   newStatus,
   changedBy: userId,
@@ -108,9 +108,9 @@ if (maintenanceWorkerId) {
 
 ### 3. Route API
 
-**Fichier:** `server/routes/equipmentRoutes.js`
+**Fichier:** `server/routes/assetRoutes.js`
 
-**Endpoint:** `POST /api/equipment/:id/change-status`
+**Endpoint:** `POST /api/asset/:id/change-status`
 
 **Paramètres acceptés (req.body):**
 
@@ -133,7 +133,7 @@ if (maintenanceWorkerId) {
 // If status is "under_repair", at least one maintenance personnel is required
 if (status === 'under_repair' && !mechanicId && !electricianId && !maintenanceWorkerId) {
   return res.status(400).json({ 
-    message: 'At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting equipment to Under Repair' 
+    message: 'At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting asset to Under Repair' 
   });
 }
 ```
@@ -144,7 +144,7 @@ if (status === 'under_repair' && !mechanicId && !electricianId && !maintenanceWo
 
 **Requête:**
 ```javascript
-POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
+POST /api/asset/6904ecd887e093f36b7cbd4b/change-status
 
 {
   "status": "under_repair",
@@ -160,7 +160,7 @@ POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
 
 **Requête:**
 ```javascript
-POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
+POST /api/asset/6904ecd887e093f36b7cbd4b/change-status
 
 {
   "status": "under_repair",
@@ -177,7 +177,7 @@ POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
 
 **Requête:**
 ```javascript
-POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
+POST /api/asset/6904ecd887e093f36b7cbd4b/change-status
 
 {
   "status": "under_repair",
@@ -189,7 +189,7 @@ POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
 **Réponse:** ❌ Erreur 400
 ```json
 {
-  "message": "At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting equipment to Under Repair"
+  "message": "At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting asset to Under Repair"
 }
 ```
 
@@ -229,7 +229,7 @@ const handleStatusChange = async () => {
     }
   }
 
-  await changeEquipmentStatus(equipmentId, {
+  await changeAssetStatus(assetId, {
     status: newStatus,
     reason,
     notes,
@@ -253,7 +253,7 @@ const handleStatusChange = async () => {
 ### Voir l'historique des statuts avec le personnel
 
 ```javascript
-GET /api/equipment/:id/status-history
+GET /api/asset/:id/status-history
 ```
 
 **Réponse:**
@@ -262,7 +262,7 @@ GET /api/equipment/:id/status-history
   "history": [
     {
       "_id": "...",
-      "equipment": "...",
+      "asset": "...",
       "previousStatus": "breakdown",
       "newStatus": "under_repair",
       "changedBy": { "email": "admin@texmaintain.com", "role": "admin" },

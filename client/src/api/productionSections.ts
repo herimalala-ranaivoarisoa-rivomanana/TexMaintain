@@ -30,10 +30,10 @@ export const updateProductionSection = async (id: string, updates: Record<string
   return response.data;
 };
 
-// Description: Update production section equipment order (admin)
-// Endpoint: PATCH /api/production-sections/:id/equipment
-export const updateProductionSectionEquipment = async (id: string, equipment: Array<{ equipmentId: string; order: number }>) => {
-  const response = await api.patch(`/api/production-sections/${id}/equipment`, { equipment });
+// Description: Update production section asset order (admin)
+// Endpoint: PATCH /api/production-sections/:id/asset
+export const updateProductionSectionAsset = async (id: string, asset: Array<{ assetId: string; order: number }>) => {
+  const response = await api.patch(`/api/production-sections/${id}/asset`, { asset });
   return response.data;
 };
 

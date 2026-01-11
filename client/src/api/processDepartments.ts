@@ -5,8 +5,8 @@ export interface ProcessDepartment {
     name: string
     description?: string
     processArea: string
-    equipment: Array<{
-        equipmentId: any
+    asset: Array<{
+        assetId: any
         order: number
     }>
     order: number
@@ -32,7 +32,7 @@ export const deleteProcessDepartment = async (id: string) => {
     return response.data
 }
 
-export const updateProcessDepartmentEquipment = async (id: string, equipment: Array<{ equipmentId: string, order: number }>) => {
-    const response = await api.patch(`/api/process-departments/${id}/equipment`, { equipment })
+export const updateProcessDepartmentAsset = async (id: string, asset: Array<{ assetId: string, order: number }>) => {
+    const response = await api.patch(`/api/process-departments/${id}/asset`, { asset })
     return response.data.processDepartment
 }

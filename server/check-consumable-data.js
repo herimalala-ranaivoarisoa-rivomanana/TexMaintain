@@ -5,8 +5,8 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const { Part } = require('./models/Part');
-const { EquipmentPart } = require('./models/EquipmentPart');
-const { Equipment } = require('./models/Equipment');
+const { AssetPart } = require('./models/AssetPart');
+const { Asset } = require('./models/Asset');
 
 async function checkConsumable() {
   try {
@@ -31,14 +31,14 @@ async function checkConsumable() {
     console.log(`   Max: ${part.maxStock}\n`);
 
     // Trouver toutes les associations
-    const associations = await EquipmentPart.find({ part: part._id })
-      .populate('equipment', 'model serialNumber')
+    const associations = await AssetPart.find({ part: part._id })
+      .populate('asset', 'model serialNumber')
       .lean();
 
     console.log(`🔗 ${associations.length} association(s) trouvée(s):\n`);
 
     for (const assoc of associations) {
-      console.log(`   📍 ${assoc.equipment?.model || 'Unknown'} (${assoc.equipment?.serialNumber})`);
+      console.log(`   📍 ${assoc.asset?.model || 'Unknown'} (${assoc.asset?.serialNumber})`);
       console.log(`      Quantité: ${assoc.quantityPerMachine}`);
       console.log(`      Fréquence: ${assoc.replacementFrequencyPerYear}/an`);
       console.log(`      Consommation annuelle: ${assoc.annualConsumption}`);
@@ -50,14 +50,14 @@ async function checkConsumable() {
     }
 
     // Calculer le global
-    const globalStock = await EquipmentPart.calculateGlobalStock(part._id);
+    const globalStock = await AssetPart.calculateGlobalStock(part._id);
     
     console.log('📊 Calcul global:');
     console.log(`   Consommation annuelle totale: ${globalStock.totalAnnualConsumption}`);
     console.log(`   Consommation journalière totale: ${globalStock.totalDailyConsumption.toFixed(3)}`);
     console.log(`   Stock de sécurité global: ${globalStock.globalSafetyStock}`);
     console.log(`   Point de réappro global: ${globalStock.globalReorderPoint}`);
-    console.log(`   Nombre d'équipements: ${globalStock.equipmentCount}\n`);
+    console.log(`   Nombre d'équipements: ${globalStock.assetCount}\n`);
 
     console.log('✅ Valeurs attendues:');
     console.log(`   Min: ${globalStock.globalSafetyStock}`);

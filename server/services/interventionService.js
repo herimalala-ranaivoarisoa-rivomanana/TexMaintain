@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { Intervention } = require('../models/Intervention');
-const EquipmentStatusService = require('./equipmentStatusService');
-const { Equipment, EQUIPMENT_STATUSES } = require('../models/Equipment');
+const AssetStatusService = require('./assetStatusService');
+const { Asset, ASSET_STATUSES } = require('../models/Asset');
 const { Mechanic } = require('../models/Mechanic');
 const { Electrician } = require('../models/Electrician');
 const { MaintenanceWorker } = require('../models/MaintenanceWorker');
@@ -14,7 +14,7 @@ const { Machinist } = require('../models/Machinist');
 class InterventionService {
     /**
      * Start an intervention
-     * Atomic operation: Updates Intervention Status -> "In Progress" AND Equipment Status -> "Under Repair"
+     * Atomic operation: Updates Intervention Status -> "In Progress" AND Asset Status -> "Under Repair"
      */
     static async startIntervention(interventionId, userId, options) {
         const { mechanicId, electricianId, maintenanceWorkerId } = options;
@@ -48,13 +48,13 @@ class InterventionService {
             intervention.assignedTo = personnelNames.join(', ');
             await intervention.save({ session });
 
-            // 4. Update Equipment Status (via Service)
-            if (intervention.equipmentId) {
-                // Change equipment status to UNDER_REPAIR (or similar from options if we want flexibility)
-                // Usually starting an intervention implies putting equipment under maintenance
-                await EquipmentStatusService.changeStatus(
-                    intervention.equipmentId,
-                    EQUIPMENT_STATUSES.UNDER_REPAIR, // 'under_repair'
+            // 4. Update Asset Status (via Service)
+            if (intervention.assetId) {
+                // Change asset status to UNDER_REPAIR (or similar from options if we want flexibility)
+                // Usually starting an intervention implies putting asset under maintenance
+                await AssetStatusService.changeStatus(
+                    intervention.assetId,
+                    ASSET_STATUSES.UNDER_REPAIR, // 'under_repair'
                     userId,
                     {
                         reason: `Intervention Started: ${intervention.title}`,
@@ -79,7 +79,7 @@ class InterventionService {
 
     /**
      * Complete an intervention
-     * Atomic operation: Updates Intervention Status -> "Completed" AND Equipment Status -> "In Production" (or other)
+     * Atomic operation: Updates Intervention Status -> "Completed" AND Asset Status -> "In Production" (or other)
      */
     static async completeIntervention(interventionId, userId, options) {
         const {
@@ -107,17 +107,17 @@ class InterventionService {
 
             await intervention.save({ session });
 
-            // 3. Update Equipment Status
-            if (intervention.equipmentId) {
-                const equipment = await Equipment.findById(intervention.equipmentId).session(session);
+            // 3. Update Asset Status
+            if (intervention.assetId) {
+                const asset = await Asset.findById(intervention.assetId).session(session);
 
-                // Only update equipment status if it is currently in a maintenance state or breakdown
+                // Only update asset status if it is currently in a maintenance state or breakdown
                 // We don't want to accidentally toggle a machine if it was already manually moved? 
                 // Actually, completing intervention usually implies handing over the machine.
 
                 // We use changeStatus to record the handover
-                await EquipmentStatusService.changeStatus(
-                    intervention.equipmentId,
+                await AssetStatusService.changeStatus(
+                    intervention.assetId,
                     outcomeStatus,
                     userId,
                     {

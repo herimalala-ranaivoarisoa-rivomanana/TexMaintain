@@ -1,17 +1,17 @@
 const { connectDB } = require('../config/database');
-const { Equipment } = require('../models/Equipment');
+const { Asset } = require('../models/Asset');
 const { Intervention } = require('../models/Intervention');
 const { Part } = require('../models/Part');
-require('../models/EquipmentCategory'); // Ensure registration
+require('../models/Category'); // Ensure registration
 
 const debugReports = async () => {
     try {
         await connectDB();
         console.log('--- Debugging Reports Data ---');
 
-        // 1. Equipment Count
-        const count = await Equipment.countDocuments();
-        console.log('Equipment Count:', count);
+        // 1. Asset Count
+        const count = await Asset.countDocuments();
+        console.log('Asset Count:', count);
 
         // 2. Active Interventions
         const activeInt = await Intervention.countDocuments({ status: { $in: ['Pending', 'In Progress'] } });
@@ -22,7 +22,7 @@ const debugReports = async () => {
         console.log('Low Stock:', lowStock);
 
         // 4. Financials
-        const financials = await Equipment.aggregate([
+        const financials = await Asset.aggregate([
             {
                 $group: {
                     _id: null,
@@ -34,10 +34,10 @@ const debugReports = async () => {
         console.log('Financials Aggregation:', financials);
 
         // 5. TCO By Category
-        const tcoByCat = await Equipment.aggregate([
+        const tcoByCat = await Asset.aggregate([
             {
                 $lookup: {
-                    from: 'equipmentcategories',
+                    from: 'assetcategories',
                     localField: 'category',
                     foreignField: '_id',
                     as: 'categoryInfo'

@@ -59,7 +59,7 @@ Connected to MongoDB
 - [ ] Exécuter `npm install` dans le dossier `server/`
 - [ ] Démarrer avec `npm run dev` (PAS `npm start`)
 - [ ] Vérifier que nodemon démarre dans le terminal
-- [ ] Tester la création d'équipement sur `/equipment`
+- [ ] Tester la création d'équipement sur `/asset`
 
 ## 🐛 Si MongoDB se Déconnecte
 
@@ -103,8 +103,8 @@ Cela va:
 
 ## 🎉 Après le Redémarrage Correct
 
-1. Allez sur `http://localhost:5173/equipment`
-2. Cliquez sur "Add Equipment"
+1. Allez sur `http://localhost:5173/asset`
+2. Cliquez sur "Add Asset"
 3. Remplissez le formulaire
 4. Cliquez sur "Create"
 5. ✅ L'équipement sera créé avec succès !

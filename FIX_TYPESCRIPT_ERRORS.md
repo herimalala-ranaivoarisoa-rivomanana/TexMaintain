@@ -108,7 +108,7 @@ setMaintenanceWorkers(workersRes.workers || []);
 
 ## 📋 Résumé des Modifications
 
-### Fichier: `client/src/components/EquipmentStatusDialog.tsx`
+### Fichier: `client/src/components/AssetStatusDialog.tsx`
 
 #### Imports
 ```typescript

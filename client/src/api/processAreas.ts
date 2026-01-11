@@ -11,8 +11,8 @@ export interface ProcessArea {
       _id: string
       name: string
       description?: string
-      equipment: Array<{
-        equipmentId: {
+      asset: Array<{
+        assetId: {
           _id: string
           category: { name: string }
           type: { name: string }

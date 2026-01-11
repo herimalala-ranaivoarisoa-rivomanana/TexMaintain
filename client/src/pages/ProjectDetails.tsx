@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getProjectDetails, getProjectExpenses, createProjectExpense, consumeProjectPart, ProjectDetails, ProjectExpense, CreateExpenseData } from "@/api/projects"
 import { getInventory, Part } from "@/api/inventory"
-import { toast } from "sonner"
+import { useToast } from "@/hooks/useToast"
 import { format } from "date-fns"
 import { useFactory } from "@/contexts/FactoryContext"
 
@@ -40,6 +40,7 @@ export function ProjectDetailsPage() {
     const [selectedPartId, setSelectedPartId] = useState<string>('')
     const [partQuantity, setPartQuantity] = useState<number>(1)
     const [partDate, setPartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
+    const { toast } = useToast()
 
     const fetchData = async () => {
         if (!id) return
@@ -54,7 +55,11 @@ export function ProjectDetailsPage() {
             setParts(inventoryData.parts)
         } catch (error) {
             console.error("Error fetching project details:", error)
-            toast.error("Failed to load project details")
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to load project details"
+            })
         } finally {
             setLoading(false)
         }
@@ -68,7 +73,10 @@ export function ProjectDetailsPage() {
         if (!id) return
         try {
             await createProjectExpense(id, expenseData)
-            toast.success("Expense added successfully")
+            toast({
+                title: "Success",
+                description: "Expense added successfully"
+            })
             setIsExpenseOpen(false)
             setExpenseData({
                 description: '',
@@ -78,7 +86,11 @@ export function ProjectDetailsPage() {
             })
             fetchData()
         } catch (error) {
-            toast.error("Failed to add expense")
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to add expense"
+            })
         }
     }
 
@@ -90,13 +102,20 @@ export function ProjectDetailsPage() {
                 quantity: partQuantity,
                 date: partDate
             })
-            toast.success("Part consumed successfully")
+            toast({
+                title: "Success",
+                description: "Part consumed successfully"
+            })
             setIsPartOpen(false)
             setSelectedPartId('')
             setPartQuantity(1)
             fetchData()
         } catch (error: any) {
-            toast.error(error.response?.data?.message || "Failed to consume part")
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: error.response?.data?.message || "Failed to consume part"
+            })
         }
     }
 

@@ -363,7 +363,7 @@ export function Inventory() {
         'Mechanical Parts',
         'Fasteners',
         'Tools',
-        'Maintenance Equipment',
+        'Maintenance Asset',
         'Sewing Supplies',
         'Cutting Tools'
       ]
@@ -391,7 +391,7 @@ export function Inventory() {
     } else {
       // Pour 'all', retourner toutes les catégories
       return [
-        'Belts', 'Bearings', 'Gears', 'Motors', 'Pumps', 'Valves', 'Filters', 'Sensors', 'Actuators', 'Cables', 'Connectors', 'Switches', 'Relays', 'Circuit Boards', 'Mechanical Parts', 'Fasteners', 'Tools', 'Maintenance Equipment', 'Sewing Supplies', 'Cutting Tools',
+        'Belts', 'Bearings', 'Gears', 'Motors', 'Pumps', 'Valves', 'Filters', 'Sensors', 'Actuators', 'Cables', 'Connectors', 'Switches', 'Relays', 'Circuit Boards', 'Mechanical Parts', 'Fasteners', 'Tools', 'Maintenance Asset', 'Sewing Supplies', 'Cutting Tools',
         'Lubricants', 'Oils', 'Greases', 'Coolants', 'Cleaning Agents', 'Adhesives', 'Sealants', 'Paints', 'Coatings', 'Chemicals', 'Solvents', 'Fuels', 'Batteries', 'Cartridges', 'Tapes', 'Glues', 'Welding Supplies'
       ]
     }

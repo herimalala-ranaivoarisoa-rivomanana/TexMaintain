@@ -69,7 +69,7 @@ export function TopNavigation() {
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
-              placeholder="Search equipment, interventions..."
+              placeholder="Search asset, interventions..."
               className="pl-10 w-full"
             />
           </div>

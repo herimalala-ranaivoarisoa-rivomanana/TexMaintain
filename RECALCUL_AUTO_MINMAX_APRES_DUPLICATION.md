@@ -55,17 +55,17 @@ Après chaque duplication d'association, le système recalcule automatiquement l
 
 ### 1. Service de Recalcul
 
-**Fichier**: `server/services/equipmentPartsService.js`
+**Fichier**: `server/services/assetPartsService.js`
 
 ```javascript
-class EquipmentPartsService {
+class AssetPartsService {
   /**
    * Recalcule automatiquement le min/max d'une pièce 
    * basé sur TOUTES ses associations
    */
   static async recalculateMinMaxForPart(partId) {
     // 1. Récupérer TOUTES les associations pour cette pièce
-    const associations = await EquipmentPart.find({ part: partId })
+    const associations = await AssetPart.find({ part: partId })
     
     if (associations.length === 0) {
       return { minStock: 0, maxStock: 0 }
@@ -110,31 +110,31 @@ class EquipmentPartsService {
 
 ### 2. Appel Après Duplication d'Association
 
-**Fichier**: `server/routes/equipmentPartsRoutes.js`
+**Fichier**: `server/routes/assetPartsRoutes.js`
 
 ```javascript
 router.post('/', async (req, res) => {
   // 1. Créer l'association principale
-  const association = new EquipmentPart({...data})
+  const association = new AssetPart({...data})
   await association.save()
   
   // 2. Dupliquer sur équipements du même type
   let duplicatedCount = 0
   if (duplicateToSameType) {
-    const sameTypeEquipments = await Equipment.find({
-      type: equipment.type._id,
-      _id: { $ne: equipment._id }
+    const sameTypeAssets = await Asset.find({
+      type: asset.type._id,
+      _id: { $ne: asset._id }
     })
     
     // Créer les duplications
-    await EquipmentPart.insertMany(duplications)
+    await AssetPart.insertMany(duplications)
     duplicatedCount = duplications.length
   }
   
   // 3. ✅ RECALCULER LE MIN/MAX AUTOMATIQUEMENT
   let recalculatedMinMax = null
   try {
-    recalculatedMinMax = await EquipmentPartsService
+    recalculatedMinMax = await AssetPartsService
       .recalculateMinMaxForPart(data.part)
     
     console.log(`Min/Max recalculés:`, recalculatedMinMax)
@@ -156,28 +156,28 @@ router.post('/', async (req, res) => {
 
 ### 3. Appel Après Création d'Équipement
 
-**Fichier**: `server/routes/equipmentRoutes.js`
+**Fichier**: `server/routes/assetRoutes.js`
 
 ```javascript
 router.post('/', async (req, res) => {
   // 1. Créer l'équipement
-  const created = await Equipment.create(equipmentData)
+  const created = await Asset.create(assetData)
   
   // 2. Dupliquer les associations depuis équipement de référence
   let duplicatedPartsCount = 0
   if (created.type) {
-    const referenceEquipment = await Equipment.findOne({
+    const referenceAsset = await Asset.findOne({
       type: created.type,
       _id: { $ne: created._id }
     })
     
-    if (referenceEquipment) {
-      const referenceAssociations = await EquipmentPart.find({
-        equipment: referenceEquipment._id
+    if (referenceAsset) {
+      const referenceAssociations = await AssetPart.find({
+        asset: referenceAsset._id
       })
       
       // Créer les duplications
-      await EquipmentPart.insertMany(newAssociations)
+      await AssetPart.insertMany(newAssociations)
       duplicatedPartsCount = newAssociations.length
       
       // 3. ✅ RECALCULER LE MIN/MAX POUR CHAQUE PIÈCE
@@ -187,7 +187,7 @@ router.post('/', async (req, res) => {
       
       for (const partId of uniqueParts) {
         try {
-          await EquipmentPartsService.recalculateMinMaxForPart(partId)
+          await AssetPartsService.recalculateMinMaxForPart(partId)
           console.log(`Min/Max recalculés pour ${partId}`)
         } catch (error) {
           console.error(`Error recalculating for ${partId}:`, error)
@@ -198,7 +198,7 @@ router.post('/', async (req, res) => {
   
   return res.status(201).json({
     success: true,
-    equipment,
+    asset,
     duplicatedPartsCount,
     message: `Équipement créé avec ${duplicatedPartsCount} pièce(s). Min/Max recalculés.`
   })
@@ -209,10 +209,10 @@ router.post('/', async (req, res) => {
 
 ### 4. Affichage Frontend
 
-**Fichier**: `client/src/components/EquipmentPartFormDialog.tsx`
+**Fichier**: `client/src/components/AssetPartFormDialog.tsx`
 
 ```typescript
-const result = await createEquipmentPart({...form})
+const result = await createAssetPart({...form})
 
 const duplicatedCount = result.duplicatedCount || 0
 const recalculatedMinMax = result.recalculatedMinMax
@@ -447,7 +447,7 @@ RÉSULTAT ATTENDU:
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────┐
-│ BACKEND - POST /api/equipment-parts                     │
+│ BACKEND - POST /api/asset-parts                     │
 │                                                         │
 │ 1. Créer association sur Équipement #1 ✓               │
 │                                                         │
@@ -541,21 +541,21 @@ Commande suggérée:
 
 ### Backend (3 fichiers)
 
-1. **`server/services/equipmentPartsService.js`**
+1. **`server/services/assetPartsService.js`**
    - ✅ Nouvelle fonction `recalculateMinMaxForPart()`
    - Calcule min/max basé sur TOUTES les associations
 
-2. **`server/routes/equipmentPartsRoutes.js`**
+2. **`server/routes/assetPartsRoutes.js`**
    - ✅ Appel du recalcul après duplication d'association
    - ✅ Retour des nouvelles valeurs au frontend
 
-3. **`server/routes/equipmentRoutes.js`**
+3. **`server/routes/assetRoutes.js`**
    - ✅ Appel du recalcul après création d'équipement
    - ✅ Recalcul pour chaque pièce dupliquée
 
 ### Frontend (1 fichier)
 
-4. **`client/src/components/EquipmentPartFormDialog.tsx`**
+4. **`client/src/components/AssetPartFormDialog.tsx`**
    - ✅ Affichage des nouvelles valeurs min/max dans le toast
 
 ---

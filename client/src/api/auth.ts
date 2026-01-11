@@ -1,4 +1,5 @@
 import api from './api';
+import { AxiosError } from 'axios';
 
 // Description: Login user functionality
 // Endpoint: POST /api/auth/login
@@ -10,7 +11,9 @@ export const login = async (email: string, password: string) => {
     return response.data;
   } catch (error) {
     console.error('Login error:', error);
-    throw new Error(error?.response?.data?.message || error.message);
+    const axiosError = error as AxiosError<{ message?: string }>;
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Login failed';
+    throw new Error(message);
   }
 };
 
@@ -23,7 +26,9 @@ export const register = async (email: string, password: string, role?: string) =
     const response = await api.post('/api/auth/register', { email, password, role });
     return response.data;
   } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+    const axiosError = error as AxiosError<{ message?: string }>;
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Registration failed';
+    throw new Error(message);
   }
 };
 
@@ -36,7 +41,9 @@ export const getCurrentUser = async () => {
     const response = await api.get('/api/auth/me');
     return response.data;
   } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+    const axiosError = error as AxiosError<{ message?: string }>;
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Failed to get current user';
+    throw new Error(message);
   }
 };
 
@@ -48,6 +55,8 @@ export const logout = async () => {
   try {
     return await api.post('/api/auth/logout');
   } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+    const axiosError = error as AxiosError<{ message?: string }>;
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Logout failed';
+    throw new Error(message);
   }
 };

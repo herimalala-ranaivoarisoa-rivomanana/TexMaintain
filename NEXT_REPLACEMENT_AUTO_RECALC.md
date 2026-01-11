@@ -19,7 +19,7 @@ Automatically recalculate **Next Replacement Date** when:
 
 ### 1. Pre-Save Hook (Automatic Detection)
 
-**File**: `server/models/EquipmentPart.js`
+**File**: `server/models/AssetPart.js`
 
 ```javascript
 schema.pre('save', function(next) {
@@ -57,7 +57,7 @@ schema.pre('save', function(next) {
 
 ### 2. Record Replacement Method (For Parts)
 
-**File**: `server/models/EquipmentPart.js`
+**File**: `server/models/AssetPart.js`
 
 ```javascript
 schema.methods.recordReplacement = function(quantityUsed, userId, notes = '') {
@@ -96,13 +96,13 @@ schema.methods.recordReplacement = function(quantityUsed, userId, notes = '') {
 
 ### 3. Record Usage (For Consumables)
 
-**File**: `server/routes/equipmentPartsRoutes.js`
+**File**: `server/routes/assetPartsRoutes.js`
 
 ```javascript
 router.post('/:id/record-usage', requireUser, async (req, res) => {
   const { quantityUsed, notes } = req.body;
   
-  const association = await EquipmentPart.findById(id);
+  const association = await AssetPart.findById(id);
   
   // Record usage (uses same method as replacement)
   await association.recordReplacement(quantityUsed, req.user._id, notes || '');
@@ -204,10 +204,10 @@ router.post('/:id/record-usage', requireUser, async (req, res) => {
 ### For Parts (Spare Parts)
 
 ```
-1. User goes to /equipment/:id/parts
+1. User goes to /asset/:id/parts
 2. User clicks "📝 Record a replacement"
 3. User enters quantity used
-4. Frontend calls POST /api/equipment-parts/:id/record-replacement
+4. Frontend calls POST /api/asset-parts/:id/record-replacement
 5. Backend:
    a. Calls recordReplacement(quantity, userId, notes)
    b. Updates lastReplacementDate = now
@@ -223,10 +223,10 @@ router.post('/:id/record-usage', requireUser, async (req, res) => {
 ### For Consumables
 
 ```
-1. User goes to /equipment/:id/consumables
+1. User goes to /asset/:id/consumables
 2. User clicks "📝 Record usage"
 3. User enters quantity used
-4. Frontend calls POST /api/equipment-parts/:id/record-usage
+4. Frontend calls POST /api/asset-parts/:id/record-usage
 5. Backend:
    a. Calls recordReplacement(quantity, userId, notes) [same method!]
    b. Updates lastReplacementDate = now

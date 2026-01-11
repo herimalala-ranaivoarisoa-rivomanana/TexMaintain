@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { Intervention } = require('./models/Intervention');
-const { Equipment } = require('./models/Equipment');
+const { Asset } = require('./models/Asset');
 require('dotenv').config();
 
 async function checkInterventions() {
@@ -9,18 +9,18 @@ async function checkInterventions() {
 
         const activeInterventions = await Intervention.find({
             status: { $in: ['Pending', 'In Progress'] }
-        }).populate('equipment');
+        }).populate('asset');
 
         console.log(`Found ${activeInterventions.length} active interventions.`);
 
         activeInterventions.forEach(i => {
             console.log(`\nIntervention ID: ${i._id}`);
             console.log(`Title: ${i.title}`);
-            console.log(`Equipment ID in Intervention: ${i.equipment ? i.equipment._id : 'NULL'}`);
-            console.log(`Equipment Name: ${i.equipment ? i.equipment.name : 'N/A'}`);
+            console.log(`Asset ID in Intervention: ${i.asset ? i.asset._id : 'NULL'}`);
+            console.log(`Asset Name: ${i.asset ? i.asset.name : 'N/A'}`);
 
-            if (!i.equipment) {
-                console.log('WARNING: Equipment field is null or populated object is null.');
+            if (!i.asset) {
+                console.log('WARNING: Asset field is null or populated object is null.');
             }
         });
 

@@ -22,7 +22,7 @@ Système complet de gestion de stock de pièces détachées et consommables avec
 
 ### Backend
 
-#### 1. **Modèle** : `server/models/EquipmentPart.js` ✅
+#### 1. **Modèle** : `server/models/AssetPart.js` ✅
 - **Lignes** : 348 lignes
 - **Fonctionnalités** :
   - Schéma complet avec 20+ champs
@@ -31,11 +31,11 @@ Système complet de gestion de stock de pièces détachées et consommables avec
   - 2 méthodes statiques puissantes
   - Index optimisés
 
-#### 2. **Routes** : `server/routes/equipmentPartsRoutes.js` ✅
+#### 2. **Routes** : `server/routes/assetPartsRoutes.js` ✅
 - **Lignes** : 400+ lignes
 - **Endpoints** : 9 routes complètes
   - GET `/` - Liste paginée
-  - GET `/equipment/:id` - Pièces d'un équipement
+  - GET `/asset/:id` - Pièces d'un équipement
   - GET `/part/:id` - Équipements utilisant une pièce
   - GET `/part/:id/global-stock` - Calcul stock global ⭐
   - GET `/reorder-alerts` - Alertes de réappro ⚠️
@@ -46,7 +46,7 @@ Système complet de gestion de stock de pièces détachées et consommables avec
   - POST `/:id/record-replacement` - Enregistrer remplacement 🔧
 
 #### 3. **Serveur** : `server/server.js` ✅
-- Ajout de la route `/api/equipment-parts`
+- Ajout de la route `/api/asset-parts`
 
 ### Documentation
 
@@ -146,7 +146,7 @@ const stats = association.getConsumptionStats();
 
 ```javascript
 // Calcul du stock global pour une pièce
-const globalStock = await EquipmentPart.calculateGlobalStock(partId);
+const globalStock = await AssetPart.calculateGlobalStock(partId);
 // Retourne: {
 //   totalAnnualConsumption,
 //   totalDailyConsumption,
@@ -154,12 +154,12 @@ const globalStock = await EquipmentPart.calculateGlobalStock(partId);
 //   globalSafetyStock,
 //   globalReorderPoint,
 //   recommendedInitialStock,
-//   equipmentCount,
+//   assetCount,
 //   details: [...]
 // }
 
 // Alertes de réapprovisionnement
-const alerts = await EquipmentPart.findPartsNeedingReorder();
+const alerts = await AssetPart.findPartsNeedingReorder();
 // Retourne: [
 //   {
 //     part,
@@ -168,7 +168,7 @@ const alerts = await EquipmentPart.findPartsNeedingReorder();
 //     safetyStock,
 //     deficit,
 //     urgency: 'critical' | 'warning',
-//     equipmentCount
+//     assetCount
 //   }
 // ]
 ```
@@ -181,8 +181,8 @@ const alerts = await EquipmentPart.findPartsNeedingReorder();
 
 ```javascript
 // 1. Créer les associations
-await EquipmentPart.create({
-  equipment: machineA_id,
+await AssetPart.create({
+  asset: machineA_id,
   part: courroieB123_id,
   quantityPerMachine: 1,
   replacementFrequencyPerYear: 2,
@@ -193,8 +193,8 @@ await EquipmentPart.create({
   changedBy: user_id
 });
 
-await EquipmentPart.create({
-  equipment: machineB_id,
+await AssetPart.create({
+  asset: machineB_id,
   part: courroieB123_id,
   quantityPerMachine: 1,
   replacementFrequencyPerYear: 1,
@@ -205,8 +205,8 @@ await EquipmentPart.create({
   changedBy: user_id
 });
 
-await EquipmentPart.create({
-  equipment: machineC_id,
+await AssetPart.create({
+  asset: machineC_id,
   part: courroieB123_id,
   quantityPerMachine: 2,
   replacementFrequencyPerYear: 0.5,
@@ -218,7 +218,7 @@ await EquipmentPart.create({
 });
 
 // 2. Calculer le stock global
-const globalStock = await EquipmentPart.calculateGlobalStock(courroieB123_id);
+const globalStock = await AssetPart.calculateGlobalStock(courroieB123_id);
 console.log(globalStock);
 // {
 //   totalAnnualConsumption: 4,        // 2 + 1 + 1
@@ -228,11 +228,11 @@ console.log(globalStock);
 //   globalSafetyStock: 1,
 //   globalReorderPoint: 2,
 //   recommendedInitialStock: 2,
-//   equipmentCount: 3
+//   assetCount: 3
 // }
 
 // 3. Vérifier les alertes
-const alerts = await EquipmentPart.findPartsNeedingReorder();
+const alerts = await AssetPart.findPartsNeedingReorder();
 console.log(alerts);
 // [
 //   {
@@ -244,8 +244,8 @@ console.log(alerts);
 // ]
 
 // 4. Enregistrer un remplacement
-const association = await EquipmentPart.findOne({
-  equipment: machineA_id,
+const association = await AssetPart.findOne({
+  asset: machineA_id,
   part: courroieB123_id
 });
 
@@ -264,31 +264,31 @@ await association.recordReplacement(1, user_id, 'Remplacement préventif');
 
 #### 1. Client API TypeScript
 ```typescript
-// client/src/api/equipmentParts.ts
-export const getEquipmentParts = async (filters) => { ... }
-export const getEquipmentPartsByEquipment = async (equipmentId) => { ... }
-export const getEquipmentPartsByPart = async (partId) => { ... }
+// client/src/api/assetParts.ts
+export const getAssetParts = async (filters) => { ... }
+export const getAssetPartsByAsset = async (assetId) => { ... }
+export const getAssetPartsByPart = async (partId) => { ... }
 export const calculateGlobalStock = async (partId) => { ... }
 export const getReorderAlerts = async () => { ... }
-export const createEquipmentPart = async (data) => { ... }
-export const updateEquipmentPart = async (id, data) => { ... }
-export const deleteEquipmentPart = async (id) => { ... }
+export const createAssetPart = async (data) => { ... }
+export const updateAssetPart = async (id, data) => { ... }
+export const deleteAssetPart = async (id) => { ... }
 export const recordReplacement = async (id, data) => { ... }
 ```
 
 #### 2. Composants React
 
-**EquipmentPartsList.tsx**
+**AssetPartsList.tsx**
 - Liste des pièces associées à un équipement
 - Affichage des paramètres et calculs
 - Actions : Modifier, Supprimer, Enregistrer remplacement
 
-**EquipmentPartForm.tsx**
+**AssetPartForm.tsx**
 - Formulaire de création/modification
 - Validation en temps réel
 - Aperçu des calculs
 
-**PartEquipmentsList.tsx**
+**PartAssetsList.tsx**
 - Liste des équipements utilisant une pièce
 - Tri par importance/criticité
 - Affichage du stock global
@@ -317,7 +317,7 @@ export const recordReplacement = async (id, data) => { ... }
 - Historique des remplacements
 - Graphiques de consommation
 
-**EquipmentDetailsPage.tsx** (mise à jour)
+**AssetDetailsPage.tsx** (mise à jour)
 - Ajouter section "Pièces associées"
 - Affichage des calculs
 - Actions rapides
@@ -434,8 +434,8 @@ export const recordReplacement = async (id, data) => { ... }
 4. **ANALYSE_COMPLETE_SYSTEME_2025.md** - Analyse globale du système
 
 ### Code source
-1. **server/models/EquipmentPart.js** - Modèle (348 lignes)
-2. **server/routes/equipmentPartsRoutes.js** - Routes API (400+ lignes)
+1. **server/models/AssetPart.js** - Modèle (348 lignes)
+2. **server/routes/assetPartsRoutes.js** - Routes API (400+ lignes)
 3. **server/server.js** - Configuration serveur (modifié)
 
 ---
@@ -497,11 +497,11 @@ curl -X POST http://localhost:3000/api/auth/login \
   -d '{"email": "admin@texmaintain.com", "password": "Admin123!"}'
 
 # Créer une association
-curl -X POST http://localhost:3000/api/equipment-parts \
+curl -X POST http://localhost:3000/api/asset-parts \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
-    "equipment": "EQUIPMENT_ID",
+    "asset": "EQUIPMENT_ID",
     "part": "PART_ID",
     "quantityPerMachine": 1,
     "replacementFrequencyPerYear": 2,

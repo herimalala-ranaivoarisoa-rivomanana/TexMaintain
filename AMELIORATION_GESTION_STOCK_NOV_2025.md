@@ -124,7 +124,7 @@ pendingQuantity = sum(orders.filter(status in ['pending','ordered','in_transit']
 
 **GET `/api/inventory/:id/stock-status`**
 - Obtenir le statut détaillé du stock
-- Retourne: `{ stockStatus, currentStock, minStock, maxStock, pendingQuantity, pendingOrders, associatedEquipmentCount }`
+- Retourne: `{ stockStatus, currentStock, minStock, maxStock, pendingQuantity, pendingOrders, associatedAssetCount }`
 
 #### Route Modifiée
 
@@ -218,8 +218,8 @@ else → NORMAL 🟢
 ### Calcul Automatique Min/Max
 
 ```javascript
-// Récupère le calcul global de stock depuis EquipmentPart
-globalStock = EquipmentPart.calculateGlobalStock(partId)
+// Récupère le calcul global de stock depuis AssetPart
+globalStock = AssetPart.calculateGlobalStock(partId)
 
 // Min = Stock de sécurité global
 minStock = ceil(globalStock.globalSafetyStock)

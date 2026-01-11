@@ -6,25 +6,25 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/hooks/useToast'
-import { recordUsage, type EquipmentPart } from '@/api/equipmentParts'
+import { recordUsage, type AssetPart } from '@/api/assetParts'
 
 import { BeforeAfterMediaUpload } from './BeforeAfterMediaUpload'
 
 interface RecordUsageDialogProps {
-  equipmentPart: EquipmentPart
+  assetPart: AssetPart // Support both types
   onClose: () => void
   onSuccess: () => void
 }
 
-export function RecordUsageDialog({ equipmentPart, onClose, onSuccess }: RecordUsageDialogProps) {
-  const [quantity, setQuantity] = useState(equipmentPart.quantityPerMachine)
+export function RecordUsageDialog({ assetPart, onClose, onSuccess }: RecordUsageDialogProps) {
+  const [quantity, setQuantity] = useState(assetPart.quantityPerMachine)
   const [notes, setNotes] = useState('')
   const [mediaBefore, setMediaBefore] = useState<string[]>([])
   const [mediaAfter, setMediaAfter] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
 
-  const currentStock = equipmentPart.part.currentStock || 0
+  const currentStock = assetPart.part.currentStock || 0
   const newStock = Math.max(0, currentStock - quantity)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,7 +50,7 @@ export function RecordUsageDialog({ equipmentPart, onClose, onSuccess }: RecordU
 
     try {
       setIsSubmitting(true)
-      await recordUsage(equipmentPart._id, {
+      await recordUsage(assetPart._id, {
         quantityUsed: quantity,
         notes: notes.trim() || undefined,
         mediaBefore,
@@ -59,7 +59,7 @@ export function RecordUsageDialog({ equipmentPart, onClose, onSuccess }: RecordU
 
       toast({
         title: 'Utilisation enregistrée',
-        description: `${quantity} unité(s) de ${equipmentPart.part.name} enregistrée(s)`
+        description: `${quantity} unité(s) de ${assetPart.part.name} enregistrée(s)`
       })
 
       onSuccess()
@@ -82,7 +82,7 @@ export function RecordUsageDialog({ equipmentPart, onClose, onSuccess }: RecordU
         <DialogHeader>
           <DialogTitle>📝 Record usage</DialogTitle>
           <DialogDescription>
-            {equipmentPart.part.name} ({equipmentPart.part.partNumber})
+            {assetPart.part.name} ({assetPart.part.partNumber})
           </DialogDescription>
         </DialogHeader>
 
@@ -91,7 +91,7 @@ export function RecordUsageDialog({ equipmentPart, onClose, onSuccess }: RecordU
             {/* Informations sur l'équipement */}
             <div className="p-3 bg-slate-50 rounded-lg">
               <p className="text-sm text-slate-600 mb-1">Équipement</p>
-              <p className="font-medium">{equipmentPart.equipment.model}</p>
+              <p className="font-medium">{assetPart.asset.model}</p>
             </div>
 
             {/* Stock actuel et quantité habituelle */}
@@ -102,16 +102,16 @@ export function RecordUsageDialog({ equipmentPart, onClose, onSuccess }: RecordU
                   {currentStock}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {equipmentPart.part.type === 'consumable' ? 'unit(s)' : 'piece(s)'}
+                  {assetPart.part.type === 'consumable' ? 'unit(s)' : 'piece(s)'}
                 </p>
               </div>
               <div>
                 <Label className="text-slate-600">Quantité habituelle</Label>
                 <p className="text-2xl font-bold text-blue-600">
-                  {equipmentPart.quantityPerMachine}
+                  {assetPart.quantityPerMachine}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {equipmentPart.part.type === 'consumable' ? 'unit(s)' : 'piece(s)'}
+                  {assetPart.part.type === 'consumable' ? 'unit(s)' : 'piece(s)'}
                 </p>
               </div>
             </div>
@@ -141,7 +141,7 @@ export function RecordUsageDialog({ equipmentPart, onClose, onSuccess }: RecordU
                 {newStock.toFixed(1)}
               </p>
               <p className="text-xs text-slate-500">
-                {equipmentPart.part.type === 'consumable' ? 'unité(s)' : 'pièce(s)'}
+                {assetPart.part.type === 'consumable' ? 'unité(s)' : 'pièce(s)'}
               </p>
             </div>
 

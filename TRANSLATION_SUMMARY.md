@@ -15,13 +15,13 @@ Translate all French expressions to English in the codebase while keeping the co
 
 ### Backend (3 files)
 
-#### 1. `server/routes/equipmentPartsRoutes.js`
+#### 1. `server/routes/assetPartsRoutes.js`
 
 **Messages Translated:**
 
 | French | English |
 |--------|---------|
-| `Association créée et dupliquée sur X équipement(s) du même type. Min/Max recalculés.` | `Association created and duplicated to X equipment(s) of the same type. Min/Max recalculated.` |
+| `Association créée et dupliquée sur X équipement(s) du même type. Min/Max recalculés.` | `Association created and duplicated to X asset(s) of the same type. Min/Max recalculated.` |
 | `Association créée. Min/Max recalculés.` | `Association created. Min/Max recalculated.` |
 | `Association modifiée. Min/Max recalculés: X/Y` | `Association updated. Min/Max recalculated: X/Y` |
 | `Association modifiée` | `Association updated` |
@@ -45,15 +45,15 @@ Translate all French expressions to English in the codebase while keeping the co
 
 ---
 
-#### 2. `server/routes/equipmentRoutes.js`
+#### 2. `server/routes/assetRoutes.js`
 
 **Messages Translated:**
 
 | French | English |
 |--------|---------|
-| `Équipement créé avec X pièce(s)/consommable(s) auto-dupliqué(s). Min/Max recalculés.` | `Equipment created with X part(s)/consumable(s) auto-duplicated. Min/Max recalculated.` |
-| `Équipement créé` | `Equipment created` |
-| `Auto-dupliqué depuis équipement de référence` | `Auto-duplicated from reference equipment` |
+| `Équipement créé avec X pièce(s)/consommable(s) auto-dupliqué(s). Min/Max recalculés.` | `Asset created with X part(s)/consumable(s) auto-duplicated. Min/Max recalculated.` |
+| `Équipement créé` | `Asset created` |
+| `Auto-dupliqué depuis équipement de référence` | `Auto-duplicated from reference asset` |
 
 **Console Logs:**
 
@@ -65,13 +65,13 @@ Translate all French expressions to English in the codebase while keeping the co
 
 | French | English |
 |--------|---------|
-| `Ne pas faire échouer la création de l'équipement` | `Don't fail equipment creation` |
+| `Ne pas faire échouer la création de l'équipement` | `Don't fail asset creation` |
 
 ---
 
 ### Frontend (1 file)
 
-#### 3. `client/src/components/EquipmentPartFormDialog.tsx`
+#### 3. `client/src/components/AssetPartFormDialog.tsx`
 
 **Toast Messages:**
 
@@ -79,7 +79,7 @@ Translate all French expressions to English in the codebase while keeping the co
 |--------|---------|
 | Title: `Créé` | Title: `Created` |
 | Title: `Modifié` | Title: `Updated` |
-| `Association créée et dupliquée sur X équipement(s) du même type.` | `Association created and duplicated to X equipment(s) of the same type.` |
+| `Association créée et dupliquée sur X équipement(s) du même type.` | `Association created and duplicated to X asset(s) of the same type.` |
 | `Association créée avec succès.` | `Association created successfully.` |
 | `Association modifiée avec succès.` | `Association updated successfully.` |
 | `Min/Max recalculés: X/Y` | `Min/Max recalculated: X/Y` |
@@ -88,8 +88,8 @@ Translate all French expressions to English in the codebase while keeping the co
 
 | French | English |
 |--------|---------|
-| `Dupliquer sur tous les équipements du même type` | `Duplicate to all equipment of the same type` |
-| `Cette association sera automatiquement créée pour tous les équipements existants et futurs du même type avec les mêmes paramètres.` | `This association will be automatically created for all existing and future equipment of the same type with the same parameters.` |
+| `Dupliquer sur tous les équipements du même type` | `Duplicate to all asset of the same type` |
+| `Cette association sera automatiquement créée pour tous les équipements existants et futurs du même type avec les mêmes paramètres.` | `This association will be automatically created for all existing and future asset of the same type with the same parameters.` |
 
 ---
 
@@ -109,7 +109,7 @@ Translate all French expressions to English in the codebase while keeping the co
 
 | French | English |
 |--------|---------|
-| Équipement(s) | Equipment |
+| Équipement(s) | Asset |
 | Pièce(s) | Part(s) |
 | Consommable(s) | Consumable(s) |
 | Association | Association |
@@ -147,18 +147,18 @@ Translate all French expressions to English in the codebase while keeping the co
 ### Test 1: Create Association
 
 ```bash
-1. Go to /equipment/[id]/parts
+1. Go to /asset/[id]/parts
 2. Click "Add"
 3. Fill the form
-4. Check "Duplicate to all equipment of the same type"
+4. Check "Duplicate to all asset of the same type"
 5. Click "Create"
-6. Expected toast: "Created - Association created and duplicated to X equipment(s) of the same type. Min/Max recalculated: XX/YYY"
+6. Expected toast: "Created - Association created and duplicated to X asset(s) of the same type. Min/Max recalculated: XX/YYY"
 ```
 
 ### Test 2: Update Association
 
 ```bash
-1. Go to /equipment/[id]/parts
+1. Go to /asset/[id]/parts
 2. Click "Edit" on an association
 3. Change a value (e.g., quantity)
 4. Click "Update"
@@ -168,7 +168,7 @@ Translate all French expressions to English in the codebase while keeping the co
 ### Test 3: Delete Association
 
 ```bash
-1. Go to /equipment/[id]/parts
+1. Go to /asset/[id]/parts
 2. Click "Delete" on an association
 3. Confirm deletion
 4. Expected toast: "Association deleted. Min/Max recalculated: XX/YYY"

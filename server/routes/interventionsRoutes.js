@@ -1,8 +1,8 @@
 const express = require('express');
 const { requireUser } = require('./middleware/auth');
 const { Intervention } = require('../models/Intervention');
-const { Equipment } = require('../models/Equipment');
-const EquipmentMetricsService = require('../services/equipmentMetricsService');
+const { Asset } = require('../models/Asset');
+const AssetMetricsService = require('../services/assetMetricsService');
 const InterventionService = require('../services/interventionService');
 
 const router = express.Router();
@@ -28,7 +28,7 @@ router.get('/', requireUser, async (req, res) => {
   if (priority) query.priority = priority;
   if (q) query.$or = [
     { title: { $regex: q, $options: 'i' } },
-    { equipment: { $regex: q, $options: 'i' } },
+    { asset: { $regex: q, $options: 'i' } },
     { assignedTo: { $regex: q, $options: 'i' } }
   ];
   const skip = (Number(page) - 1) * Number(limit);
@@ -39,7 +39,7 @@ router.get('/', requireUser, async (req, res) => {
       .skip(skip)
       .limit(Number(limit))
       .populate({
-        path: 'equipmentId',
+        path: 'assetId',
         select: 'location status category type',
         populate: [
           { path: 'category', select: 'name' },
@@ -57,7 +57,7 @@ router.get('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
   const intervention = await Intervention.findById(id)
     .populate({
-      path: 'equipmentId',
+      path: 'assetId',
       select: 'location status category type',
       populate: [
         { path: 'category', select: 'name' },
@@ -76,14 +76,14 @@ const interventionSchema = z.object({
   type: z.enum(['Corrective', 'Preventive', 'Emergency']),
   priority: z.enum(['Low', 'Medium', 'High', 'Critical']),
   status: z.enum(['Pending', 'In Progress', 'Completed', 'Cancelled']).optional(),
-  equipment: z.string().min(1).optional(),
-  equipmentId: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid equipmentId').optional(),
+  asset: z.string().min(1).optional(),
+  assetId: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid assetId').optional(),
   assignedTo: z.string().optional(),
   description: z.string().optional(),
   dueDate: z.coerce.date().optional(),
-}).refine((data) => !!(data.equipment || data.equipmentId), {
-  message: 'Either equipment or equipmentId is required',
-  path: ['equipment']
+}).refine((data) => !!(data.asset || data.assetId), {
+  message: 'Either asset or assetId is required',
+  path: ['asset']
 });
 
 router.post('/', requireUser, async (req, res) => {
@@ -98,19 +98,19 @@ router.post('/', requireUser, async (req, res) => {
     factory: req.headers['x-factory-id']
   };
   try {
-    // If equipmentId provided, validate and backfill equipment string
-    if (data.equipmentId) {
-      const eq = await Equipment.findById(data.equipmentId).lean();
-      if (!eq) return res.status(400).json({ message: 'Invalid equipmentId: equipment not found' });
-      if (!data.equipment) {
-        data.equipment = eq.location || `Equipment ${eq._id}`;
+    // If assetId provided, validate and backfill asset string
+    if (data.assetId) {
+      const eq = await Asset.findById(data.assetId).lean();
+      if (!eq) return res.status(400).json({ message: 'Invalid assetId: asset not found' });
+      if (!data.asset) {
+        data.asset = eq.location || `Asset ${eq._id}`;
       }
     }
 
     const created = await Intervention.create(data);
     const populated = await Intervention.findById(created._id)
       .populate({
-        path: 'equipmentId',
+        path: 'assetId',
         select: 'location status category type',
         populate: [
           { path: 'category', select: 'name' },
@@ -120,17 +120,17 @@ router.post('/', requireUser, async (req, res) => {
       .lean();
 
     // Trigger metric recalculation if intervention affects metrics
-    if (created.equipmentId && created.status === 'Completed') {
+    if (created.assetId && created.status === 'Completed') {
       // Update lastMaintenance
       const completionDate = created.completedDate || created.dueDate || new Date();
-      Equipment.findByIdAndUpdate(created.equipmentId, {
+      Asset.findByIdAndUpdate(created.assetId, {
         lastMaintenance: completionDate
-      }).catch(err => console.error(`Error updating lastMaintenance for ${created.equipmentId}:`, err));
+      }).catch(err => console.error(`Error updating lastMaintenance for ${created.assetId}:`, err));
 
       if (['Corrective', 'Emergency'].includes(created.type)) {
         // Don't await to avoid blocking response
-        EquipmentMetricsService.calculateMetrics(created.equipmentId).catch(err =>
-          console.error(`Error recalculating metrics for ${created.equipmentId}:`, err)
+        AssetMetricsService.calculateMetrics(created.assetId).catch(err =>
+          console.error(`Error recalculating metrics for ${created.assetId}:`, err)
         );
       }
     }
@@ -152,18 +152,18 @@ router.patch('/:id', requireUser, async (req, res) => {
   const updates = req.body || {};
 
   try {
-    // If equipmentId provided, validate and backfill equipment string
-    if (updates.equipmentId) {
-      const eq = await Equipment.findById(updates.equipmentId).lean();
-      if (!eq) return res.status(400).json({ message: 'Invalid equipmentId: equipment not found' });
-      if (!updates.equipment) {
-        updates.equipment = eq.location || `Equipment ${eq._id}`;
+    // If assetId provided, validate and backfill asset string
+    if (updates.assetId) {
+      const eq = await Asset.findById(updates.assetId).lean();
+      if (!eq) return res.status(400).json({ message: 'Invalid assetId: asset not found' });
+      if (!updates.asset) {
+        updates.asset = eq.location || `Asset ${eq._id}`;
       }
     }
 
     const updated = await Intervention.findByIdAndUpdate(id, updates, { new: true })
       .populate({
-        path: 'equipmentId',
+        path: 'assetId',
         select: 'location status category type',
         populate: [
           { path: 'category', select: 'name' },
@@ -175,11 +175,11 @@ router.patch('/:id', requireUser, async (req, res) => {
     if (!updated) return res.status(404).json({ message: 'Intervention not found' });
 
     // Trigger metric recalculation if intervention affects metrics
-    if (updated.equipmentId) {
-      // If intervention is completed, update lastMaintenance on equipment
+    if (updated.assetId) {
+      // If intervention is completed, update lastMaintenance on asset
       if (updated.status === 'Completed') {
         const completionDate = updated.completedDate || updated.dueDate || new Date();
-        await Equipment.findByIdAndUpdate(updated.equipmentId, {
+        await Asset.findByIdAndUpdate(updated.assetId, {
           lastMaintenance: completionDate
         });
       }
@@ -187,8 +187,8 @@ router.patch('/:id', requireUser, async (req, res) => {
       // Recalculate if status is Completed or was Completed, or if dates changed
       // Simplest approach: always recalculate for Corrective/Emergency
       if (['Corrective', 'Emergency'].includes(updated.type)) {
-        EquipmentMetricsService.calculateMetrics(updated.equipmentId).catch(err =>
-          console.error(`Error recalculating metrics for ${updated.equipmentId}:`, err)
+        AssetMetricsService.calculateMetrics(updated.assetId).catch(err =>
+          console.error(`Error recalculating metrics for ${updated.assetId}:`, err)
         );
       }
     }
@@ -207,9 +207,9 @@ router.delete('/:id', requireUser, require('../routes/middleware/auth').requireR
   if (!deleted) return res.status(404).json({ message: 'Intervention not found' });
 
   // Trigger metric recalculation
-  if (deleted.equipmentId && ['Corrective', 'Emergency'].includes(deleted.type)) {
-    EquipmentMetricsService.calculateMetrics(deleted.equipmentId).catch(err =>
-      console.error(`Error recalculating metrics for ${deleted.equipmentId}:`, err)
+  if (deleted.assetId && ['Corrective', 'Emergency'].includes(deleted.type)) {
+    AssetMetricsService.calculateMetrics(deleted.assetId).catch(err =>
+      console.error(`Error recalculating metrics for ${deleted.assetId}:`, err)
     );
   }
 

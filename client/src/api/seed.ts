@@ -1,4 +1,5 @@
 import api from './api';
+import { AxiosError } from 'axios';
 
 // Description: Seed admin user into the database
 // Endpoint: POST /api/seed/admin
@@ -9,46 +10,54 @@ export const seedAdminUser = async () => {
     const response = await api.post('/api/seed/admin');
     return response.data;
   } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+    const axiosError = error as AxiosError<{ message?: string }>;
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Failed to seed admin user';
+    throw new Error(message);
   }
 };
 
-// Description: Seed equipment types into the database
-// Endpoint: POST /api/seed/equipment-types
+// Description: Seed asset types into the database
+// Endpoint: POST /api/seed/asset-types
 // Request: {}
-// Response: { success: boolean, message: string, data: { created: number, skipped: number, equipment: Array } }
-export const seedEquipmentTypes = async () => {
+// Response: { success: boolean, message: string, data: { created: number, skipped: number, asset: Array } }
+export const seedSubCategorys = async () => {
   try {
-    const response = await api.post('/api/seed/equipment-types');
+    const response = await api.post('/api/seed/asset-types');
     return response.data;
   } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+    const axiosError = error as AxiosError<{ message?: string }>;
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Failed to seed asset types';
+    throw new Error(message);
   }
 };
 
-// Description: Seed equipment categories into the database
-// Endpoint: POST /api/seed/equipment-categories
+// Description: Seed asset categories into the database
+// Endpoint: POST /api/seed/asset-categories
 // Request: {}
 // Response: { success: boolean, message: string, data: { created: number, skipped: number, categories: Array } }
-export const seedEquipmentCategories = async () => {
+export const seedAssetCategories = async () => {
   try {
-    const response = await api.post('/api/seed/equipment-categories');
+    const response = await api.post('/api/seed/asset-categories');
     return response.data;
   } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+    const axiosError = error as AxiosError<{ message?: string }>;
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Failed to seed asset categories';
+    throw new Error(message);
   }
 };
 
-// Description: Seed equipment into the database
-// Endpoint: POST /api/seed/equipment
+// Description: Seed asset into the database
+// Endpoint: POST /api/seed/asset
 // Request: {}
-// Response: { success: boolean, message: string, data: { created: number, skipped: number, equipment: Array } }
-export const seedEquipment = async () => {
+// Response: { success: boolean, message: string, data: { created: number, skipped: number, asset: Array } }
+export const seedAsset = async () => {
   try {
-    const response = await api.post('/api/seed/equipment');
+    const response = await api.post('/api/seed/asset');
     return response.data;
   } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+    const axiosError = error as AxiosError<{ message?: string }>;
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Failed to seed assets';
+    throw new Error(message);
   }
 };
 
@@ -61,7 +70,9 @@ export const seedParts = async () => {
     const response = await api.post('/api/seed/parts');
     return response.data;
   } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+    const axiosError = error as AxiosError<{ message?: string }>;
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Failed to seed parts';
+    throw new Error(message);
   }
 };
 
@@ -74,7 +85,9 @@ export const seedBrands = async () => {
     const response = await api.post('/api/seed/brands');
     return response.data;
   } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+    const axiosError = error as AxiosError<{ message?: string }>;
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Failed to seed brands';
+    throw new Error(message);
   }
 };
 
@@ -87,6 +100,8 @@ export const seedAll = async () => {
     const response = await api.post('/api/seed/all');
     return response.data;
   } catch (error) {
-    throw new Error(error?.response?.data?.message || error.message);
+    const axiosError = error as AxiosError<{ message?: string }>;
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Failed to seed all data';
+    throw new Error(message);
   }
 };

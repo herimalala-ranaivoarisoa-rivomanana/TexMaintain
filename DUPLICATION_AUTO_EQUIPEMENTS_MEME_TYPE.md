@@ -50,9 +50,9 @@ Résultat AUTOMATIQUE:
 
 **Exemple** :
 ```
-POST /api/equipment-parts
+POST /api/asset-parts
 {
-  "equipment": "equip-001",  // Métier à Tisser #1
+  "asset": "equip-001",  // Métier à Tisser #1
   "part": "part-123",        // Courroie B123
   "quantityPerMachine": 2,
   "replacementFrequencyPerYear": 4,
@@ -90,7 +90,7 @@ Response:
 
 **Exemple** :
 ```
-POST /api/equipment
+POST /api/asset
 {
   "type": "type-A",  // Métier à Tisser Modèle A
   "model": "Métier à Tisser #11",
@@ -107,7 +107,7 @@ Résultat:
 Response:
 {
   "success": true,
-  "equipment": {...},
+  "asset": {...},
   "duplicatedPartsCount": 5,
   "message": "Équipement créé avec 5 pièce(s)/consommable(s) auto-dupliqué(s)"
 }
@@ -117,40 +117,40 @@ Response:
 
 ## 📊 Architecture Technique
 
-### Backend - Route POST /equipment-parts
+### Backend - Route POST /asset-parts
 
-**Fichier** : `server/routes/equipmentPartsRoutes.js`
+**Fichier** : `server/routes/assetPartsRoutes.js`
 
 ```javascript
 router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   const { duplicateToSameType = true } = req.body
   
   // 1. Créer l'association principale
-  const association = new EquipmentPart({...data, changedBy: req.user._id})
+  const association = new AssetPart({...data, changedBy: req.user._id})
   await association.save()
   
   let duplicatedCount = 0
   
   // 2. Dupliquer sur équipements du même type si activé
-  if (duplicateToSameType && equipment.type) {
+  if (duplicateToSameType && asset.type) {
     // Trouver tous les autres équipements du même type
-    const sameTypeEquipments = await Equipment.find({
-      type: equipment.type._id,
-      _id: { $ne: equipment._id }
+    const sameTypeAssets = await Asset.find({
+      type: asset.type._id,
+      _id: { $ne: asset._id }
     })
     
     // Créer les associations
     const duplications = []
-    for (const otherEquipment of sameTypeEquipments) {
+    for (const otherAsset of sameTypeAssets) {
       // Vérifier qu'il n'existe pas déjà
-      const existingAssoc = await EquipmentPart.findOne({
-        equipment: otherEquipment._id,
+      const existingAssoc = await AssetPart.findOne({
+        asset: otherAsset._id,
         part: data.part
       })
       
       if (!existingAssoc) {
         duplications.push({
-          equipment: otherEquipment._id,
+          asset: otherAsset._id,
           part: data.part,
           quantityPerMachine: data.quantityPerMachine,
           replacementFrequencyPerYear: data.replacementFrequencyPerYear,
@@ -162,7 +162,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
     }
     
     if (duplications.length > 0) {
-      await EquipmentPart.insertMany(duplications)
+      await AssetPart.insertMany(duplications)
       duplicatedCount = duplications.length
     }
   }
@@ -180,34 +180,34 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
 
 ---
 
-### Backend - Route POST /equipment
+### Backend - Route POST /asset
 
-**Fichier** : `server/routes/equipmentRoutes.js`
+**Fichier** : `server/routes/assetRoutes.js`
 
 ```javascript
 router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   // 1. Créer l'équipement
-  const created = await Equipment.create(equipmentData)
+  const created = await Asset.create(assetData)
   
   // 2. Dupliquer les associations depuis un équipement de référence
   let duplicatedPartsCount = 0
   if (created.type) {
     // Trouver un équipement de référence du même type
-    const referenceEquipment = await Equipment.findOne({
+    const referenceAsset = await Asset.findOne({
       type: created.type,
       _id: { $ne: created._id }
     })
     
-    if (referenceEquipment) {
+    if (referenceAsset) {
       // Récupérer toutes ses associations
-      const referenceAssociations = await EquipmentPart.find({
-        equipment: referenceEquipment._id
+      const referenceAssociations = await AssetPart.find({
+        asset: referenceAsset._id
       })
       
       if (referenceAssociations.length > 0) {
         // Créer les mêmes pour le nouvel équipement
         const newAssociations = referenceAssociations.map(assoc => ({
-          equipment: created._id,
+          asset: created._id,
           part: assoc.part,
           quantityPerMachine: assoc.quantityPerMachine,
           replacementFrequencyPerYear: assoc.replacementFrequencyPerYear,
@@ -219,7 +219,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
           changedBy: req.user._id
         }))
         
-        await EquipmentPart.insertMany(newAssociations)
+        await AssetPart.insertMany(newAssociations)
         duplicatedPartsCount = newAssociations.length
       }
     }
@@ -227,7 +227,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
   
   return res.status(201).json({
     success: true,
-    equipment,
+    asset,
     duplicatedPartsCount,
     message: duplicatedPartsCount > 0
       ? `Équipement créé avec ${duplicatedPartsCount} pièce(s) auto-dupliqué(s)`
@@ -240,7 +240,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
 
 ### Frontend - Formulaire d'Association
 
-**Fichier** : `client/src/components/EquipmentPartFormDialog.tsx`
+**Fichier** : `client/src/components/AssetPartFormDialog.tsx`
 
 #### Ajout du Champ
 
@@ -287,8 +287,8 @@ const [form, setForm] = useState({
 #### Envoi avec le Paramètre
 
 ```typescript
-const result = await createEquipmentPart({
-  equipment: equipmentId,
+const result = await createAssetPart({
+  asset: assetId,
   part: form.part,
   quantityPerMachine: form.quantityPerMachine,
   // ...
@@ -365,7 +365,7 @@ PRÉREQUIS:
 - 1 pièce (ex: Courroie B123)
 
 ÉTAPES:
-1. Aller sur /equipment/[equip-1]/parts
+1. Aller sur /asset/[equip-1]/parts
 2. Cliquer "Ajouter une pièce"
 3. Sélectionner "Courroie B123"
 4. Remplir les paramètres
@@ -374,9 +374,9 @@ PRÉREQUIS:
 
 RÉSULTAT ATTENDU:
 ✓ Toast: "Association créée et dupliquée sur 2 équipement(s)"
-✓ Aller sur /equipment/[equip-2]/parts
+✓ Aller sur /asset/[equip-2]/parts
 ✓ La Courroie B123 est présente avec les mêmes paramètres
-✓ Aller sur /equipment/[equip-3]/parts
+✓ Aller sur /asset/[equip-3]/parts
 ✓ La Courroie B123 est présente avec les mêmes paramètres
 ```
 
@@ -384,7 +384,7 @@ RÉSULTAT ATTENDU:
 
 ```bash
 ÉTAPES:
-1. Aller sur /equipment/[equip-1]/parts
+1. Aller sur /asset/[equip-1]/parts
 2. Cliquer "Ajouter une pièce"
 3. Sélectionner une pièce
 4. Décocher "Dupliquer sur tous les équipements..."
@@ -392,7 +392,7 @@ RÉSULTAT ATTENDU:
 
 RÉSULTAT ATTENDU:
 ✓ Toast: "Association créée avec succès" (sans mention de duplication)
-✓ Aller sur /equipment/[equip-2]/parts
+✓ Aller sur /asset/[equip-2]/parts
 ✓ La pièce N'EST PAS présente
 ```
 
@@ -403,7 +403,7 @@ PRÉREQUIS:
 - 1 équipement existant "Métier à Tisser #1" avec 3 pièces associées
 
 ÉTAPES:
-1. Aller sur /equipment
+1. Aller sur /asset
 2. Cliquer "Ajouter un équipement"
 3. Sélectionner le même type: "Métier à Tisser Modèle A"
 4. Remplir les autres champs
@@ -411,7 +411,7 @@ PRÉREQUIS:
 
 RÉSULTAT ATTENDU:
 ✓ Toast: "Équipement créé avec 3 pièce(s)/consommable(s) auto-dupliqué(s)"
-✓ Aller sur /equipment/[new-equip]/parts
+✓ Aller sur /asset/[new-equip]/parts
 ✓ Les 3 pièces sont présentes
 ✓ Avec les mêmes paramètres que l'équipement de référence
 ✓ Notes contiennent "Auto-dupliqué depuis équipement de référence"
@@ -453,7 +453,7 @@ RÉSULTAT ATTENDU:
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────┐
-│ BACKEND - POST /api/equipment-parts                     │
+│ BACKEND - POST /api/asset-parts                     │
 │                                                         │
 │ 1. Créer association sur Équipement #1 ✓               │
 │                                                         │
@@ -492,7 +492,7 @@ RÉSULTAT ATTENDU:
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────┐
-│ BACKEND - POST /api/equipment                           │
+│ BACKEND - POST /api/asset                           │
 │                                                         │
 │ 1. Créer l'équipement #11 ✓                             │
 │                                                         │
@@ -620,19 +620,19 @@ Résultat:
 
 ### Backend (2 fichiers)
 
-1. **`server/routes/equipmentPartsRoutes.js`**
+1. **`server/routes/assetPartsRoutes.js`**
    - Ajout logique de duplication dans POST /
    - Paramètre `duplicateToSameType`
    - Retour du nombre d'équipements dupliqués
 
-2. **`server/routes/equipmentRoutes.js`**
+2. **`server/routes/assetRoutes.js`**
    - Ajout logique de duplication dans POST /
    - Copie depuis équipement de référence
    - Retour du nombre de pièces dupliquées
 
 ### Frontend (1 fichier)
 
-3. **`client/src/components/EquipmentPartFormDialog.tsx`**
+3. **`client/src/components/AssetPartFormDialog.tsx`**
    - Ajout champ `duplicateToSameType` dans le formulaire
    - Checkbox pour activer/désactiver
    - Affichage du nombre d'équipements dupliqués dans le toast

@@ -11,7 +11,7 @@ import {
   MaintenanceMetrics,
   FinancialMetrics
 } from "@/api/reports"
-import { toast } from "sonner"
+import { toast } from "@/hooks/useToast"
 import { useFactory } from "@/contexts/FactoryContext"
 import {
   BarChart,
@@ -33,6 +33,7 @@ export function Reports() {
   const [maintenanceMetrics, setMaintenanceMetrics] = useState<MaintenanceMetrics | null>(null)
   const [financialMetrics, setFinancialMetrics] = useState<FinancialMetrics | null>(null)
   const { currentFactory } = useFactory()
+  const { toast } = useToast()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,7 +49,11 @@ export function Reports() {
         const getResult = (result: PromiseSettledResult<any>, name: string) => {
           if (result.status === 'fulfilled') return result.value;
           console.error(`Failed to fetch ${name}:`, result.reason);
-          toast.error(`Failed to load ${name}`);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: `Failed to load ${name}`
+          });
           return null;
         };
 
@@ -120,18 +125,18 @@ export function Reports() {
 
       {/* KPI Overview Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Equipment Health KPI */}
+        {/* Asset Health KPI */}
         <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60 transition-all hover:shadow-md">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-slate-500 flex items-center">
-              <BarChart3 className="mr-2 h-4 w-4" /> Equipment Performance
+              <BarChart3 className="mr-2 h-4 w-4" /> Asset Performance
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-slate-900">{maintenanceMetrics?.mtbf ? Math.round(maintenanceMetrics.mtbf) : 0}h</div>
             <p className="text-xs text-slate-500">Avg MTBF</p>
             <div className="mt-2 flex items-center text-xs">
-              <span className="text-slate-900 font-semibold mr-1">{stats?.equipmentCount || 0}</span> Machines
+              <span className="text-slate-900 font-semibold mr-1">{stats?.assetCount || 0}</span> Machines
             </div>
           </CardContent>
         </Card>
@@ -253,7 +258,7 @@ export function Reports() {
         {/* TCO by Category Chart */}
         <Card className="lg:col-span-2 bg-white/60 backdrop-blur-sm border-slate-200/60">
           <CardHeader>
-            <CardTitle>TCO by Equipment Category</CardTitle>
+            <CardTitle>TCO by Asset Category</CardTitle>
             <CardDescription>Which categories are costing the most?</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
@@ -272,12 +277,12 @@ export function Reports() {
         {/* Top 5 Costly Machines Table/List */}
         <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
           <CardHeader>
-            <CardTitle>Top Costly Equipment</CardTitle>
+            <CardTitle>Top Costly Asset</CardTitle>
             <CardDescription>Highest TCO Machines</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {financialMetrics?.topCostlyEquipment?.map((eq, i) => (
+              {financialMetrics?.topCostlyAsset?.map((eq, i) => (
                 <div key={eq._id} className="flex items-center justify-between border-b border-slate-100 pb-2 last:border-0 last:pb-0">
                   <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-xs">
@@ -294,7 +299,7 @@ export function Reports() {
                   </div>
                 </div>
               ))}
-              {!financialMetrics?.topCostlyEquipment?.length && (
+              {!financialMetrics?.topCostlyAsset?.length && (
                 <p className="text-sm text-slate-500 text-center py-4">No data available</p>
               )}
             </div>

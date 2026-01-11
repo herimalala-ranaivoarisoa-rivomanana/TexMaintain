@@ -14,23 +14,23 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/brands/statistics
 router.get('/statistics', requireUser, async (req, res) => {
   try {
-    const { Equipment } = require('../models/Equipment');
+    const { Asset } = require('../models/Asset');
 
     // 1. Fetch all brands
     const brands = await Brand.find().sort({ name: 1 }).lean();
 
-    // 2. Aggregate Equipment by Brand (FILTERED by Factory)
+    // 2. Aggregate Asset by Brand (FILTERED by Factory)
     const matchStage = {};
     if (req.activeFactoryId) {
       matchStage.factory = new mongoose.Types.ObjectId(req.activeFactoryId);
     }
 
-    const stats = await Equipment.aggregate([
+    const stats = await Asset.aggregate([
       { $match: matchStage },
       {
         $group: {
           _id: '$brand', // Grouping by brand ID
-          totalEquipment: { $sum: 1 },
+          totalAsset: { $sum: 1 },
           avgMtbf: { $avg: '$mtbf' },
           avgMttr: { $avg: '$mttr' },
           avgAvailability: { $avg: '$availability' },
@@ -65,7 +65,7 @@ router.get('/statistics', requireUser, async (req, res) => {
       return {
         ...brand,
         statistics: {
-          totalEquipment: brandStats ? brandStats.totalEquipment : 0,
+          totalAsset: brandStats ? brandStats.totalAsset : 0,
           avgMtbf: brandStats ? Math.round(brandStats.avgMtbf || 0) : 0,
           avgMttr: brandStats ? Math.round(brandStats.avgMttr || 0) : 0,
           avgAvailability: brandStats ? Math.round((brandStats.avgAvailability || 0) * 100) / 100 : 0,

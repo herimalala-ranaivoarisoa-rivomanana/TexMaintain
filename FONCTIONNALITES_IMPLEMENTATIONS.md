@@ -105,46 +105,46 @@
 - **Disponibilité**
   - % d'équipements en production
   - Formule: (Équip. en prod / Total) × 100
-- **OEE estimé** (Overall Equipment Effectiveness)
+- **OEE estimé** (Overall Asset Effectiveness)
   - Basé sur disponibilité et performance
 
 ### Implémentation Technique
 
 #### Backend
 ```javascript
-// Routes: server/routes/equipmentRoutes.js (23KB)
-GET    /api/equipment                    // Liste paginée
-POST   /api/equipment                    // Créer
-GET    /api/equipment/:id                // Détails
-PATCH  /api/equipment/:id                // Modifier
-DELETE /api/equipment/:id                // Supprimer
-PATCH  /api/equipment/:id/status         // Changer statut
-GET    /api/equipment/:id/status-history // Historique
-GET    /api/equipment/:id/interventions  // Interventions
-GET    /api/equipment/:id/parts          // Pièces
-GET    /api/equipment/stats/overview     // Statistiques
-GET    /api/equipment/stats/by-status    // Par statut
-GET    /api/equipment/stats/by-category  // Par catégorie
-GET    /api/equipment/stats/kpi          // KPI
+// Routes: server/routes/assetRoutes.js (23KB)
+GET    /api/asset                    // Liste paginée
+POST   /api/asset                    // Créer
+GET    /api/asset/:id                // Détails
+PATCH  /api/asset/:id                // Modifier
+DELETE /api/asset/:id                // Supprimer
+PATCH  /api/asset/:id/status         // Changer statut
+GET    /api/asset/:id/status-history // Historique
+GET    /api/asset/:id/interventions  // Interventions
+GET    /api/asset/:id/parts          // Pièces
+GET    /api/asset/stats/overview     // Statistiques
+GET    /api/asset/stats/by-status    // Par statut
+GET    /api/asset/stats/by-category  // Par catégorie
+GET    /api/asset/stats/kpi          // KPI
 ```
 
 #### Frontend
 ```typescript
-// Page: client/src/pages/Equipment.tsx (61KB!)
+// Page: client/src/pages/Asset.tsx (61KB!)
 // Composants:
-- EquipmentList: Liste avec filtres
-- EquipmentStatusDialog: Changement de statut (18KB)
-- EquipmentDetail: Vue détaillée
-- EquipmentPartsList: Pièces associées
+- AssetList: Liste avec filtres
+- AssetStatusDialog: Changement de statut (18KB)
+- AssetDetail: Vue détaillée
+- AssetPartsList: Pièces associées
 
-// API Client: client/src/api/equipment.ts
-- getEquipments(params)
-- createEquipment(data)
-- getEquipmentById(id)
-- updateEquipment(id, data)
-- deleteEquipment(id)
-- updateEquipmentStatus(id, statusData)
-- getEquipmentStatusHistory(id)
+// API Client: client/src/api/asset.ts
+- getAssets(params)
+- createAsset(data)
+- getAssetById(id)
+- updateAsset(id, data)
+- deleteAsset(id)
+- updateAssetStatus(id, statusData)
+- getAssetStatusHistory(id)
 ```
 
 ---
@@ -238,19 +238,19 @@ Chaque statut possède:
 
 ```javascript
 // Exemple de validation
-Equipment.canTransitionTo('in_production')
+Asset.canTransitionTo('in_production')
 // → true si transition autorisée
 // → false sinon
 
 // Obtenir les transitions possibles
-Equipment.getAllowedTransitions()
+Asset.getAllowedTransitions()
 // → [{status: 'in_production', metadata: {...}}, ...]
 ```
 
 ### Historisation Automatique
 
 À chaque changement de statut:
-1. Création d'une entrée dans `EquipmentStatusHistory`
+1. Création d'une entrée dans `AssetStatusHistory`
 2. Enregistrement de:
    - Statut précédent
    - Nouveau statut
@@ -260,19 +260,19 @@ Equipment.getAllowedTransitions()
    - Personnel assigné
    - Intervention liée
 3. Calcul de la durée dans le statut précédent
-4. Mise à jour de `Equipment.lastStatusChange`
+4. Mise à jour de `Asset.lastStatusChange`
 
 ### Implémentation
 
 #### Backend
 ```javascript
-// Modèle: server/models/EquipmentStatusHistory.js (7.8KB)
+// Modèle: server/models/AssetStatusHistory.js (7.8KB)
 const STATUS_METADATA = {
   in_production: { label, category, color, icon, allowedTransitions },
   // ... 13 autres statuts
 }
 
-// Hook pre-save sur Equipment
+// Hook pre-save sur Asset
 schema.pre('save', function(next) {
   if (this.isModified('status')) {
     this.lastStatusChange = Date.now();
@@ -287,8 +287,8 @@ schema.pre('save', function(next) {
 
 #### Frontend
 ```typescript
-// Composant: client/src/components/EquipmentStatusDialog.tsx (18KB)
-const EquipmentStatusDialog = ({ equipment, onStatusChange }) => {
+// Composant: client/src/components/AssetStatusDialog.tsx (18KB)
+const AssetStatusDialog = ({ asset, onStatusChange }) => {
   // 1. Affiche statut actuel avec badge coloré
   // 2. Récupère transitions autorisées
   // 3. Affiche formulaire contextuel selon nouveau statut
@@ -407,37 +407,37 @@ Si stock actuel = 1 pièce:
 
 #### Backend
 ```javascript
-// Modèle: server/models/EquipmentPart.js (9.8KB)
+// Modèle: server/models/AssetPart.js (9.8KB)
 // Hook pre-save: calcule automatiquement tous les champs
 
-// Routes: server/routes/equipmentPartsRoutes.js (11KB)
-GET    /api/equipment-parts
-POST   /api/equipment-parts
-GET    /api/equipment-parts/:id
-PATCH  /api/equipment-parts/:id
-DELETE /api/equipment-parts/:id
-GET    /api/equipment-parts/equipment/:id
-GET    /api/equipment-parts/part/:id
-GET    /api/equipment-parts/part/:id/global-stock  // ⭐ Calcul global
-GET    /api/equipment-parts/reorder-alerts          // ⚠️ Alertes
-POST   /api/equipment-parts/:id/record-replacement  // 🔧 Remplacement
+// Routes: server/routes/assetPartsRoutes.js (11KB)
+GET    /api/asset-parts
+POST   /api/asset-parts
+GET    /api/asset-parts/:id
+PATCH  /api/asset-parts/:id
+DELETE /api/asset-parts/:id
+GET    /api/asset-parts/asset/:id
+GET    /api/asset-parts/part/:id
+GET    /api/asset-parts/part/:id/global-stock  // ⭐ Calcul global
+GET    /api/asset-parts/reorder-alerts          // ⚠️ Alertes
+POST   /api/asset-parts/:id/record-replacement  // 🔧 Remplacement
 ```
 
 #### Frontend
 ```typescript
 // Composants:
-- EquipmentPartsList: Liste des pièces d'un équipement (12KB)
-- EquipmentPartFormDialog: Formulaire avec calculs temps réel (13KB)
+- AssetPartsList: Liste des pièces d'un équipement (12KB)
+- AssetPartFormDialog: Formulaire avec calculs temps réel (13KB)
 - RecordReplacementDialog: Enregistrer un remplacement (6KB)
 - GlobalStockCard: Affichage du stock global calculé (10KB)
-- PartEquipmentsList: Équipements utilisant une pièce (8KB)
+- PartAssetsList: Équipements utilisant une pièce (8KB)
 - ReorderAlertsWidget: Widget alertes pour dashboard (6KB)
 
 // Pages:
 - PartDetails: Page complète pour une pièce (9KB)
 - ReorderAlerts: Page dédiée aux alertes (14KB)
 
-// API Client: client/src/api/equipmentParts.ts (8KB)
+// API Client: client/src/api/assetParts.ts (8KB)
 ```
 
 ---
@@ -494,7 +494,7 @@ DELETE /api/interventions/:id
 ```typescript
 // Page: client/src/pages/Interventions.tsx (20KB)
 // Page: client/src/pages/InterventionDetail.tsx
-// Page: client/src/pages/EquipmentInterventions.tsx (14KB)
+// Page: client/src/pages/AssetInterventions.tsx (14KB)
 ```
 
 ---
@@ -542,7 +542,7 @@ DELETE /api/interventions/:id
 ```javascript
 // Routes: server/routes/dashboardRoutes.js
 GET /api/dashboard/kpi
-GET /api/dashboard/equipment-status
+GET /api/dashboard/asset-status
 GET /api/dashboard/recent-interventions
 GET /api/dashboard/alerts
 ```
@@ -750,7 +750,7 @@ const ProtectedRoute = ({ children }) => {
 ```javascript
 // Routes: server/routes/breakdownMedia.js
 POST   /api/breakdown-media/upload
-GET    /api/breakdown-media/equipment/:id
+GET    /api/breakdown-media/asset/:id
 DELETE /api/breakdown-media/:id
 
 // Multer config:
@@ -812,8 +812,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 #### Backend
 ```javascript
 // Routes:
-- server/routes/equipmentCategoriesRoutes.js
-- server/routes/equipmentTypesRoutes.js
+- server/routes/assetCategoriesRoutes.js
+- server/routes/assetTypesRoutes.js
 - server/routes/brandsRoutes.js
 - server/routes/productionLinesRoutes.js
 - server/routes/productionSectionsRoutes.js
@@ -822,8 +822,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 #### Frontend
 ```typescript
 // Pages:
-- client/src/pages/EquipmentCategories.tsx (7KB)
-- client/src/pages/EquipmentTypes.tsx (16KB)
+- client/src/pages/AssetCategories.tsx (7KB)
+- client/src/pages/SubCategorys.tsx (16KB)
 - client/src/pages/Brands.tsx (7KB)
 - client/src/pages/ProductionLines.tsx (72KB!)
 ```

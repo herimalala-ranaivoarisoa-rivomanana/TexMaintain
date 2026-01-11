@@ -280,7 +280,7 @@ curl http://localhost:3000/api/health
 
 2. **CORS** :
 ```bash
-curl -H "Origin: http://malicious-site.com" http://localhost:3000/api/equipment
+curl -H "Origin: http://malicious-site.com" http://localhost:3000/api/asset
 # Devrait être bloqué
 ```
 
@@ -297,7 +297,7 @@ curl -F "files=@malware.exe" http://localhost:3000/api/breakdown-media
 
 4. **Compression** :
 ```bash
-curl -H "Accept-Encoding: gzip" -I http://localhost:3000/api/equipment
+curl -H "Accept-Encoding: gzip" -I http://localhost:3000/api/asset
 # Devrait contenir : Content-Encoding: gzip
 ```
 

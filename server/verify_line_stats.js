@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
-const { Equipment } = require('./models/Equipment');
+const { Asset } = require('./models/Asset');
 const { ProductionLine } = require('./models/ProductionLine');
 const { ProductionSection } = require('./models/ProductionSection');
 
@@ -13,8 +13,8 @@ const verify = async () => {
         const line = await ProductionLine.findOne({ name: 'Line 1' }).populate({
             path: 'sections.sectionId',
             populate: {
-                path: 'equipment.equipmentId',
-                model: 'Equipment'
+                path: 'asset.assetId',
+                model: 'Asset'
             }
         }).lean();
 
@@ -23,26 +23,26 @@ const verify = async () => {
             process.exit(1);
         }
 
-        const equipmentList = [];
+        const assetList = [];
         if (line.sections) {
             line.sections.forEach(section => {
-                if (section.sectionId && section.sectionId.equipment) {
-                    section.sectionId.equipment.forEach(item => {
-                        if (item.equipmentId) {
-                            equipmentList.push(item.equipmentId);
+                if (section.sectionId && section.sectionId.asset) {
+                    section.sectionId.asset.forEach(item => {
+                        if (item.assetId) {
+                            assetList.push(item.assetId);
                         }
                     });
                 }
             });
         }
 
-        const equipmentIds = equipmentList.map(e => e._id);
-        console.log(`Found ${equipmentIds.length} equipment for Line 1`);
+        const assetIds = assetList.map(e => e._id);
+        console.log(`Found ${assetIds.length} asset for Line 1`);
 
-        if (equipmentIds.length > 0) {
+        if (assetIds.length > 0) {
             // Test Aggregation
-            const aggregation = await Equipment.aggregate([
-                { $match: { _id: { $in: equipmentIds } } },
+            const aggregation = await Asset.aggregate([
+                { $match: { _id: { $in: assetIds } } },
                 {
                     $group: {
                         _id: null,

@@ -6,15 +6,15 @@
 
 ## 📋 TABLE DES MATIÈRES
 
-1. [Equipment](#1-equipment)
-2. [EquipmentStatusHistory](#2-equipmentstatushistory)
-3. [EquipmentPart](#3-equipmentpart)
+1. [Asset](#1-asset)
+2. [AssetStatusHistory](#2-assetstatushistory)
+3. [AssetPart](#3-assetpart)
 4. [Part](#4-part)
 5. [Intervention](#5-intervention)
 6. [User](#6-user)
 7. [BreakdownMedia](#7-breakdownmedia)
-8. [EquipmentCategory](#8-equipmentcategory)
-9. [EquipmentType](#9-equipmenttype)
+8. [Category](#8-assetcategory)
+9. [SubCategory](#9-assettype)
 10. [Brand](#10-brand)
 11. [ProductionLine](#11-productionline)
 12. [ProductionSection](#12-productionsection)
@@ -22,10 +22,10 @@
 
 ---
 
-## 1. Equipment
+## 1. Asset
 
-**Fichier**: `server/models/Equipment.js`  
-**Collection**: `equipments`
+**Fichier**: `server/models/Asset.js`  
+**Collection**: `assets`
 
 ### Schéma Complet
 
@@ -34,12 +34,12 @@
   // === CLASSIFICATION ===
   category: {
     type: ObjectId,
-    ref: 'EquipmentCategory',
+    ref: 'Category',
     required: true
   },
   type: {
     type: ObjectId,
-    ref: 'EquipmentType',
+    ref: 'SubCategory',
     required: true
   },
   brand: {
@@ -189,10 +189,10 @@ pre('save'): Met à jour updatedAt, lastStatusChange, statusCategory
 
 ---
 
-## 2. EquipmentStatusHistory
+## 2. AssetStatusHistory
 
-**Fichier**: `server/models/EquipmentStatusHistory.js`  
-**Collection**: `equipmentstatushistories`
+**Fichier**: `server/models/AssetStatusHistory.js`  
+**Collection**: `assetstatushistories`
 
 ### 14 Statuts avec Métadonnées
 
@@ -323,9 +323,9 @@ const STATUS_METADATA = {
 
 ```javascript
 {
-  equipment: {
+  asset: {
     type: ObjectId,
-    ref: 'Equipment',
+    ref: 'Asset',
     required: true,
     index: true
   },
@@ -383,16 +383,16 @@ const STATUS_METADATA = {
 ```
 
 ### Index
-- `{equipment: 1, timestamp: -1}`
+- `{asset: 1, timestamp: -1}`
 - `{newStatus: 1, timestamp: -1}`
 - `{changedBy: 1, timestamp: -1}`
 
 ---
 
-## 3. EquipmentPart
+## 3. AssetPart
 
-**Fichier**: `server/models/EquipmentPart.js` (9.8KB)  
-**Collection**: `equipmentparts`
+**Fichier**: `server/models/AssetPart.js` (9.8KB)  
+**Collection**: `assetparts`
 
 ### Concept
 Association entre équipement et pièce avec calcul automatique du stock optimal.
@@ -401,9 +401,9 @@ Association entre équipement et pièce avec calcul automatique du stock optimal
 
 ```javascript
 {
-  equipment: {
+  asset: {
     type: ObjectId,
-    ref: 'Equipment',
+    ref: 'Asset',
     required: true
   },
   part: {
@@ -549,8 +549,8 @@ findPartsNeedingReorder(): Promise<Array>
 ```
 
 ### Index
-- `{equipment: 1, part: 1}`: unique
-- `{equipment: 1}`
+- `{asset: 1, part: 1}`: unique
+- `{asset: 1}`
 - `{part: 1}`
 
 ---
@@ -672,15 +672,15 @@ findPartsNeedingReorder(): Promise<Array>
     default: 'Pending',
     required: true
   },
-  equipment: {
+  asset: {
     type: String,
     required: true,
     trim: true,
     comment: 'Legacy field (backward compatibility)'
   },
-  equipmentId: {
+  assetId: {
     type: ObjectId,
-    ref: 'Equipment',
+    ref: 'Asset',
     required: false,
     index: true,
     comment: 'Strong reference'
@@ -702,7 +702,7 @@ findPartsNeedingReorder(): Promise<Array>
 ```
 
 ### Index
-- `equipmentId`: index
+- `assetId`: index
 
 ---
 
@@ -798,9 +798,9 @@ toJSON: {
 
 ```javascript
 {
-  equipment: {
+  asset: {
     type: ObjectId,
-    ref: 'Equipment',
+    ref: 'Asset',
     required: true
   },
   breakdownType: {
@@ -842,7 +842,7 @@ toJSON: {
 
 ## 8-12. Modèles de Configuration
 
-### 8. EquipmentCategory
+### 8. Category
 ```javascript
 {
   name: { type: String, required: true, unique: true },
@@ -852,11 +852,11 @@ toJSON: {
 }
 ```
 
-### 9. EquipmentType
+### 9. SubCategory
 ```javascript
 {
   name: { type: String, required: true, unique: true },
-  category: { type: ObjectId, ref: 'EquipmentCategory', required: true },
+  category: { type: ObjectId, ref: 'Category', required: true },
   description: String,
   createdAt: Date,
   updatedAt: Date
@@ -970,32 +970,32 @@ toJSON: {
 
 ```
 User
- ├─> Equipment (lastStatusChangedBy)
- ├─> EquipmentStatusHistory (changedBy)
- ├─> EquipmentPart (changedBy, replacementHistory.performedBy)
+ ├─> Asset (lastStatusChangedBy)
+ ├─> AssetStatusHistory (changedBy)
+ ├─> AssetPart (changedBy, replacementHistory.performedBy)
  └─> BreakdownMedia (uploadedBy)
 
-Equipment
- ├─> EquipmentCategory (category)
- ├─> EquipmentType (type)
+Asset
+ ├─> Category (category)
+ ├─> SubCategory (type)
  ├─> Brand (brand)
- ├─> EquipmentStatusHistory (equipment)
- ├─> EquipmentPart (equipment)
- ├─> Intervention (equipmentId)
- └─> BreakdownMedia (equipment)
+ ├─> AssetStatusHistory (asset)
+ ├─> AssetPart (asset)
+ ├─> Intervention (assetId)
+ └─> BreakdownMedia (asset)
 
 Part
- └─> EquipmentPart (part)
+ └─> AssetPart (part)
 
-EquipmentPart
- ├─> Equipment (equipment)
+AssetPart
+ ├─> Asset (asset)
  └─> Part (part)
 
 Intervention
- └─> Equipment (equipmentId)
+ └─> Asset (assetId)
 
-EquipmentStatusHistory
- ├─> Equipment (equipment)
+AssetStatusHistory
+ ├─> Asset (asset)
  ├─> User (changedBy)
  ├─> Machinist (machinist)
  ├─> Mechanic (mechanic)

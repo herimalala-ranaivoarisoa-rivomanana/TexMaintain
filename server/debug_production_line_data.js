@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { ProductionLine } = require('./models/ProductionLine');
-const { Equipment } = require('./models/Equipment');
+const { Asset } = require('./models/Asset');
 const { ProductionSection } = require('./models/ProductionSection');
 require('dotenv').config();
 
@@ -13,8 +13,8 @@ async function debugData() {
         const lines = await ProductionLine.find().populate({
             path: 'sections.sectionId',
             populate: {
-                path: 'equipment.equipmentId',
-                model: 'Equipment'
+                path: 'asset.assetId',
+                model: 'Asset'
             }
         });
 
@@ -35,23 +35,23 @@ async function debugData() {
                         return;
                     }
                     console.log(`  Section ${idx}: ${section.name} (ID: ${section._id})`);
-                    console.log(`    Equipment count in section: ${section.equipment ? section.equipment.length : 0}`);
+                    console.log(`    Asset count in section: ${section.asset ? section.asset.length : 0}`);
 
-                    if (section.equipment) {
-                        section.equipment.forEach(e => {
-                            console.log(`      - Equipment ID: ${e.equipmentId ? e.equipmentId._id : 'NULL'}`);
-                            if (e.equipmentId) totalEquipOnLine++;
+                    if (section.asset) {
+                        section.asset.forEach(e => {
+                            console.log(`      - Asset ID: ${e.assetId ? e.assetId._id : 'NULL'}`);
+                            if (e.assetId) totalEquipOnLine++;
                         });
                     }
                 });
-                console.log(`Total Equipment linked to Line: ${totalEquipOnLine}`);
+                console.log(`Total Asset linked to Line: ${totalEquipOnLine}`);
             });
         }
 
-        // 2. Get all Equipment
-        const allEquipment = await Equipment.find({}, '_id name status');
-        console.log(`\nTotal Equipment in DB: ${allEquipment.length}`);
-        allEquipment.forEach(e => {
+        // 2. Get all Asset
+        const allAsset = await Asset.find({}, '_id name status');
+        console.log(`\nTotal Asset in DB: ${allAsset.length}`);
+        allAsset.forEach(e => {
             console.log(`  - ${e.name} (${e.status}) ID: ${e._id}`);
         });
 

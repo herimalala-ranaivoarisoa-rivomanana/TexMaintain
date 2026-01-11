@@ -6,23 +6,23 @@ L'association de **parts** fonctionne, mais pas l'association de **consommables*
 
 ## 🔍 Cause du Problème
 
-Dans la route `GET /api/equipment/:id/consumable`, le code essayait de filtrer directement sur `'part.type': 'consumable'` dans la requête MongoDB :
+Dans la route `GET /api/asset/:id/consumable`, le code essayait de filtrer directement sur `'part.type': 'consumable'` dans la requête MongoDB :
 
 ```javascript
-const equipmentParts = await EquipmentPart.find({ 
-  equipment: id,
+const assetParts = await AssetPart.find({ 
+  asset: id,
   'part.type': 'consumable'  // ❌ Ne fonctionne pas car 'part' est une référence (ObjectId)
 })
 ```
 
 **Pourquoi ça ne fonctionne pas ?**
-- Dans le modèle `EquipmentPart`, le champ `part` est une **référence** (ObjectId) vers le modèle `Part`
+- Dans le modèle `AssetPart`, le champ `part` est une **référence** (ObjectId) vers le modèle `Part`
 - On ne peut pas filtrer sur les propriétés d'un document référencé avant de le populer
 - MongoDB ne peut pas accéder à `part.type` car `part` n'est qu'un ID à ce stade
 
 ## ✅ Solution
 
-Il faut d'abord récupérer tous les IDs des parts de type 'consumable', puis filtrer les `EquipmentParts` avec ces IDs :
+Il faut d'abord récupérer tous les IDs des parts de type 'consumable', puis filtrer les `AssetParts` avec ces IDs :
 
 ```javascript
 // 1. Récupérer tous les IDs des consommables
@@ -30,18 +30,18 @@ const { Part } = require('../models/Part');
 const consumableParts = await Part.find({ type: 'consumable' }).select('_id').lean();
 const consumablePartIds = consumableParts.map(p => p._id);
 
-// 2. Filtrer les EquipmentParts avec ces IDs
-const equipmentParts = await EquipmentPart.find({ 
-  equipment: id,
+// 2. Filtrer les AssetParts avec ces IDs
+const assetParts = await AssetPart.find({ 
+  asset: id,
   part: { $in: consumablePartIds }  // ✅ Filtre sur les IDs
 })
 ```
 
 ## 📝 Fichier Modifié
 
-**Fichier:** `server/routes/equipmentRoutes.js`
+**Fichier:** `server/routes/assetRoutes.js`
 
-**Lignes modifiées:** 234-277 (route GET `/api/equipment/:id/consumable`)
+**Lignes modifiées:** 234-277 (route GET `/api/asset/:id/consumable`)
 
 ### Avant (Ne fonctionnait pas)
 
@@ -51,17 +51,17 @@ router.get('/:id/consumable', requireUser, async (req, res) => {
     const { id } = req.params;
     const { page = 1, limit = 50, skip = 0 } = req.query;
 
-    const equipment = await Equipment.findById(id)
+    const asset = await Asset.findById(id)
       .populate('category')
       .populate('type')
       .lean();
 
-    if (!equipment) {
-      return res.status(404).json({ message: 'Equipment not found' });
+    if (!asset) {
+      return res.status(404).json({ message: 'Asset not found' });
     }
 
-    const equipmentParts = await EquipmentPart.find({ 
-      equipment: id,
+    const assetParts = await AssetPart.find({ 
+      asset: id,
       'part.type': 'consumable'  // ❌ Problème ici
     })
       .sort({ createdAt: -1 })
@@ -71,21 +71,21 @@ router.get('/:id/consumable', requireUser, async (req, res) => {
       .populate('part', 'name partNumber currentStock minStock maxStock unitPrice supplier location category type pendingOrders pendingQuantity')
       .lean();
 
-    const total = await EquipmentPart.countDocuments({ 
-      equipment: id,
+    const total = await AssetPart.countDocuments({ 
+      asset: id,
       'part.type': 'consumable'  // ❌ Problème ici aussi
     });
 
     return res.status(200).json({
-      equipment,
-      equipmentParts,
+      asset,
+      assetParts,
       total,
       page: Number(page),
       limit: Number(limit)
     });
   } catch (error) {
-    console.error('Get equipment consumables error:', error);
-    return res.status(500).json({ message: error.message || 'Failed to get equipment consumables' });
+    console.error('Get asset consumables error:', error);
+    return res.status(500).json({ message: error.message || 'Failed to get asset consumables' });
   }
 });
 ```
@@ -98,13 +98,13 @@ router.get('/:id/consumable', requireUser, async (req, res) => {
     const { id } = req.params;
     const { page = 1, limit = 50, skip = 0 } = req.query;
 
-    const equipment = await Equipment.findById(id)
+    const asset = await Asset.findById(id)
       .populate('category')
       .populate('type')
       .lean();
 
-    if (!equipment) {
-      return res.status(404).json({ message: 'Equipment not found' });
+    if (!asset) {
+      return res.status(404).json({ message: 'Asset not found' });
     }
 
     // ✅ Étape 1: Récupérer tous les IDs des consommables
@@ -112,9 +112,9 @@ router.get('/:id/consumable', requireUser, async (req, res) => {
     const consumableParts = await Part.find({ type: 'consumable' }).select('_id').lean();
     const consumablePartIds = consumableParts.map(p => p._id);
 
-    // ✅ Étape 2: Filtrer les EquipmentParts avec ces IDs
-    const equipmentParts = await EquipmentPart.find({ 
-      equipment: id,
+    // ✅ Étape 2: Filtrer les AssetParts avec ces IDs
+    const assetParts = await AssetPart.find({ 
+      asset: id,
       part: { $in: consumablePartIds }
     })
       .sort({ createdAt: -1 })
@@ -124,21 +124,21 @@ router.get('/:id/consumable', requireUser, async (req, res) => {
       .populate('part', 'name partNumber currentStock minStock maxStock unitPrice supplier location category type pendingOrders pendingQuantity')
       .lean();
 
-    const total = await EquipmentPart.countDocuments({ 
-      equipment: id,
+    const total = await AssetPart.countDocuments({ 
+      asset: id,
       part: { $in: consumablePartIds }
     });
 
     return res.status(200).json({
-      equipment,
-      equipmentParts,
+      asset,
+      assetParts,
       total,
       page: Number(page),
       limit: Number(limit)
     });
   } catch (error) {
-    console.error('Get equipment consumables error:', error);
-    return res.status(500).json({ message: error.message || 'Failed to get equipment consumables' });
+    console.error('Get asset consumables error:', error);
+    return res.status(500).json({ message: error.message || 'Failed to get asset consumables' });
   }
 });
 ```
@@ -168,7 +168,7 @@ npm run dev
 
 ### 3. Tester l'Association de Consommables
 
-1. Allez sur `/equipment`
+1. Allez sur `/asset`
 2. Cliquez sur un équipement
 3. Cliquez sur l'icône **Droplet** (Consommables)
 4. Cliquez sur **"Ajouter un Consommable"**
@@ -200,7 +200,7 @@ Quand vous associez un consommable, vous devriez voir dans les logs du serveur :
 
 ```
 Authentication successful for user: admin@texmaintain.com
-POST /api/equipment/:id/consumable 201
+POST /api/asset/:id/consumable 201
 ```
 
 ### Frontend - Console du Navigateur

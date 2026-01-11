@@ -14,11 +14,11 @@
 
 ```bash
 # Association 1 : Machine A - Courroie B123
-curl -X POST http://localhost:3000/api/equipment-parts \
+curl -X POST http://localhost:3000/api/asset-parts \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
-    "equipment": "EQUIPMENT_ID_A",
+    "asset": "EQUIPMENT_ID_A",
     "part": "PART_ID_B123",
     "quantityPerMachine": 1,
     "replacementFrequencyPerYear": 2,
@@ -30,11 +30,11 @@ curl -X POST http://localhost:3000/api/equipment-parts \
   }'
 
 # Association 2 : Machine B - Courroie B123
-curl -X POST http://localhost:3000/api/equipment-parts \
+curl -X POST http://localhost:3000/api/asset-parts \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
-    "equipment": "EQUIPMENT_ID_B",
+    "asset": "EQUIPMENT_ID_B",
     "part": "PART_ID_B123",
     "quantityPerMachine": 1,
     "replacementFrequencyPerYear": 1,
@@ -46,11 +46,11 @@ curl -X POST http://localhost:3000/api/equipment-parts \
   }'
 
 # Association 3 : Machine C - Courroie B123
-curl -X POST http://localhost:3000/api/equipment-parts \
+curl -X POST http://localhost:3000/api/asset-parts \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
-    "equipment": "EQUIPMENT_ID_C",
+    "asset": "EQUIPMENT_ID_C",
     "part": "PART_ID_B123",
     "quantityPerMachine": 2,
     "replacementFrequencyPerYear": 0.5,
@@ -70,7 +70,7 @@ curl -X POST http://localhost:3000/api/equipment-parts \
 
 ```bash
 # Récupérer une association
-curl http://localhost:3000/api/equipment-parts/ASSOCIATION_ID \
+curl http://localhost:3000/api/asset-parts/ASSOCIATION_ID \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -98,7 +98,7 @@ curl http://localhost:3000/api/equipment-parts/ASSOCIATION_ID \
 
 ```bash
 # Calcul global pour la pièce B123
-curl http://localhost:3000/api/equipment-parts/part/PART_ID_B123/global-stock \
+curl http://localhost:3000/api/asset-parts/part/PART_ID_B123/global-stock \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -120,7 +120,7 @@ curl http://localhost:3000/api/equipment-parts/part/PART_ID_B123/global-stock \
     "globalSafetyStock": 1,            // ceil(0.01096 × 15 × 1.4)
     "globalReorderPoint": 2,           // ceil(1 + 0.01096 × 15)
     "recommendedInitialStock": 2,
-    "equipmentCount": 3,
+    "assetCount": 3,
     "details": [...]
   },
   "status": "ok"  // ou "warning" ou "critical"
@@ -137,7 +137,7 @@ curl http://localhost:3000/api/equipment-parts/part/PART_ID_B123/global-stock \
 ### Étape 4 : Lister les pièces d'un équipement
 
 ```bash
-curl http://localhost:3000/api/equipment-parts/equipment/EQUIPMENT_ID_A \
+curl http://localhost:3000/api/asset-parts/asset/EQUIPMENT_ID_A \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -148,7 +148,7 @@ curl http://localhost:3000/api/equipment-parts/equipment/EQUIPMENT_ID_A \
 ### Étape 5 : Lister les équipements utilisant une pièce
 
 ```bash
-curl http://localhost:3000/api/equipment-parts/part/PART_ID_B123 \
+curl http://localhost:3000/api/asset-parts/part/PART_ID_B123 \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -159,7 +159,7 @@ curl http://localhost:3000/api/equipment-parts/part/PART_ID_B123 \
 ### Étape 6 : Enregistrer un remplacement
 
 ```bash
-curl -X POST http://localhost:3000/api/equipment-parts/ASSOCIATION_ID/record-replacement \
+curl -X POST http://localhost:3000/api/asset-parts/ASSOCIATION_ID/record-replacement \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
@@ -179,7 +179,7 @@ curl -X POST http://localhost:3000/api/equipment-parts/ASSOCIATION_ID/record-rep
 ### Étape 7 : Obtenir les alertes de réapprovisionnement
 
 ```bash
-curl http://localhost:3000/api/equipment-parts/reorder-alerts \
+curl http://localhost:3000/api/asset-parts/reorder-alerts \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -193,7 +193,7 @@ curl http://localhost:3000/api/equipment-parts/reorder-alerts \
 ### Étape 8 : Modifier une association
 
 ```bash
-curl -X PATCH http://localhost:3000/api/equipment-parts/ASSOCIATION_ID \
+curl -X PATCH http://localhost:3000/api/asset-parts/ASSOCIATION_ID \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
@@ -212,7 +212,7 @@ curl -X PATCH http://localhost:3000/api/equipment-parts/ASSOCIATION_ID \
 ### Étape 9 : Supprimer une association
 
 ```bash
-curl -X DELETE http://localhost:3000/api/equipment-parts/ASSOCIATION_ID \
+curl -X DELETE http://localhost:3000/api/asset-parts/ASSOCIATION_ID \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -235,7 +235,7 @@ annualConsumption = 2 × 3 = 6
 
 **Vérification** :
 ```javascript
-const association = await EquipmentPart.findById(id);
+const association = await AssetPart.findById(id);
 assert.equal(association.annualConsumption, 6);
 ```
 
@@ -297,7 +297,7 @@ weightedCriticalityLabel = "high"
 
 **Vérification** :
 ```javascript
-const globalStock = await EquipmentPart.calculateGlobalStock(partId);
+const globalStock = await AssetPart.calculateGlobalStock(partId);
 assert.equal(globalStock.weightedCriticality, 3.4);
 assert.equal(globalStock.weightedCriticalityLabel, 'high');
 ```
@@ -344,7 +344,7 @@ annualConsumption = 0.5 × 4 = 2
 **Résultat attendu** :
 ```json
 {
-  "message": "This part is already associated with this equipment"
+  "message": "This part is already associated with this asset"
 }
 ```
 
@@ -359,7 +359,7 @@ annualConsumption = 0.5 × 4 = 2
 **Résultat attendu** :
 ```json
 {
-  "message": "Equipment not found"
+  "message": "Asset not found"
 }
 ```
 
@@ -482,7 +482,7 @@ annualConsumption = 0.5 × 4 = 2
   "globalSafetyStock": 1,
   "globalReorderPoint": 2,
   "recommendedInitialStock": 2,
-  "equipmentCount": 3
+  "assetCount": 3
 }
 ```
 

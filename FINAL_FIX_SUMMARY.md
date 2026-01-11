@@ -3,18 +3,18 @@
 ## 🐛 Problèmes Identifiés et Corrigés
 
 ### 1. Problème de Statut Initial ✅
-**Erreur:** Le service `EquipmentStatusService.changeStatus()` validait les transitions de statut, ce qui échouait pour un équipement nouvellement créé sans statut précédent.
+**Erreur:** Le service `AssetStatusService.changeStatus()` validait les transitions de statut, ce qui échouait pour un équipement nouvellement créé sans statut précédent.
 
 **Solution:** Créer directement l'entrée d'historique de statut sans passer par le service de validation lors de la création initiale.
 
-**Fichier:** `server/routes/equipmentRoutes.js` (ligne 337-349)
+**Fichier:** `server/routes/assetRoutes.js` (ligne 337-349)
 
 ### 2. Problème de Champ Brand Vide ✅
 **Erreur:** Le champ `brand` était envoyé comme chaîne vide `""` au lieu de `undefined`, causant une erreur MongoDB car le modèle attend un ObjectId valide ou rien.
 
 **Solution:** Transformer les chaînes vides en `undefined` avant de créer l'équipement.
 
-**Fichier:** `server/routes/equipmentRoutes.js` (ligne 331-337)
+**Fichier:** `server/routes/assetRoutes.js` (ligne 331-337)
 
 ### 3. Problème d'Envoi du Nom au lieu de l'ID ✅
 **Erreur:** Le frontend envoyait le **nom** de la marque (ex: "Juki") au lieu de l'**ID** de la marque (ObjectId).
@@ -25,9 +25,9 @@
 - Corriger `openEditDialog` pour extraire correctement l'ID de la marque
 
 **Fichiers:** 
-- `client/src/pages/Equipment.tsx` (ligne 744)
-- `client/src/pages/Equipment.tsx` (ligne 43)
-- `client/src/pages/Equipment.tsx` (ligne 205-206)
+- `client/src/pages/Asset.tsx` (ligne 744)
+- `client/src/pages/Asset.tsx` (ligne 43)
+- `client/src/pages/Asset.tsx` (ligne 205-206)
 
 ## 📋 Actions Requises
 
@@ -55,8 +55,8 @@ Le frontend (Vite) devrait se recharger automatiquement. Si ce n'est pas le cas:
 
 ### 3. Tester la Création d'Équipement
 
-1. Allez sur `http://localhost:5173/equipment`
-2. Cliquez sur **"Add Equipment"**
+1. Allez sur `http://localhost:5173/asset`
+2. Cliquez sur **"Add Asset"**
 3. Remplissez le formulaire:
    - **Category**: Sélectionnez une catégorie
    - **Type**: Sélectionnez un type
@@ -92,25 +92,25 @@ Le frontend (Vite) devrait se recharger automatiquement. Si ce n'est pas le cas:
 ### Logs du Serveur (Succès)
 ```
 Authentication successful for user: admin@texmaintain.com, role: admin
-Create equipment error: [aucune erreur]
-Equipment created successfully
+Create asset error: [aucune erreur]
+Asset created successfully
 ```
 
 ### Console du Navigateur (Succès)
 ```
-Equipment created successfully
-Toast: { title: 'Created', description: 'Equipment created successfully' }
+Asset created successfully
+Toast: { title: 'Created', description: 'Asset created successfully' }
 ```
 
 ## 📁 Fichiers Modifiés
 
 ### Backend
-- `server/routes/equipmentRoutes.js` - Corrections de création d'équipement
+- `server/routes/assetRoutes.js` - Corrections de création d'équipement
 - `server/package.json` - Ajout de nodemon
 - `server/nodemon.json` - Configuration de nodemon
 
 ### Frontend
-- `client/src/pages/Equipment.tsx` - Correction de la sélection de marque
+- `client/src/pages/Asset.tsx` - Correction de la sélection de marque
 
 ### Documentation
 - `BUGFIX_EQUIPMENT_CREATION.md` - Documentation du premier bug

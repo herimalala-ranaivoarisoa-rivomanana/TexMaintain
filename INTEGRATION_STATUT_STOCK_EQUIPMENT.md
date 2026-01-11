@@ -7,7 +7,7 @@
 
 ## 🎯 OBJECTIF
 
-Afficher le statut du stock directement dans les pages `/equipment/:id/parts` et `/equipment/:id/consumable` pour une meilleure visibilité.
+Afficher le statut du stock directement dans les pages `/asset/:id/parts` et `/asset/:id/consumable` pour une meilleure visibilité.
 
 ---
 
@@ -39,7 +39,7 @@ Affichage visuel du statut avec 4 niveaux :
 ## 🔧 MODIFICATIONS EFFECTUÉES
 
 ### Fichier Modifié
-**`client/src/components/EquipmentPartsList.tsx`**
+**`client/src/components/AssetPartsList.tsx`**
 
 #### 1. Ajout des Imports
 ```typescript
@@ -206,7 +206,7 @@ const getStockStatus = (currentStock: number, minStock: number, maxStock: number
 
 ```
 1. DÉTECTION
-   Utilisateur sur /equipment/123/parts
+   Utilisateur sur /asset/123/parts
    ↓
    Voit badge 🔴 Critique sur une pièce
    ↓
@@ -227,7 +227,7 @@ const getStockStatus = (currentStock: number, minStock: number, maxStock: number
    Commande créée
 
 4. RETOUR
-   Retour sur /equipment/123/parts
+   Retour sur /asset/123/parts
    ↓
    Badge toujours 🔴 (stock pas encore reçu)
    ↓
@@ -238,7 +238,7 @@ const getStockStatus = (currentStock: number, minStock: number, maxStock: number
 
 ```
 1. CONSULTATION
-   Utilisateur sur /equipment/123/parts
+   Utilisateur sur /asset/123/parts
    ↓
    Voit une pièce intéressante
    ↓
@@ -299,7 +299,7 @@ const getStockStatus = (currentStock: number, minStock: number, maxStock: number
 
 2. Associer à un équipement
 
-3. Aller sur /equipment/[id]/parts
+3. Aller sur /asset/[id]/parts
 
 4. Vérifier:
    ✓ Badge 🔴 "Critique" affiché
@@ -317,7 +317,7 @@ const getStockStatus = (currentStock: number, minStock: number, maxStock: number
 
 2. Associer à un équipement
 
-3. Aller sur /equipment/[id]/parts
+3. Aller sur /asset/[id]/parts
 
 4. Vérifier:
    ✓ Badge 🟢 "Normal" affiché
@@ -328,7 +328,7 @@ const getStockStatus = (currentStock: number, minStock: number, maxStock: number
 
 ### Test 3 : Bouton Commander
 ```bash
-1. Sur /equipment/[id]/parts
+1. Sur /asset/[id]/parts
 2. Pièce avec stock critique
 3. Cliquer sur "Commander"
 4. Vérifier:
@@ -339,7 +339,7 @@ const getStockStatus = (currentStock: number, minStock: number, maxStock: number
 
 ### Test 4 : Lien vers Détails
 ```bash
-1. Sur /equipment/[id]/parts
+1. Sur /asset/[id]/parts
 2. Cliquer sur icône 🔗
 3. Vérifier:
    ✓ Redirection vers /inventory/[part-id]
@@ -349,12 +349,12 @@ const getStockStatus = (currentStock: number, minStock: number, maxStock: number
 
 ### Test 5 : Filtrage Parts/Consumables
 ```bash
-1. Aller sur /equipment/[id]/parts
+1. Aller sur /asset/[id]/parts
 2. Vérifier:
    ✓ Seules les pièces (type='part') affichées
    ✓ Statut du stock pour chaque pièce
 
-3. Aller sur /equipment/[id]/consumable
+3. Aller sur /asset/[id]/consumable
 4. Vérifier:
    ✓ Seuls les consommables (type='consumable') affichés
    ✓ Statut du stock pour chaque consommable
@@ -419,7 +419,7 @@ Prix:          text-slate-900
 ## 📝 RÉSUMÉ
 
 ### Fichier Modifié
-- ✅ `client/src/components/EquipmentPartsList.tsx`
+- ✅ `client/src/components/AssetPartsList.tsx`
 
 ### Fonctionnalités Ajoutées
 1. ✅ Fonction `getStockStatus()` pour calcul du statut
@@ -430,8 +430,8 @@ Prix:          text-slate-900
 6. ✅ Section informations de stock (actuel, min, max, prix)
 
 ### Pages Impactées
-- ✅ `/equipment/:id/parts` - Affiche statut pour pièces
-- ✅ `/equipment/:id/consumable` - Affiche statut pour consommables
+- ✅ `/asset/:id/parts` - Affiche statut pour pièces
+- ✅ `/asset/:id/consumable` - Affiche statut pour consommables
 
 ---
 
@@ -452,4 +452,4 @@ Prix:          text-slate-900
 **Le statut du stock est maintenant visible partout ! 🎉**
 
 **Document créé le 1er Novembre 2025**  
-**Amélioration de la visibilité du stock dans Equipment Parts**
+**Amélioration de la visibilité du stock dans Asset Parts**

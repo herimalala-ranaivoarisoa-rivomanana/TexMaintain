@@ -6,9 +6,9 @@ Le formulaire de changement de statut affiche maintenant une section de sélecti
 
 ## 📋 Modifications Effectuées
 
-### 1. Composant EquipmentStatusDialog
+### 1. Composant AssetStatusDialog
 
-**Fichier:** `client/src/components/EquipmentStatusDialog.tsx`
+**Fichier:** `client/src/components/AssetStatusDialog.tsx`
 
 #### Imports Ajoutés
 ```typescript
@@ -65,8 +65,8 @@ if (selectedStatus === 'under_repair') {
 
 #### Envoi des Données
 ```typescript
-await changeEquipmentStatus(equipmentId, {
-  status: selectedStatus as EquipmentStatus,
+await changeAssetStatus(assetId, {
+  status: selectedStatus as AssetStatus,
   reason,
   notes,
   mechanicId: selectedMechanic || undefined,
@@ -77,11 +77,11 @@ await changeEquipmentStatus(equipmentId, {
 
 ### 2. Interface TypeScript
 
-**Fichier:** `client/src/types/equipment.ts`
+**Fichier:** `client/src/types/asset.ts`
 
 ```typescript
 export interface ChangeStatusRequest {
-  status: EquipmentStatus;
+  status: AssetStatus;
   reason?: string;
   notes?: string;
   interventionId?: string;
@@ -193,7 +193,7 @@ Lors du clic sur "Change Status" :
 ### Exemple de Requête
 
 ```json
-POST /api/equipment/6904ecd887e093f36b7cbd4b/change-status
+POST /api/asset/6904ecd887e093f36b7cbd4b/change-status
 
 {
   "status": "under_repair",
@@ -254,7 +254,7 @@ Si ce n'est pas le cas, rafraîchissez la page du navigateur (Ctrl+R ou F5).
 
 ### Test Rapide
 
-1. Allez sur la page Equipment
+1. Allez sur la page Asset
 2. Cliquez sur un équipement
 3. Cliquez sur "Change Status"
 4. Sélectionnez "Under Repair"

@@ -3,7 +3,7 @@ import api from './api';
 // Description: Get all interventions with status and details
 // Endpoint: GET /api/interventions
 // Request: {}
-// Response: { interventions: Array<{ _id: string, title: string, type: string, priority: string, status: string, equipment: string, assignedTo: string, createdDate: string, dueDate: string }> }
+// Response: { interventions: Array<{ _id: string, title: string, type: string, priority: string, status: string, asset: string, assignedTo: string, createdDate: string, dueDate: string }> }
 export const getInterventions = async (params?: { page?: number; limit?: number; status?: string; type?: string; priority?: string; q?: string; sort?: string; order?: 'asc' | 'desc' }) => {
   const response = await api.get('/api/interventions', { params });
   return response.data;
@@ -19,14 +19,14 @@ export const getInterventionById = async (id: string) => {
 
 // Description: Create a new intervention
 // Endpoint: POST /api/interventions
-// Request: { title: string, type: string, priority: string, equipment?: string, equipmentId?: string, description?: string, assignedTo?: string, dueDate?: string }
+// Request: { title: string, type: string, priority: string, asset?: string, assetId?: string, description?: string, assignedTo?: string, dueDate?: string }
 // Response: { success: boolean, message: string, intervention: object }
 export const createIntervention = async (data: {
   title: string;
   type: string;
   priority: string;
-  equipment?: string;
-  equipmentId?: string;
+  asset?: string;
+  assetId?: string;
   description?: string;
   assignedTo?: string;
   dueDate?: string;

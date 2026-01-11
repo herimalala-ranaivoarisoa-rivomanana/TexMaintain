@@ -39,7 +39,7 @@ nextReplacementDate = lastReplacementDate + daysUntilNext days
 
 ### 1. Backend - Automatic Calculation
 
-**File**: `server/models/EquipmentPart.js`
+**File**: `server/models/AssetPart.js`
 
 ```javascript
 // Pre-save hook
@@ -68,10 +68,10 @@ schema.pre('save', function(next) {
 
 ### 2. Frontend - Display Status
 
-**File**: `client/src/components/EquipmentPartsList.tsx`
+**File**: `client/src/components/AssetPartsList.tsx`
 
 ```javascript
-const getReplacementStatus = (part: EquipmentPart) => {
+const getReplacementStatus = (part: AssetPart) => {
   if (!part.nextReplacementDate) return null
 
   const days = getDaysUntilReplacement(part.nextReplacementDate)
@@ -185,7 +185,7 @@ Display:
 ### Test 1: Record a Replacement
 
 ```bash
-1. Go to /equipment/[id]/parts
+1. Go to /asset/[id]/parts
 2. Click "📝 Record a replacement"
 3. Enter quantity and submit
 4. Verify:
@@ -197,7 +197,7 @@ Display:
 ### Test 2: Modify Frequency
 
 ```bash
-1. Go to /equipment/[id]/parts
+1. Go to /asset/[id]/parts
 2. Click "Edit" on a part with last replacement date
 3. Change frequency (e.g., from 2 to 4 times/year)
 4. Save
@@ -232,14 +232,14 @@ Display:
 ### Example Data
 
 ```
-📦 Rotary Cutter 45mm (Equipment: DLM125469)
+📦 Rotary Cutter 45mm (Asset: DLM125469)
    Frequency: 2/year
    Last replacement: Nov 1, 2025
    Next replacement: May 3, 2026
    Days until next: 183
    Status: ✅ Correct
 
-📦 MIG Welding Wire (Equipment: DLM125469)
+📦 MIG Welding Wire (Asset: DLM125469)
    Frequency: 1/year
    Last replacement: Nov 1, 2025
    Next replacement: Nov 1, 2026

@@ -1,7 +1,7 @@
 const express = require('express');
 const { requireUser, requireRole } = require('./middleware/auth');
 const { Part } = require('../models/Part');
-const { EquipmentPart } = require('../models/EquipmentPart');
+const { AssetPart } = require('../models/AssetPart');
 
 const router = express.Router();
 
@@ -115,7 +115,7 @@ router.get('/', requireUser, async (req, res) => {
     parts,
     page: safePage,
     total, // total matching current filters (for pagination)
-    statistics, // global tab counts (distinct equipment-attached)
+    statistics, // global tab counts (distinct asset-attached)
     filteredTotal: filtered.filteredTotal,
     filteredCritical: filtered.filteredCritical,
     filteredTotalValue: filtered.filteredTotalValue,
@@ -285,7 +285,7 @@ router.post('/:id/calculate-min-max', requireUser, requireRole(['admin', 'procur
     if (!result) {
       return res.status(200).json({
         success: true,
-        message: 'No equipment associations found. Min/Max not updated.',
+        message: 'No asset associations found. Min/Max not updated.',
         calculated: false
       });
     }
@@ -317,8 +317,8 @@ router.get('/:id/stock-status', requireUser, async (req, res) => {
     const stockStatus = part.getStockStatus();
 
     // Récupérer aussi les associations pour plus d'infos
-    const associations = await EquipmentPart.find({ part: id })
-      .populate('equipment', 'model serialNumber location')
+    const associations = await AssetPart.find({ part: id })
+      .populate('asset', 'model serialNumber location')
       .lean();
 
     return res.status(200).json({
@@ -329,7 +329,7 @@ router.get('/:id/stock-status', requireUser, async (req, res) => {
       maxStock: part.maxStock,
       pendingQuantity: part.pendingQuantity,
       pendingOrders: part.pendingOrders,
-      associatedEquipmentCount: associations.length
+      associatedAssetCount: associations.length
     });
   } catch (error) {
     console.error('Error getting stock status:', error);

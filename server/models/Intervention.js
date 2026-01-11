@@ -9,8 +9,8 @@ const schema = new mongoose.Schema({
   type: { type: String, enum: INTERVENTION_TYPES, required: true },
   priority: { type: String, enum: PRIORITY_LEVELS, required: true },
   status: { type: String, enum: STATUS_VALUES, default: 'Pending', required: true },
-  equipment: { type: String, required: false, trim: true }, // Legacy field (deprecated) - use equipmentId
-  equipmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Equipment', required: false, index: true }, // Strong reference
+  asset: { type: String, required: false, trim: true }, // Legacy field (deprecated) - use assetId
+  assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: false, index: true }, // Strong reference (migrated from Asset to Asset)
   factory: { type: mongoose.Schema.Types.ObjectId, ref: 'Factory', required: true, index: true },
   assignedTo: { type: String, trim: true },
   description: { type: String, trim: true },

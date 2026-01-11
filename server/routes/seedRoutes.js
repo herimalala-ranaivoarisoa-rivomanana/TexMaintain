@@ -27,11 +27,11 @@ router.post('/admin', requireUser, requireRole('admin'), async (req, res) => {
   }
 });
 
-// Seed equipment categories
-router.post('/equipment-categories', requireUser, requireRole('admin'), async (req, res) => {
+// Seed asset categories
+router.post('/asset-categories', requireUser, requireRole('admin'), async (req, res) => {
   try {
-    console.log('Received request to seed equipment categories');
-    const result = await SeedService.seedEquipmentCategories();
+    console.log('Received request to seed asset categories');
+    const result = await SeedService.seedAssetCategories();
 
     res.status(200).json({
       success: true,
@@ -43,19 +43,19 @@ router.post('/equipment-categories', requireUser, requireRole('admin'), async (r
       }
     });
   } catch (error) {
-    console.error('Error in seed equipment categories route:', error);
+    console.error('Error in seed asset categories route:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to seed equipment categories'
+      message: error.message || 'Failed to seed asset categories'
     });
   }
 });
 
-// Seed equipment types
-router.post('/equipment-types', requireUser, requireRole('admin'), async (req, res) => {
+// Seed asset types
+router.post('/asset-types', requireUser, requireRole('admin'), async (req, res) => {
   try {
-    console.log('Received request to seed equipment types');
-    const result = await SeedService.seedEquipmentTypes();
+    console.log('Received request to seed asset types');
+    const result = await SeedService.seedSubCategorys();
 
     res.status(200).json({
       success: true,
@@ -67,19 +67,19 @@ router.post('/equipment-types', requireUser, requireRole('admin'), async (req, r
       }
     });
   } catch (error) {
-    console.error('Error in seed equipment types route:', error);
+    console.error('Error in seed asset types route:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to seed equipment types'
+      message: error.message || 'Failed to seed asset types'
     });
   }
 });
 
-// Seed equipment (sample data)
-router.post('/equipment', requireUser, requireRole('admin'), async (req, res) => {
+// Seed asset (sample data)
+router.post('/asset', requireUser, requireRole('admin'), async (req, res) => {
   try {
-    console.log('Received request to seed equipment');
-    const result = await SeedService.seedEquipment();
+    console.log('Received request to seed asset');
+    const result = await SeedService.seedAsset();
 
     res.status(200).json({
       success: true,
@@ -87,14 +87,14 @@ router.post('/equipment', requireUser, requireRole('admin'), async (req, res) =>
       data: {
         created: result.created.length,
         skipped: result.skipped,
-        equipment: result.created
+        asset: result.created
       }
     });
   } catch (error) {
-    console.error('Error in seed equipment route:', error);
+    console.error('Error in seed asset route:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to seed equipment'
+      message: error.message || 'Failed to seed asset'
     });
   }
 });
@@ -163,31 +163,31 @@ router.post('/all', requireUser, requireRole('admin'), async (req, res) => {
       results.admin = { message: 'Admin user may already exist' };
     }
 
-    // Seed equipment categories
+    // Seed asset categories
     try {
-      results.categories = await SeedService.seedEquipmentCategories();
-      console.log('Equipment categories seeding completed');
+      results.categories = await SeedService.seedAssetCategories();
+      console.log('Asset categories seeding completed');
     } catch (error) {
       console.error('Error seeding categories:', error);
       results.categories = { error: error.message };
     }
 
-    // Seed equipment types
+    // Seed asset types
     try {
-      results.types = await SeedService.seedEquipmentTypes();
-      console.log('Equipment types seeding completed');
+      results.types = await SeedService.seedSubCategorys();
+      console.log('Asset types seeding completed');
     } catch (error) {
       console.error('Error seeding types:', error);
       results.types = { error: error.message };
     }
 
-    // Seed sample equipment
+    // Seed sample asset
     try {
-      results.equipment = await SeedService.seedEquipment();
-      console.log('Sample equipment seeding completed');
+      results.asset = await SeedService.seedAsset();
+      console.log('Sample asset seeding completed');
     } catch (error) {
-      console.error('Error seeding equipment:', error);
-      results.equipment = { error: error.message };
+      console.error('Error seeding asset:', error);
+      results.asset = { error: error.message };
     }
 
     // Seed parts
@@ -199,7 +199,7 @@ router.post('/all', requireUser, requireRole('admin'), async (req, res) => {
       results.parts = { error: error.message };
     }
 
-    // Seed process areas (and sections, assigning equipment)
+    // Seed process areas (and sections, assigning asset)
     try {
       results.productionLines = await SeedService.seedProductionLines();
       console.log('Process areas seeding completed');

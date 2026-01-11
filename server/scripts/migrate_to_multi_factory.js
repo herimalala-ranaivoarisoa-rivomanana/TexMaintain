@@ -4,7 +4,7 @@ require('dotenv').config();
 // Load models
 const { Factory } = require('../models/Factory');
 const { User } = require('../models/User');
-const { Equipment } = require('../models/Equipment');
+const { Asset } = require('../models/Asset');
 const { ProcessArea } = require('../models/ProcessArea');
 const { Part } = require('../models/Part');
 const { connectDB } = require('../config/database');
@@ -69,12 +69,12 @@ async function migrate() {
             );
         }
 
-        // 4. Migrate Equipment
-        console.log('Migrating Equipment...');
-        const equipment = await Equipment.find({ factory: { $exists: false } });
-        console.log(`Found ${equipment.length} Equipment to migrate.`);
-        if (equipment.length > 0) {
-            await Equipment.updateMany(
+        // 4. Migrate Asset
+        console.log('Migrating Asset...');
+        const asset = await Asset.find({ factory: { $exists: false } });
+        console.log(`Found ${asset.length} Asset to migrate.`);
+        if (asset.length > 0) {
+            await Asset.updateMany(
                 { factory: { $exists: false } },
                 { $set: { factory: factoryId } }
             );

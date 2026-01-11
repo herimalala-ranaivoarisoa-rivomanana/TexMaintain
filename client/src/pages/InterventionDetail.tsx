@@ -13,7 +13,7 @@ interface InterventionData {
   type: string
   priority: string
   status: string
-  equipment: string
+  asset: string
   assignedTo?: string
   description?: string
   createdDate?: string
@@ -103,8 +103,8 @@ export function InterventionDetail() {
               <p className="text-slate-900 flex items-center"><User className="mr-1 h-3 w-3" />{data.assignedTo || '-'}</p>
             </div>
             <div>
-              <p className="text-sm text-slate-500">Equipment</p>
-              <p className="text-slate-900">{data.equipment}</p>
+              <p className="text-sm text-slate-500">Asset</p>
+              <p className="text-slate-900">{data.asset}</p>
             </div>
             <div>
               <p className="text-sm text-slate-500">Created</p>

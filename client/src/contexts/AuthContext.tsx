@@ -75,7 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("accessToken");
       setIsAuthenticated(false);
       setUser(null);
-      throw new Error(error?.message || 'Login failed');
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      throw new Error(errorMessage);
     }
   };
 
@@ -89,7 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("accessToken");
       setIsAuthenticated(false);
       setUser(null);
-      throw new Error(error?.message || 'Registration failed');
+      const errorMessage = error instanceof Error ? error.message : 'Registration failed';
+      throw new Error(errorMessage);
     }
   };
 

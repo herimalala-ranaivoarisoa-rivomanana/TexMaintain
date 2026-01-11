@@ -20,10 +20,10 @@ const productionSectionSchema = new mongoose.Schema({
         ref: 'ProductionLine',
         required: true
     },
-    equipment: [{
-        equipmentId: {
+    asset: [{
+        assetId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Equipment'
+            ref: 'Asset'
         },
         order: {
             type: Number,

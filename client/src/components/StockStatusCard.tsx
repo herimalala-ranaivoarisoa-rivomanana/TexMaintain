@@ -40,7 +40,7 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
   const [maxStock, setMaxStock] = useState(0)
   const [pendingQuantity, setPendingQuantity] = useState(0)
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([])
-  const [associatedEquipmentCount, setAssociatedEquipmentCount] = useState(0)
+  const [associatedAssetCount, setAssociatedAssetCount] = useState(0)
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false)
   const [calculatingMinMax, setCalculatingMinMax] = useState(false)
 
@@ -66,7 +66,7 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
       setMaxStock(response.maxStock)
       setPendingQuantity(response.pendingQuantity)
       setPendingOrders(response.pendingOrders || [])
-      setAssociatedEquipmentCount(response.associatedEquipmentCount || 0)
+      setAssociatedAssetCount(response.associatedAssetCount || 0)
     } catch (error: any) {
       console.error('Error fetching stock status:', error)
       toast({
@@ -212,7 +212,7 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
               <Package className="h-5 w-5" />
               Stock Status
             </span>
-            {associatedEquipmentCount > 0 && (
+            {associatedAssetCount > 0 && (
               <Button
                 variant="outline"
                 size="sm"
@@ -380,10 +380,10 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
           )}
 
           {/* Info sur les équipements associés */}
-          {associatedEquipmentCount > 0 && (
+          {associatedAssetCount > 0 && (
             <div className="text-center p-3 bg-blue-50 rounded-lg">
               <p className="text-sm text-slate-600">
-                📊 This part is used on <strong>{associatedEquipmentCount}</strong> equipment(s)
+                📊 This part is used on <strong>{associatedAssetCount}</strong> asset(s)
               </p>
               <p className="text-xs text-slate-500 mt-1">
                 Automatic Min/Max calculation is available

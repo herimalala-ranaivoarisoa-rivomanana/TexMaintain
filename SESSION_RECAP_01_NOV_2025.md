@@ -32,11 +32,11 @@
 
 ---
 
-### 3. ❌ → ✅ Erreur 400 sur PATCH equipment (brand vide)
+### 3. ❌ → ✅ Erreur 400 sur PATCH asset (brand vide)
 **Problème** : `Cast to ObjectId failed for value "" at path "brand"`  
 **Cause** : Chaîne vide envoyée pour un champ ObjectId  
 **Solution** : Transformation de `brand: ""` en suppression du champ  
-**Fichiers** : `server/routes/equipmentRoutes.js` (ligne 378-382)
+**Fichiers** : `server/routes/assetRoutes.js` (ligne 378-382)
 
 ---
 
@@ -44,15 +44,15 @@
 **Problème** : Changement de statut réussi (200) mais revient à l'ancien après F5  
 **Cause** : Statut non envoyé au serveur si personnel non requis  
 **Solution** : Envoi du changement de statut pour TOUS les statuts  
-**Fichiers** : `client/src/pages/Equipment.tsx` (ligne 428)
+**Fichiers** : `client/src/pages/Asset.tsx` (ligne 428)
 
 ---
 
 ### 5. ❌ → ✅ Erreur `Cannot find name 'fetchData'`
 **Problème** : Appel à une fonction inexistante  
 **Cause** : `fetchData` définie dans un scope local (useEffect)  
-**Solution** : Remplacement par `fetchEquipment()` qui est globale  
-**Fichiers** : `client/src/pages/Equipment.tsx` (lignes 482, 524)
+**Solution** : Remplacement par `fetchAsset()` qui est globale  
+**Fichiers** : `client/src/pages/Asset.tsx` (lignes 482, 524)
 
 ---
 
@@ -60,7 +60,7 @@
 **Problème** : Contenu trop long dépassait l'écran  
 **Cause** : Pas de hauteur max ni overflow  
 **Solution** : Ajout de `max-h-[90vh] overflow-y-auto flex flex-col`  
-**Fichiers** : `client/src/pages/Equipment.tsx` (ligne 865, 869)
+**Fichiers** : `client/src/pages/Asset.tsx` (ligne 865, 869)
 
 ---
 
@@ -90,8 +90,8 @@
 11. ✅ Améliorations futures
 
 **Modèles documentés** :
-- Equipment (14 statuts)
-- EquipmentStatusHistory
+- Asset (14 statuts)
+- AssetStatusHistory
 - BreakdownMedia
 - Intervention
 - User (7 rôles)
@@ -119,7 +119,7 @@ Implémenter un système de calcul de stock optimal pour les pièces, en tenant 
 
 ### Fichiers créés
 
-#### 1. **Modèle** : `server/models/EquipmentPart.js` (348 lignes)
+#### 1. **Modèle** : `server/models/AssetPart.js` (348 lignes)
 **Champs principaux** :
 - Paramètres de consommation (quantité, fréquence)
 - Criticité et importance (criticality, machineImportance)
@@ -141,18 +141,18 @@ Implémenter un système de calcul de stock optimal pour les pièces, en tenant 
 
 ---
 
-#### 2. **Routes** : `server/routes/equipmentPartsRoutes.js` (400+ lignes)
+#### 2. **Routes** : `server/routes/assetPartsRoutes.js` (400+ lignes)
 **9 endpoints** :
-1. `GET /api/equipment-parts` - Liste paginée
-2. `GET /api/equipment-parts/equipment/:id` - Pièces d'un équipement
-3. `GET /api/equipment-parts/part/:id` - Équipements utilisant une pièce
-4. `GET /api/equipment-parts/part/:id/global-stock` - Calcul stock global ⭐
-5. `GET /api/equipment-parts/reorder-alerts` - Alertes de réappro ⚠️
-6. `GET /api/equipment-parts/:id` - Détails
-7. `POST /api/equipment-parts` - Créer association
-8. `PATCH /api/equipment-parts/:id` - Modifier
-9. `DELETE /api/equipment-parts/:id` - Supprimer
-10. `POST /api/equipment-parts/:id/record-replacement` - Enregistrer remplacement 🔧
+1. `GET /api/asset-parts` - Liste paginée
+2. `GET /api/asset-parts/asset/:id` - Pièces d'un équipement
+3. `GET /api/asset-parts/part/:id` - Équipements utilisant une pièce
+4. `GET /api/asset-parts/part/:id/global-stock` - Calcul stock global ⭐
+5. `GET /api/asset-parts/reorder-alerts` - Alertes de réappro ⚠️
+6. `GET /api/asset-parts/:id` - Détails
+7. `POST /api/asset-parts` - Créer association
+8. `PATCH /api/asset-parts/:id` - Modifier
+9. `DELETE /api/asset-parts/:id` - Supprimer
+10. `POST /api/asset-parts/:id/record-replacement` - Enregistrer remplacement 🔧
 
 **Validation** : Zod schemas pour toutes les entrées  
 **Sécurité** : JWT + rôles (admin, maintenance_manager)
@@ -160,7 +160,7 @@ Implémenter un système de calcul de stock optimal pour les pièces, en tenant 
 ---
 
 #### 3. **Serveur** : `server/server.js` (modifié)
-- Ajout de la route `/api/equipment-parts`
+- Ajout de la route `/api/asset-parts`
 
 ---
 
@@ -215,15 +215,15 @@ Implémenter un système de calcul de stock optimal pour les pièces, en tenant 
 
 ### Fichiers modifiés/créés
 - **Modifiés** : 5 fichiers
-  - `server/models/EquipmentPart.js`
-  - `server/routes/equipmentRoutes.js`
+  - `server/models/AssetPart.js`
+  - `server/routes/assetRoutes.js`
   - `server/server.js`
-  - `client/src/pages/Equipment.tsx`
+  - `client/src/pages/Asset.tsx`
   - `client/src/api/breakdownMedia.ts`
   - `client/index.html`
 
 - **Créés** : 6 fichiers
-  - `server/routes/equipmentPartsRoutes.js`
+  - `server/routes/assetPartsRoutes.js`
   - `ANALYSE_COMPLETE_SYSTEME_2025.md`
   - `GUIDE_GESTION_STOCK_PIECES.md`
   - `TEST_EQUIPMENT_PARTS.md`
@@ -300,18 +300,18 @@ Implémenter un système de calcul de stock optimal pour les pièces, en tenant 
    - Tester les alertes
 
 2. **Créer le client API TypeScript**
-   - `client/src/api/equipmentParts.ts`
+   - `client/src/api/assetParts.ts`
    - Typage complet
    - Gestion d'erreurs
 
 3. **Implémenter les composants de base**
-   - `EquipmentPartsList`
-   - `EquipmentPartForm`
+   - `AssetPartsList`
+   - `AssetPartForm`
    - `RecordReplacementDialog`
 
 ### Moyen terme (1 semaine)
 4. **Intégrer dans les pages existantes**
-   - Ajouter section dans `EquipmentDetails`
+   - Ajouter section dans `AssetDetails`
    - Créer page `PartDetails`
    - Ajouter widget dashboard
 
@@ -416,7 +416,7 @@ Implémenter un système de calcul de stock optimal pour les pièces, en tenant 
 ## ✅ CHECKLIST FINALE
 
 ### Backend
-- [x] Modèle EquipmentPart complet
+- [x] Modèle AssetPart complet
 - [x] Routes API fonctionnelles
 - [x] Calculs automatiques validés
 - [x] Sécurité implémentée

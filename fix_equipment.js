@@ -1,5 +1,5 @@
 const fs = require('fs');
-const path = 'client/src/pages/Equipment.tsx';
+const path = 'client/src/pages/Asset.tsx';
 
 try {
     const content = fs.readFileSync(path, 'utf8');
@@ -11,7 +11,7 @@ try {
 
     // Verify the content looks like what we expect
     const startLine = lines[1362];
-    if (!startLine.includes('const [createdEquipmentId')) {
+    if (!startLine.includes('const [createdAssetId')) {
         console.error('Line 1363 does not match expectation:', startLine);
         process.exit(1);
     }

@@ -62,10 +62,10 @@ const handleUpload = (req, res, next) => {
 
 router.post('/', requireUser, handleUpload, async (req, res) => {
   try {
-    const { equipmentId, breakdownType, description } = req.body;
+    const { assetId, breakdownType, description } = req.body;
 
-    if (!equipmentId || !breakdownType || !description) {
-      return res.status(400).json({ error: 'Equipment ID, breakdown type, and description are required' });
+    if (!assetId || !breakdownType || !description) {
+      return res.status(400).json({ error: 'Asset ID, breakdown type, and description are required' });
     }
 
     if (!req.files || req.files.length === 0) {
@@ -94,7 +94,7 @@ router.post('/', requireUser, handleUpload, async (req, res) => {
     }));
 
     const breakdownMedia = new BreakdownMedia({
-      equipment: equipmentId,
+      asset: assetId,
       breakdownType,
       description,
       files,
@@ -105,7 +105,7 @@ router.post('/', requireUser, handleUpload, async (req, res) => {
 
     console.log('✅ Breakdown media uploaded successfully (DB):', {
       id: breakdownMedia._id,
-      equipment: equipmentId,
+      asset: assetId,
       filesCount: files.length
     });
 
@@ -119,10 +119,10 @@ router.post('/', requireUser, handleUpload, async (req, res) => {
   }
 });
 
-// GET /api/breakdown-media/equipment/:equipmentId - Get all breakdown media
-router.get('/equipment/:equipmentId', requireUser, async (req, res) => {
+// GET /api/breakdown-media/asset/:assetId - Get all breakdown media
+router.get('/asset/:assetId', requireUser, async (req, res) => {
   try {
-    const breakdownMedia = await BreakdownMedia.find({ equipment: req.params.equipmentId })
+    const breakdownMedia = await BreakdownMedia.find({ asset: req.params.assetId })
       .populate('createdBy', 'fullName email')
       .sort({ createdAt: -1 });
 
@@ -137,7 +137,7 @@ router.get('/equipment/:equipmentId', requireUser, async (req, res) => {
 router.get('/:id', requireUser, async (req, res) => {
   try {
     const breakdownMedia = await BreakdownMedia.findById(req.params.id)
-      .populate('equipment')
+      .populate('asset')
       .populate('createdBy', 'fullName email');
 
     if (!breakdownMedia) {

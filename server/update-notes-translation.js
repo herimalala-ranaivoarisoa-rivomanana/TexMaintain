@@ -4,8 +4,8 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { EquipmentPart } = require('./models/EquipmentPart');
-const { Equipment } = require('./models/Equipment');
+const { AssetPart } = require('./models/AssetPart');
+const { Asset } = require('./models/Asset');
 const { Part } = require('./models/Part');
 
 async function updateNotes() {
@@ -18,7 +18,7 @@ async function updateNotes() {
     console.log('🔄 Mise à jour des notes...');
 
     // Trouver toutes les associations avec des notes en français
-    const result = await EquipmentPart.updateMany(
+    const result = await AssetPart.updateMany(
       { notes: { $regex: 'Auto-dupliqué depuis équipement de référence' } },
       [
         {
@@ -27,7 +27,7 @@ async function updateNotes() {
               $replaceAll: {
                 input: '$notes',
                 find: 'Auto-dupliqué depuis équipement de référence',
-                replacement: 'Auto-duplicated from reference equipment'
+                replacement: 'Auto-duplicated from reference asset'
               }
             }
           }
@@ -38,17 +38,17 @@ async function updateNotes() {
     console.log(`✅ ${result.modifiedCount} note(s) mise(s) à jour\n`);
 
     // Afficher quelques exemples
-    const examples = await EquipmentPart.find({
-      notes: { $regex: 'Auto-duplicated from reference equipment' }
+    const examples = await AssetPart.find({
+      notes: { $regex: 'Auto-duplicated from reference asset' }
     })
     .limit(5)
-    .populate('equipment', 'model serialNumber')
+    .populate('asset', 'model serialNumber')
     .populate('part', 'name');
 
     if (examples.length > 0) {
       console.log('📝 Exemples de notes traduites:');
       for (const ex of examples) {
-        console.log(`   - ${ex.equipment?.model} + ${ex.part?.name}`);
+        console.log(`   - ${ex.asset?.model} + ${ex.part?.name}`);
         console.log(`     "${ex.notes}"\n`);
       }
     }

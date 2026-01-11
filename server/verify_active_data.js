@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
-const { Equipment } = require('./models/Equipment');
+const { Asset } = require('./models/Asset');
 const { ProductionLine } = require('./models/ProductionLine');
 const { ProductionSection } = require('./models/ProductionSection');
 const { Intervention } = require('./models/Intervention');
 const { Part } = require('./models/Part');
-const { EquipmentPart } = require('./models/EquipmentPart');
+const { AssetPart } = require('./models/AssetPart');
 
 const verify = async () => {
     try {
@@ -16,8 +16,8 @@ const verify = async () => {
         const line = await ProductionLine.findOne({ name: 'Line 1' }).populate({
             path: 'sections.sectionId',
             populate: {
-                path: 'equipment.equipmentId',
-                model: 'Equipment'
+                path: 'asset.assetId',
+                model: 'Asset'
             }
         }).lean();
 
@@ -26,42 +26,42 @@ const verify = async () => {
             process.exit(1);
         }
 
-        const equipmentList = [];
+        const assetList = [];
         if (line.sections) {
             line.sections.forEach(section => {
-                if (section.sectionId && section.sectionId.equipment) {
-                    section.sectionId.equipment.forEach(item => {
-                        if (item.equipmentId) {
-                            equipmentList.push(item.equipmentId);
+                if (section.sectionId && section.sectionId.asset) {
+                    section.sectionId.asset.forEach(item => {
+                        if (item.assetId) {
+                            assetList.push(item.assetId);
                         }
                     });
                 }
             });
         }
 
-        const equipmentIds = equipmentList.map(e => e._id);
-        console.log(`Line 1 Equipment Count: ${equipmentIds.length}`);
+        const assetIds = assetList.map(e => e._id);
+        console.log(`Line 1 Asset Count: ${assetIds.length}`);
 
-        // Active Interventions (Using equipmentId which is the correct ObjectId ref)
+        // Active Interventions (Using assetId which is the correct ObjectId ref)
         const activeInterventionsCount = await Intervention.countDocuments({
-            equipmentId: { $in: equipmentIds },
+            assetId: { $in: assetIds },
             status: { $in: ['Pending', 'In Progress'] }
         });
         console.log(`Active Interventions for Line 1: ${activeInterventionsCount}`);
 
-        // Critical Parts (Low Stock for parts used by Line 1 equipment)
-        // 1. Get parts used by equipment
-        const equipmentParts = await EquipmentPart.find({ equipment: { $in: equipmentIds } }).distinct('part');
+        // Critical Parts (Low Stock for parts used by Line 1 asset)
+        // 1. Get parts used by asset
+        const assetParts = await AssetPart.find({ asset: { $in: assetIds } }).distinct('part');
         // 2. Check stock
         const criticalPartsCount = await Part.countDocuments({
-            _id: { $in: equipmentParts },
+            _id: { $in: assetParts },
             $expr: { $lte: ['$currentStock', '$minStock'] }
         });
         console.log(`Critical Parts for Line 1: ${criticalPartsCount}`);
 
         // Pending Orders
         const pendingOrdersParts = await Part.find({
-            _id: { $in: equipmentParts },
+            _id: { $in: assetParts },
             'pendingOrders.status': { $in: ['pending', 'ordered', 'in_transit'] }
         });
 

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { Equipment } = require('./models/Equipment');
+const { Asset } = require('./models/Asset');
 const { ProductionLine } = require('./models/ProductionLine');
 const { ProductionSection } = require('./models/ProductionSection');
 require('dotenv').config();
@@ -10,38 +10,38 @@ async function inspectDB() {
         await mongoose.connect(mongoUri);
         console.log('Connected to MongoDB');
 
-        const totalEquipment = await Equipment.countDocuments();
+        const totalAsset = await Asset.countDocuments();
         const totalLines = await ProductionLine.countDocuments();
         const totalSections = await ProductionSection.countDocuments();
 
-        console.log(`Total Equipment: ${totalEquipment}`);
+        console.log(`Total Asset: ${totalAsset}`);
         console.log(`Total Process areas: ${totalLines}`);
         console.log(`Total Sections: ${totalSections}`);
 
         const lines = await ProductionLine.find().populate({
             path: 'sections.sectionId',
-            populate: { path: 'equipment.equipmentId' }
+            populate: { path: 'asset.assetId' }
         });
 
         for (const line of lines) {
             let lineEquipCount = 0;
             line.sections.forEach(s => {
-                if (s.sectionId && s.sectionId.equipment) {
-                    lineEquipCount += s.sectionId.equipment.length;
+                if (s.sectionId && s.sectionId.asset) {
+                    lineEquipCount += s.sectionId.asset.length;
                 }
             });
-            console.log(`Line '${line.name}': ${lineEquipCount} equipment assigned.`);
+            console.log(`Line '${line.name}': ${lineEquipCount} asset assigned.`);
         }
 
         const assignedEquipIds = new Set();
         lines.forEach(l => l.sections.forEach(s => {
-            if (s.sectionId && s.sectionId.equipment) {
-                s.sectionId.equipment.forEach(e => assignedEquipIds.add(e.equipmentId?.toString()));
+            if (s.sectionId && s.sectionId.asset) {
+                s.sectionId.asset.forEach(e => assignedEquipIds.add(e.assetId?.toString()));
             }
         }));
 
-        console.log(`Total Assigned Equipment: ${assignedEquipIds.size}`);
-        console.log(`Total Unassigned (Orphan) Equipment: ${totalEquipment - assignedEquipIds.size}`);
+        console.log(`Total Assigned Asset: ${assignedEquipIds.size}`);
+        console.log(`Total Unassigned (Orphan) Asset: ${totalAsset - assignedEquipIds.size}`);
 
         process.exit(0);
     } catch (error) {

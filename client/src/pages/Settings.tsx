@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
-import { seedAdminUser, seedEquipmentCategories, seedEquipmentTypes, seedEquipment, seedParts, seedBrands, seedAll } from "@/api/seed"
+import { seedAdminUser, seedAssetCategories, seedSubCategorys, seedAsset, seedParts, seedBrands, seedAll } from "@/api/seed"
 import {
   User,
   Bell,
@@ -42,9 +42,10 @@ export function Settings() {
         description: result.message,
       })
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -52,39 +53,41 @@ export function Settings() {
     }
   }
 
-  const handleSeedEquipmentTypes = async () => {
+  const handleSeedSubCategorys = async () => {
     try {
-      setLoading({ ...loading, equipmentTypes: true })
-      const result = await seedEquipmentTypes()
-      setSeedResults({ ...seedResults, equipmentTypes: result })
+      setLoading({ ...loading, assetTypes: true })
+      const result = await seedSubCategorys()
+      setSeedResults({ ...seedResults, assetTypes: result })
       toast({
         title: "Success",
         description: result.message,
       })
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
-      setLoading({ ...loading, equipmentTypes: false })
+      setLoading({ ...loading, assetTypes: false })
     }
   }
 
   const handleSeedCategories = async () => {
     try {
       setLoading({ ...loading, categories: true })
-      const result = await seedEquipmentCategories()
+      const result = await seedAssetCategories()
       setSeedResults({ ...seedResults, categories: result })
       toast({
         title: "Success",
         description: result.message,
       })
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -92,23 +95,24 @@ export function Settings() {
     }
   }
 
-  const handleSeedEquipment = async () => {
+  const handleSeedAsset = async () => {
     try {
-      setLoading({ ...loading, equipment: true })
-      const result = await seedEquipment()
-      setSeedResults({ ...seedResults, equipment: result })
+      setLoading({ ...loading, asset: true })
+      const result = await seedAsset()
+      setSeedResults({ ...seedResults, asset: result })
       toast({
         title: "Success",
         description: result.message,
       })
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
-      setLoading({ ...loading, equipment: false })
+      setLoading({ ...loading, asset: false })
     }
   }
 
@@ -122,9 +126,10 @@ export function Settings() {
         description: result.message,
       })
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -142,9 +147,10 @@ export function Settings() {
         description: result.message,
       })
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -162,9 +168,10 @@ export function Settings() {
         description: result.message,
       })
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -342,7 +349,7 @@ export function Settings() {
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
                     <h4 className="font-medium">IoT Sensors</h4>
-                    <p className="text-sm text-slate-600">Connect equipment sensors</p>
+                    <p className="text-sm text-slate-600">Connect asset sensors</p>
                   </div>
                   <Button variant="outline">Setup</Button>
                 </div>
@@ -452,39 +459,39 @@ export function Settings() {
                     </CardContent>
                   </Card>
 
-                  {/* Seed Equipment Types */}
+                  {/* Seed Asset Types */}
                   <Card className="border-2 border-dashed border-slate-200">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <Wrench className="h-5 w-5" />
-                        Seed Equipment Types
+                        Seed Asset Types
                       </CardTitle>
                       <CardDescription>
-                        Initialize the database with sample equipment
+                        Initialize the database with sample asset
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <Button
-                        onClick={handleSeedEquipmentTypes}
-                        disabled={loading.equipmentTypes}
+                        onClick={handleSeedSubCategorys}
+                        disabled={loading.assetTypes}
                         className="w-full"
                       >
-                        {loading.equipmentTypes ? "Creating..." : "Create Equipment Types"}
+                        {loading.assetTypes ? "Creating..." : "Create Asset Types"}
                       </Button>
                       
-                      {seedResults.equipmentTypes && (
+                      {seedResults.assetTypes && (
                         <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                           <div className="flex items-center gap-2 text-green-800 mb-2">
                             <CheckCircle className="h-4 w-4" />
                             <span className="font-medium">Success</span>
                           </div>
-                          <p className="text-sm text-green-700 mb-2">{seedResults.equipmentTypes.message}</p>
+                          <p className="text-sm text-green-700 mb-2">{seedResults.assetTypes.message}</p>
                           <div className="flex gap-2">
                             <Badge variant="outline" className="text-green-700">
-                              Created: {seedResults.equipmentTypes.data?.created || 0}
+                              Created: {seedResults.assetTypes.data?.created || 0}
                             </Badge>
                             <Badge variant="outline" className="text-yellow-700">
-                              Skipped: {seedResults.equipmentTypes.data?.skipped || 0}
+                              Skipped: {seedResults.assetTypes.data?.skipped || 0}
                             </Badge>
                           </div>
                         </div>
@@ -540,7 +547,7 @@ export function Settings() {
                         Seed Brands
                       </CardTitle>
                       <CardDescription>
-                        Initialize the database with equipment brands
+                        Initialize the database with asset brands
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -572,7 +579,7 @@ export function Settings() {
                     </CardContent>
                   </Card>
 
-                  {/* Seed Equipment Categories */}
+                  {/* Seed Asset Categories */}
                   <Card className="border-2 border-dashed border-slate-200">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-lg">
@@ -580,7 +587,7 @@ export function Settings() {
                         Seed Categories
                       </CardTitle>
                       <CardDescription>
-                        Initialize the database with equipment categories
+                        Initialize the database with asset categories
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -612,39 +619,39 @@ export function Settings() {
                     </CardContent>
                   </Card>
 
-                  {/* Seed Equipment */}
+                  {/* Seed Asset */}
                   <Card className="border-2 border-dashed border-slate-200">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <Wrench className="h-5 w-5" />
-                        Seed Equipment
+                        Seed Asset
                       </CardTitle>
                       <CardDescription>
-                        Initialize the database with sample equipment
+                        Initialize the database with sample asset
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <Button
-                        onClick={handleSeedEquipment}
-                        disabled={loading.equipment}
+                        onClick={handleSeedAsset}
+                        disabled={loading.asset}
                         className="w-full"
                       >
-                        {loading.equipment ? "Creating..." : "Create Equipment"}
+                        {loading.asset ? "Creating..." : "Create Asset"}
                       </Button>
 
-                      {seedResults.equipment && (
+                      {seedResults.asset && (
                         <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                           <div className="flex items-center gap-2 text-green-800 mb-2">
                             <CheckCircle className="h-4 w-4" />
                             <span className="font-medium">Success</span>
                           </div>
-                          <p className="text-sm text-green-700 mb-2">{seedResults.equipment.message}</p>
+                          <p className="text-sm text-green-700 mb-2">{seedResults.asset.message}</p>
                           <div className="flex gap-2">
                             <Badge variant="outline" className="text-green-700">
-                              Created: {seedResults.equipment.data?.created || 0}
+                              Created: {seedResults.asset.data?.created || 0}
                             </Badge>
                             <Badge variant="outline" className="text-yellow-700">
-                              Skipped: {seedResults.equipment.data?.skipped || 0}
+                              Skipped: {seedResults.asset.data?.skipped || 0}
                             </Badge>
                           </div>
                         </div>

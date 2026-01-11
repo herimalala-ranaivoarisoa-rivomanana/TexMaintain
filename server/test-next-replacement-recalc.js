@@ -4,8 +4,8 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { EquipmentPart } = require('./models/EquipmentPart');
-const { Equipment } = require('./models/Equipment');
+const { AssetPart } = require('./models/AssetPart');
+const { Asset } = require('./models/Asset');
 const { Part } = require('./models/Part');
 
 async function testRecalculation() {
@@ -16,11 +16,11 @@ async function testRecalculation() {
     console.log('✅ Connecté\n');
 
     // Trouver une association avec lastReplacementDate
-    const assoc = await EquipmentPart.findOne({
+    const assoc = await AssetPart.findOne({
       lastReplacementDate: { $exists: true, $ne: null },
       replacementFrequencyPerYear: { $gt: 0 }
     })
-    .populate('equipment', 'model serialNumber')
+    .populate('asset', 'model serialNumber')
     .populate('part', 'name partNumber');
 
     if (!assoc) {
@@ -29,7 +29,7 @@ async function testRecalculation() {
     }
 
     console.log('📦 Association trouvée:');
-    console.log(`   Équipement: ${assoc.equipment?.model}`);
+    console.log(`   Équipement: ${assoc.asset?.model}`);
     console.log(`   Pièce: ${assoc.part?.name}`);
     console.log(`   Fréquence actuelle: ${assoc.replacementFrequencyPerYear}/an`);
     console.log(`   Dernier remplacement: ${assoc.lastReplacementDate.toLocaleDateString('fr-FR')}`);

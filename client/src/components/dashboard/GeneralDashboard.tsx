@@ -25,7 +25,7 @@ interface KPIs {
     mtbf: number
     oee: number
     availability: number
-    totalEquipment: number
+    totalAsset: number
     activeInterventions: number
     criticalParts: number
     pendingOrders: number
@@ -93,7 +93,7 @@ export function GeneralDashboard() {
         switch (type) {
             case 'intervention': return <Wrench className="h-4 w-4" />
             case 'inventory': return <Package className="h-4 w-4" />
-            case 'equipment': return <Settings className="h-4 w-4" />
+            case 'asset': return <Settings className="h-4 w-4" />
             default: return <Activity className="h-4 w-4" />
         }
     }
@@ -172,8 +172,8 @@ export function GeneralDashboard() {
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-blue-600">Total Equipment</p>
-                                <p className="text-3xl font-bold text-blue-900">{kpis?.totalEquipment}</p>
+                                <p className="text-sm font-medium text-blue-600">Total Asset</p>
+                                <p className="text-3xl font-bold text-blue-900">{kpis?.totalAsset}</p>
                             </div>
                             <Settings className="h-8 w-8 text-blue-600" />
                         </div>

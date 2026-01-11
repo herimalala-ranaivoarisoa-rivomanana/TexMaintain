@@ -7,10 +7,10 @@
 
 ## 🎯 Current System Logic
 
-### Backend Calculations (EquipmentPart.js)
+### Backend Calculations (AssetPart.js)
 
 ```javascript
-// For each equipment-part association:
+// For each asset-part association:
 safetyStock = dailyConsumption × leadTimeDays × safetyCoefficient
 reorderPoint = safetyStock + (dailyConsumption × leadTimeDays)
 
@@ -31,7 +31,7 @@ maxStock = globalReorderPoint  // ← Reorder point becomes maximum
 
 ## ❌ The Confusion
 
-### Current Status Logic (equipmentPartsRoutes.js line 149-150)
+### Current Status Logic (assetPartsRoutes.js line 149-150)
 
 ```javascript
 status: part.currentStock <= globalStock.globalSafetyStock ? 'critical' :

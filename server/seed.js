@@ -55,25 +55,34 @@ async function runSeeder() {
       console.error('❌ Error seeding personnel:', error.message + '\n');
     }
 
-    // Seed equipment categories
-    console.log('🏷️  Seeding equipment categories...');
+    // Seed asset classes
+    console.log('📚 Seeding asset classes...');
     try {
-      results.categories = await SeedService.seedEquipmentCategories();
-      console.log(`✅ Equipment categories seeded: ${results.categories.created} created, ${results.categories.skipped} skipped\n`);
+      results.assetClasses = await SeedService.seedAssetClasses();
+      console.log(`✅ Asset classes seeded: ${results.assetClasses.created.length} found/created\n`);
+    } catch (error) {
+      console.error('❌ Error seeding asset classes:', error.message + '\n');
+    }
+
+    // Seed asset categories
+    console.log('🏷️  Seeding asset categories...');
+    try {
+      results.categories = await SeedService.seedAssetCategories();
+      console.log(`✅ Asset categories seeded: ${results.categories.created} created, ${results.categories.skipped} skipped\n`);
     } catch (error) {
       console.error('❌ Error seeding categories:', error.message + '\n');
     }
 
-    // Seed equipment types
-    console.log('🔧 Seeding equipment types...');
+    // Seed asset types
+    console.log('🔧 Seeding asset types...');
     try {
-      results.types = await SeedService.seedEquipmentTypes();
-      console.log(`✅ Equipment types seeded: ${results.types.created} created, ${results.types.skipped} skipped\n`);
+      results.types = await SeedService.seedSubCategorys();
+      console.log(`✅ Asset types seeded: ${results.types.created} created, ${results.types.skipped} skipped\n`);
     } catch (error) {
       console.error('❌ Error seeding types:', error.message + '\n');
     }
 
-    // Seed process areas and sections (moved before equipment)
+    // Seed process areas and sections (moved before asset)
     console.log('🏭 Seeding process areas (ProcessArea/Department)...');
     try {
       results.processAreas = await SeedService.seedProcessAreas();
@@ -91,13 +100,13 @@ async function runSeeder() {
       console.error('❌ Error seeding brands:', error.message + '\n');
     }
 
-    // Seed sample equipment
-    console.log('⚙️  Seeding sample equipment...');
+    // Seed sample asset
+    console.log('⚙️  Seeding sample asset...');
     try {
-      results.equipment = await SeedService.seedEquipment();
-      console.log(`✅ Sample equipment seeded: ${results.equipment.created} created, ${results.equipment.skipped} skipped\n`);
+      results.asset = await SeedService.seedAsset();
+      console.log(`✅ Sample asset seeded: ${results.asset.created} created, ${results.asset.skipped} skipped\n`);
     } catch (error) {
-      console.error('❌ Error seeding equipment:', error.message + '\n');
+      console.error('❌ Error seeding asset:', error.message + '\n');
     }
 
     // Seed interventions (historical data)
@@ -118,13 +127,13 @@ async function runSeeder() {
       console.error('❌ Error seeding parts:', error.message + '\n');
     }
 
-    // Seed equipment parts associations
-    console.log('🔗 Seeding equipment-parts associations...');
+    // Seed asset parts associations
+    console.log('🔗 Seeding asset-parts associations...');
     try {
-      results.equipmentParts = await SeedService.seedEquipmentParts();
-      console.log(`✅ Equipment-parts associations seeded: ${results.equipmentParts.created} created, ${results.equipmentParts.skipped} skipped\n`);
+      results.assetParts = await SeedService.seedAssetParts();
+      console.log(`✅ Asset-parts associations seeded: ${results.assetParts.created} created, ${results.assetParts.skipped} skipped\n`);
     } catch (error) {
-      console.error('❌ Error seeding equipment-parts:', error.message + '\n');
+      console.error('❌ Error seeding asset-parts:', error.message + '\n');
     }
 
     // Seed projects
@@ -143,11 +152,11 @@ async function runSeeder() {
     console.log(`   - Categories: ${results.categories?.created || 0} created`);
     console.log(`   - Types: ${results.types?.created || 0} created`);
     console.log(`   - Brands: ${results.brands?.created || 0} created`);
-    console.log(`   - Equipment: ${results.equipment?.created || 0} created`);
+    console.log(`   - Asset: ${results.asset?.created || 0} created`);
     console.log(`   - Process areas: ${results.productionLines?.created || 0} created`);
     console.log(`   - Interventions: ${results.interventions?.created || 0} created`);
     console.log(`   - Parts: ${results.parts?.created || 0} created`);
-    console.log(`   - Equipment-Parts: ${results.equipmentParts?.created || 0} created`);
+    console.log(`   - Asset-Parts: ${results.assetParts?.created || 0} created`);
     console.log(`   - Projects: ${results.projects?.created || 0} created`);
 
     if (results.admin?.credentials) {

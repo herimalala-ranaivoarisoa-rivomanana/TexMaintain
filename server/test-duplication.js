@@ -4,9 +4,9 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { Equipment } = require('./models/Equipment');
-const { EquipmentType } = require('./models/EquipmentType');
-const { EquipmentPart } = require('./models/EquipmentPart');
+const { Asset } = require('./models/Asset');
+const { SubCategory } = require('./models/SubCategory');
+const { AssetPart } = require('./models/AssetPart');
 const { Part } = require('./models/Part');
 
 async function testDuplication() {
@@ -18,12 +18,12 @@ async function testDuplication() {
 
     // 1. Trouver tous les équipements et leurs types
     console.log('📊 Analyse des équipements...\n');
-    const equipments = await Equipment.find()
+    const assets = await Asset.find()
       .populate('type', 'name')
       .sort({ type: 1 });
 
     const typeGroups = {};
-    for (const eq of equipments) {
+    for (const eq of assets) {
       const typeName = eq.type?.name || 'Sans type';
       if (!typeGroups[typeName]) {
         typeGroups[typeName] = [];
@@ -48,7 +48,7 @@ async function testDuplication() {
       console.log(`\n🔍 Type: ${typeName} (${eqs.length} équipements)`);
       
       for (const eq of eqs) {
-        const associations = await EquipmentPart.find({ equipment: eq._id })
+        const associations = await AssetPart.find({ asset: eq._id })
           .populate('part', 'name type');
         
         console.log(`\n   ${eq.model}:`);
@@ -72,10 +72,10 @@ async function testDuplication() {
       if (eqs.length < 2) continue;
       
       // Récupérer toutes les pièces associées à ce type d'équipement
-      const allParts = new Map(); // partId -> [equipmentIds]
+      const allParts = new Map(); // partId -> [assetIds]
       
       for (const eq of eqs) {
-        const associations = await EquipmentPart.find({ equipment: eq._id });
+        const associations = await AssetPart.find({ asset: eq._id });
         for (const assoc of associations) {
           const partId = assoc.part.toString();
           if (!allParts.has(partId)) {
@@ -86,16 +86,16 @@ async function testDuplication() {
       }
       
       // Vérifier les incohérences
-      for (const [partId, equipmentIds] of allParts.entries()) {
-        if (equipmentIds.length < eqs.length) {
+      for (const [partId, assetIds] of allParts.entries()) {
+        if (assetIds.length < eqs.length) {
           const part = await Part.findById(partId);
           console.log(`\n   ⚠️ Incohérence détectée:`);
           console.log(`      Pièce: ${part.name} (${part.type})`);
-          console.log(`      Présente sur: ${equipmentIds.length}/${eqs.length} équipements`);
+          console.log(`      Présente sur: ${assetIds.length}/${eqs.length} équipements`);
           console.log(`      Manquante sur:`);
           
           for (const eq of eqs) {
-            if (!equipmentIds.includes(eq._id.toString())) {
+            if (!assetIds.includes(eq._id.toString())) {
               console.log(`         - ${eq.model} (${eq.serialNumber})`);
             }
           }

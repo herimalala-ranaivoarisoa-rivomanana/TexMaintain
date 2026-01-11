@@ -56,7 +56,7 @@ Stock de la pièce:
 
 ### 1. Création d'Association (POST)
 
-**Route** : `POST /api/equipment-parts`
+**Route** : `POST /api/asset-parts`
 
 **Quand** :
 - Création d'une nouvelle association
@@ -65,7 +65,7 @@ Stock de la pièce:
 **Recalcul** :
 ```javascript
 // Après création
-const recalculatedMinMax = await EquipmentPartsService.recalculateMinMaxForPart(partId)
+const recalculatedMinMax = await AssetPartsService.recalculateMinMaxForPart(partId)
 
 // Résultat
 {
@@ -85,7 +85,7 @@ Min/Max recalculés: 100/500
 
 ### 2. Modification d'Association (PATCH)
 
-**Route** : `PATCH /api/equipment-parts/:id`
+**Route** : `PATCH /api/asset-parts/:id`
 
 **Quand** :
 - Modification de la quantité
@@ -118,7 +118,7 @@ Min/Max recalculés: 30/80
 
 ### 3. Suppression d'Association (DELETE)
 
-**Route** : `DELETE /api/equipment-parts/:id`
+**Route** : `DELETE /api/asset-parts/:id`
 
 **Quand** :
 - Suppression d'une association équipement-pièce
@@ -146,7 +146,7 @@ Min/Max recalculés: 20/40
 
 ### 4. Duplication sur Nouveaux Équipements
 
-**Route** : `POST /api/equipment`
+**Route** : `POST /api/asset`
 
 **Quand** :
 - Création d'un nouvel équipement
@@ -170,13 +170,13 @@ Création équipement #11 (type A):
 
 ### Backend - Service de Recalcul
 
-**Fichier** : `server/services/equipmentPartsService.js`
+**Fichier** : `server/services/assetPartsService.js`
 
 ```javascript
-class EquipmentPartsService {
+class AssetPartsService {
   static async recalculateMinMaxForPart(partId) {
     // 1. Récupérer TOUTES les associations pour cette pièce
-    const associations = await EquipmentPart.find({ part: partId })
+    const associations = await AssetPart.find({ part: partId })
     
     if (associations.length === 0) {
       // Aucune association → min/max = 0
@@ -216,21 +216,21 @@ class EquipmentPartsService {
 
 ### Backend - Routes avec Recalcul
 
-#### POST /api/equipment-parts
+#### POST /api/asset-parts
 
 ```javascript
 router.post('/', async (req, res) => {
   // 1. Créer l'association
-  const association = new EquipmentPart({...data})
+  const association = new AssetPart({...data})
   await association.save()
   
   // 2. Dupliquer si nécessaire
   if (duplicateToSameType) {
-    await EquipmentPart.insertMany(duplications)
+    await AssetPart.insertMany(duplications)
   }
   
   // 3. ✅ RECALCULER MIN/MAX
-  const recalculatedMinMax = await EquipmentPartsService.recalculateMinMaxForPart(partId)
+  const recalculatedMinMax = await AssetPartsService.recalculateMinMaxForPart(partId)
   
   return res.json({
     success: true,
@@ -240,15 +240,15 @@ router.post('/', async (req, res) => {
 })
 ```
 
-#### PATCH /api/equipment-parts/:id
+#### PATCH /api/asset-parts/:id
 
 ```javascript
 router.patch('/:id', async (req, res) => {
   // 1. Modifier l'association
-  const association = await EquipmentPart.findByIdAndUpdate(id, updates)
+  const association = await AssetPart.findByIdAndUpdate(id, updates)
   
   // 2. ✅ RECALCULER MIN/MAX
-  const recalculatedMinMax = await EquipmentPartsService.recalculateMinMaxForPart(association.part._id)
+  const recalculatedMinMax = await AssetPartsService.recalculateMinMaxForPart(association.part._id)
   
   return res.json({
     success: true,
@@ -259,19 +259,19 @@ router.patch('/:id', async (req, res) => {
 })
 ```
 
-#### DELETE /api/equipment-parts/:id
+#### DELETE /api/asset-parts/:id
 
 ```javascript
 router.delete('/:id', async (req, res) => {
   // 1. Récupérer l'association (pour avoir le partId)
-  const association = await EquipmentPart.findById(id)
+  const association = await AssetPart.findById(id)
   const partId = association.part
   
   // 2. Supprimer l'association
-  await EquipmentPart.findByIdAndDelete(id)
+  await AssetPart.findByIdAndDelete(id)
   
   // 3. ✅ RECALCULER MIN/MAX
-  const recalculatedMinMax = await EquipmentPartsService.recalculateMinMaxForPart(partId)
+  const recalculatedMinMax = await AssetPartsService.recalculateMinMaxForPart(partId)
   
   return res.json({
     success: true,
@@ -285,11 +285,11 @@ router.delete('/:id', async (req, res) => {
 
 ### Frontend - Affichage des Résultats
 
-**Fichier** : `client/src/components/EquipmentPartFormDialog.tsx`
+**Fichier** : `client/src/components/AssetPartFormDialog.tsx`
 
 ```typescript
 // Modification
-const result = await updateEquipmentPart(id, {...data})
+const result = await updateAssetPart(id, {...data})
 
 const recalculatedMinMax = result.recalculatedMinMax
 let description = 'Association modifiée avec succès.'
@@ -434,17 +434,17 @@ Commande suggérée basée sur:
 
 ### Backend (2 fichiers)
 
-1. **`server/services/equipmentPartsService.js`**
+1. **`server/services/assetPartsService.js`**
    - ✅ Fonction `recalculateMinMaxForPart()` (déjà existante)
 
-2. **`server/routes/equipmentPartsRoutes.js`**
+2. **`server/routes/assetPartsRoutes.js`**
    - ✅ POST / : Recalcul après création
    - ✅ PATCH /:id : Recalcul après modification
    - ✅ DELETE /:id : Recalcul après suppression
 
 ### Frontend (1 fichier)
 
-3. **`client/src/components/EquipmentPartFormDialog.tsx`**
+3. **`client/src/components/AssetPartFormDialog.tsx`**
    - ✅ Affichage du min/max après modification
 
 ---
@@ -454,7 +454,7 @@ Commande suggérée basée sur:
 - [x] Recalcul après création (POST)
 - [x] Recalcul après modification (PATCH)
 - [x] Recalcul après suppression (DELETE)
-- [x] Recalcul après duplication (POST equipment)
+- [x] Recalcul après duplication (POST asset)
 - [x] Affichage dans toast (création)
 - [x] Affichage dans toast (modification)
 - [x] Affichage dans toast (suppression)

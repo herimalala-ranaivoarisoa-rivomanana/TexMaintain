@@ -3,7 +3,7 @@ const { requireUser } = require('./middleware/auth');
 const { z } = require('zod');
 const { ProcessDepartment } = require('../models/ProcessDepartment');
 const { ProcessArea } = require('../models/ProcessArea');
-const { Equipment } = require('../models/Equipment');
+const { Asset } = require('../models/Asset');
 
 const router = express.Router();
 
@@ -62,17 +62,17 @@ router.delete('/:id', requireUser, async (req, res) => {
   return res.status(200).json({ success: true });
 });
 
-// PATCH /api/process-departments/:id/equipment (Reorder equipment within department)
-router.patch('/:id/equipment', requireUser, async (req, res) => {
+// PATCH /api/process-departments/:id/asset (Reorder asset within department)
+router.patch('/:id/asset', requireUser, async (req, res) => {
   const { id } = req.params;
-  const { equipment } = req.body; // Array of { equipmentId, order }
+  const { asset } = req.body; // Array of { assetId, order }
 
-  if (!Array.isArray(equipment)) {
-    return res.status(400).json({ message: 'Equipment must be an array' });
+  if (!Array.isArray(asset)) {
+    return res.status(400).json({ message: 'Asset must be an array' });
   }
 
-  const updated = await ProcessDepartment.findByIdAndUpdate(id, { equipment }, { new: true })
-    .populate('equipment.equipmentId') // Optional populate
+  const updated = await ProcessDepartment.findByIdAndUpdate(id, { asset }, { new: true })
+    .populate('asset.assetId') // Optional populate
     .lean();
 
   if (!updated) return res.status(404).json({ message: 'Process department not found' });

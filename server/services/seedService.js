@@ -1,10 +1,11 @@
 const { User } = require('../models/User.js');
-const { Equipment } = require('../models/Equipment.js');
+const { Asset } = require('../models/Asset.js');
 const { Intervention } = require('../models/Intervention.js');
 const { Project } = require('../models/Project.js');
-const { EquipmentCategory } = require('../models/EquipmentCategory.js');
-const { EquipmentType } = require('../models/EquipmentType.js');
-const { EquipmentPart } = require('../models/EquipmentPart.js');
+const { AssetClass } = require('../models/AssetClass.js');
+const { Category } = require('../models/Category.js');
+const { SubCategory } = require('../models/SubCategory.js');
+const { AssetPart } = require('../models/AssetPart.js');
 const { Part } = require('../models/Part.js');
 const { Brand } = require('../models/Brand.js');
 const { generatePasswordHash } = require('../utils/password.js');
@@ -25,14 +26,14 @@ class SeedService {
 
       // Clear operational data
       await Promise.all([
-        Equipment.deleteMany({}),
+        Asset.deleteMany({}),
         Intervention.deleteMany({}),
         Project.deleteMany({}),
         ProcessArea.deleteMany({}),
         ProcessDepartment.deleteMany({}),
         Part.deleteMany({}),
-        EquipmentCategory.deleteMany({}),
-        EquipmentType.deleteMany({}),
+        Category.deleteMany({}),
+        SubCategory.deleteMany({}),
         Brand.deleteMany({}),
         ProductionLine.deleteMany({}),
         ProductionSection.deleteMany({}),
@@ -144,9 +145,59 @@ class SeedService {
     }
   }
 
-  static async seedEquipmentCategories() {
+  static async seedAssetClasses() {
     try {
-      console.log('Starting equipment categories seeding...');
+      console.log('Starting asset classes seeding...');
+
+      const classesData = [
+        { name: 'Machinery', description: 'Industrial machinery and assets' },
+        { name: 'Tools', description: 'Hand tools and power tools' },
+        { name: 'Facility', description: 'Building and infrastructure' },
+        { name: 'IT', description: 'Information Technology assets' },
+        { name: 'Vehicles', description: 'Transport vehicles' }
+      ];
+
+      const createdClasses = [];
+      let skippedCount = 0;
+
+      for (const classData of classesData) {
+        const existing = await AssetClass.findOne({ name: classData.name });
+        if (existing) {
+          console.log(`Asset Class already exists: ${classData.name}`);
+          createdClasses.push(existing);
+          skippedCount++;
+          continue;
+        }
+        const assetClass = new AssetClass(classData);
+        await assetClass.save();
+        createdClasses.push(assetClass);
+        console.log(`Asset Class created: ${assetClass.name}`);
+      }
+
+      console.log(`Asset classes seeding completed. Created: ${createdClasses.length - skippedCount}, Skipped: ${skippedCount}`);
+
+      return {
+        success: true,
+        created: createdClasses,
+        skipped: skippedCount
+      };
+    } catch (error) {
+      console.error('Error seeding asset classes:', error);
+      throw new Error(`Failed to seed asset classes: ${error.message}`);
+    }
+  }
+
+  static async seedAssetCategories() {
+    try {
+      console.log('Starting asset categories seeding...');
+
+      // Ensure Machinery class exists or fetch it
+      let machineryClass = await AssetClass.findOne({ name: 'Machinery' });
+      if (!machineryClass) {
+          console.log('Machinery class not found, creating default...');
+          machineryClass = new AssetClass({ name: 'Machinery', description: 'Default class' });
+          await machineryClass.save();
+      }
 
       const categoriesData = [
         { name: 'Cutting Machine', description: 'Machines for cutting fabrics and materials' },
@@ -155,52 +206,62 @@ class SeedService {
         { name: 'Coverstitch Machine', description: 'Coverstitch machines for hems and edges' },
         { name: 'Embroidery Machine', description: 'Automated embroidery machines' },
         { name: 'Button/Buttonhole Machine', description: 'Machines for buttons and buttonholes' },
-        { name: 'Pressing/Ironing', description: 'Pressing and ironing equipment' },
-        { name: 'Finishing Equipment', description: 'Fabric finishing and treatment machines' },
-        { name: 'Printing Machine', description: 'Fabric printing equipment' },
-        { name: 'Packaging Equipment', description: 'Packaging and baling machines' },
-        { name: 'Quality Control', description: 'Quality inspection equipment' },
-        { name: 'Maintenance Equipment', description: 'Maintenance and repair tools' },
+        { name: 'Pressing/Ironing', description: 'Pressing and ironing asset' },
+        { name: 'Finishing Asset', description: 'Fabric finishing and treatment machines' },
+        { name: 'Printing Machine', description: 'Fabric printing asset' },
+        { name: 'Packaging Asset', description: 'Packaging and baling machines' },
+        { name: 'Quality Control', description: 'Quality inspection asset' },
+        { name: 'Maintenance Asset', description: 'Maintenance and repair tools' },
       ];
 
       const createdCategories = [];
       let skippedCount = 0;
 
       for (const categoryData of categoriesData) {
-        const existing = await EquipmentCategory.findOne({ name: categoryData.name });
+        const existing = await Category.findOne({ name: categoryData.name });
         if (existing) {
           console.log(`Category already exists: ${categoryData.name}`);
+          // Update assetClass if missing (migration)
+          if (!existing.assetClass) {
+              existing.assetClass = machineryClass._id;
+              await existing.save();
+              console.log(`Updated category ${existing.name} with assetClass`);
+          }
+          createdCategories.push(existing); // Keep existing ones in list
           skippedCount++;
           continue;
         }
-        const category = new EquipmentCategory(categoryData);
+        const category = new Category({
+            ...categoryData,
+            assetClass: machineryClass._id
+        });
         await category.save();
         createdCategories.push(category);
         console.log(`Category created: ${category.name}`);
       }
 
-      console.log(`Categories seeding completed. Created: ${createdCategories.length}, Skipped: ${skippedCount}`);
+      console.log(`Categories seeding completed. Created: ${createdCategories.length - skippedCount}, Skipped: ${skippedCount}`);
 
       return {
         success: true,
-        message: `Categories seeding completed. Created: ${createdCategories.length}, Skipped: ${skippedCount}`,
+        message: `Categories seeding completed. Created: ${createdCategories.length - skippedCount}, Skipped: ${skippedCount}`,
         created: createdCategories,
         skipped: skippedCount
       };
     } catch (error) {
-      console.error('Error seeding equipment categories:', error);
-      throw new Error(`Failed to seed equipment categories: ${error.message}`);
+      console.error('Error seeding asset categories:', error);
+      throw new Error(`Failed to seed asset categories: ${error.message}`);
     }
   }
 
-  static async seedEquipmentTypes() {
+  static async seedSubCategorys() {
     try {
-      console.log('Starting equipment types seeding...');
+      console.log('Starting asset types seeding...');
 
       // First ensure categories exist
-      const categories = await EquipmentCategory.find();
+      const categories = await Category.find();
       if (categories.length === 0) {
-        throw new Error('No equipment categories found. Please seed categories first.');
+        throw new Error('No asset categories found. Please seed categories first.');
       }
 
       const categoryMap = {};
@@ -251,18 +312,18 @@ class SeedService {
         { name: 'Steam Finishing Cabinet', category: categoryMap['pressingironing'], description: 'Steam finishing cabinets' },
 
         // Other categories
-        { name: 'Finishing Equipment', category: categoryMap['finishingequipment'], description: 'General finishing equipment' },
+        { name: 'Finishing Asset', category: categoryMap['finishingasset'], description: 'General finishing asset' },
         { name: 'Printing Machine', category: categoryMap['printingmachine'], description: 'Fabric printing machines' },
-        { name: 'Packaging Equipment', category: categoryMap['packagingequipment'], description: 'Packaging and baling machines' },
-        { name: 'Quality Control Equipment', category: categoryMap['qualitycontrol'], description: 'Quality inspection tools' },
-        { name: 'Maintenance Equipment', category: categoryMap['maintenanceequipment'], description: 'Maintenance and repair tools' },
+        { name: 'Packaging Asset', category: categoryMap['packagingasset'], description: 'Packaging and baling machines' },
+        { name: 'Quality Control Asset', category: categoryMap['qualitycontrol'], description: 'Quality inspection tools' },
+        { name: 'Maintenance Asset', category: categoryMap['maintenanceasset'], description: 'Maintenance and repair tools' },
       ];
 
       const createdTypes = [];
       let skippedCount = 0;
 
       for (const typeData of typesData) {
-        const existing = await EquipmentType.findOne({
+        const existing = await SubCategory.findOne({
           name: typeData.name,
           category: typeData.category
         });
@@ -271,7 +332,7 @@ class SeedService {
           skippedCount++;
           continue;
         }
-        const type = new EquipmentType(typeData);
+        const type = new SubCategory(typeData);
         await type.save();
         createdTypes.push(type);
         console.log(`Type created: ${type.name}`);
@@ -286,17 +347,17 @@ class SeedService {
         skipped: skippedCount
       };
     } catch (error) {
-      console.error('Error seeding equipment types:', error);
-      throw new Error(`Failed to seed equipment types: ${error.message}`);
+      console.error('Error seeding asset types:', error);
+      throw new Error(`Failed to seed asset types: ${error.message}`);
     }
   }
 
-  static async seedEquipment() {
+  static async seedAsset() {
     try {
-      console.log('Starting equipment seeding...');
+      console.log('Starting asset seeding...');
 
-      const categories = await EquipmentCategory.find();
-      const types = await EquipmentType.find();
+      const categories = await Category.find();
+      const types = await SubCategory.find();
       const brands = await Brand.find();
       const sections = await ProductionSection.find().populate('productionLine');
       console.log(`Available sections for assignment: ${sections.length}`);
@@ -306,7 +367,7 @@ class SeedService {
         throw new Error('No categories, types, or brands found. Please seed them first.');
       }
 
-      // Add specific equipment models
+      // Add specific asset models
       const SPECIFIC_MODELS = [
         'LBH 1795A', 'LBH 1795A-S', 'LBH 1796AN', 'LBH1790', 'LBH1790A-S', 'LBH1790AN', 'LBH1790N', 'LBH1790S',
         'LBH1795A', 'LBH1796AN', 'LK 1903', 'LK 1903A SS', 'LK 1903AN SS', 'LK1900-ASS', 'LK1900A',
@@ -399,19 +460,19 @@ class SeedService {
         };
       };
 
-      // Update equipment seeding to distribute across factories
+      // Update asset seeding to distribute across factories
       const factories = await Factory.find();
       if (factories.length === 0) {
-        console.warn('No factories found during equipment seeding. Defaulting to legacy behavior if possible.');
+        console.warn('No factories found during asset seeding. Defaulting to legacy behavior if possible.');
       }
 
-      const equipmentData = [];
+      const assetData = [];
 
-      // We want to create equipment for EACH factory effectively
+      // We want to create asset for EACH factory effectively
       // Or distribute the specific models across factories
-      // Let's create a set of equipment for each factory's process areas
+      // Let's create a set of asset for each factory's process areas
 
-      console.log(`Processing equipment for ${factories.length} factories...`);
+      console.log(`Processing asset for ${factories.length} factories...`);
 
       for (const factory of factories) {
         // Find departments belonging to this factory
@@ -421,13 +482,13 @@ class SeedService {
         const factoryDepartments = await ProcessDepartment.find({ processArea: { $in: factoryAreaIds } });
 
         if (factoryDepartments.length === 0) {
-          console.log(`No departments found for factory ${factory.name}, skipping equipment generation for it.`);
+          console.log(`No departments found for factory ${factory.name}, skipping asset generation for it.`);
           continue;
         }
 
         let deptIndex = 0;
 
-        // Generate a subset of equipment for this factory
+        // Generate a subset of asset for this factory
         const factoryModels = SPECIFIC_MODELS.filter(() => Math.random() > 0.5); // 50% of models per factory
 
         for (const modelName of (factoryModels.length > 0 ? factoryModels : SPECIFIC_MODELS.slice(0, 10))) {
@@ -458,7 +519,7 @@ class SeedService {
           const acquisitionDate = new Date(Date.now() - Math.floor(Math.random() * 1500 * 24 * 60 * 60 * 1000));
           const metrics = generateMetrics(acquisitionDate);
 
-          equipmentData.push({
+          assetData.push({
             name: `${details.brandName} ${modelName}`,
             code: `EQ-${factory.code}-${modelName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)}-${Math.floor(Math.random() * 9999)}`,
             category: category._id,
@@ -490,15 +551,15 @@ class SeedService {
         }
       }
 
-      console.log(`Generated ${equipmentData.length} equipment entries across factories.`);
+      console.log(`Generated ${assetData.length} asset entries across factories.`);
 
-      const createdEquipment = [];
+      const createdAsset = [];
       let skippedCount = 0;
 
-      for (const equipData of equipmentData) {
+      for (const equipData of assetData) {
         // Check uniqueness by serial number AND factory to be safe (though serial includes factory code now)
-        const existingEquipment = await Equipment.findOne({ serialNumber: equipData.serialNumber });
-        if (existingEquipment) {
+        const existingAsset = await Asset.findOne({ serialNumber: equipData.serialNumber });
+        if (existingAsset) {
           skippedCount++;
           continue;
         }
@@ -506,38 +567,38 @@ class SeedService {
         const assignedDept = equipData._assignedDept;
         delete equipData._assignedDept;
 
-        const equipment = new Equipment(equipData);
-        await equipment.save();
-        createdEquipment.push(equipment);
+        const asset = new Asset(equipData);
+        await asset.save();
+        createdAsset.push(asset);
 
         if (assignedDept) {
           await ProcessDepartment.findByIdAndUpdate(assignedDept._id, {
             $push: {
-              equipment: {
-                equipmentId: equipment._id,
-                order: (assignedDept.equipment?.length || 0) + 1,
-                mtbf: equipment.mtbf,
-                mttr: equipment.mttr,
-                downTime: equipment.downtime,
-                workingTime: equipment.operatingTime,
-                TimeSinceInsertion: equipment.timeSinceAcquisition
+              asset: {
+                assetId: asset._id,
+                order: (assignedDept.asset?.length || 0) + 1,
+                mtbf: asset.mtbf,
+                mttr: asset.mttr,
+                downTime: asset.downtime,
+                workingTime: asset.operatingTime,
+                TimeSinceInsertion: asset.timeSinceAcquisition
               }
             }
           });
         }
       }
 
-      console.log(`Equipment seeding completed. Created: ${createdEquipment.length}, Skipped: ${skippedCount}`);
+      console.log(`Asset seeding completed. Created: ${createdAsset.length}, Skipped: ${skippedCount}`);
 
       return {
         success: true,
-        message: `Equipment seeding completed. Created: ${createdEquipment.length}, Skipped: ${skippedCount}`,
-        created: createdEquipment,
+        message: `Asset seeding completed. Created: ${createdAsset.length}, Skipped: ${skippedCount}`,
+        created: createdAsset,
         skipped: skippedCount
       };
     } catch (error) {
-      console.error('Error seeding equipment:', error);
-      throw new Error(`Failed to seed equipment: ${error.message}`);
+      console.error('Error seeding asset:', error);
+      throw new Error(`Failed to seed asset: ${error.message}`);
     }
   }
 
@@ -617,7 +678,7 @@ class SeedService {
               name: deptName,
               description: `${deptName} - ${areaTemplate.name} (${factory.name})`,
               processArea: area._id,
-              equipment: []
+              asset: []
             });
             await department.save();
 
@@ -1234,7 +1295,7 @@ class SeedService {
           {
             name: 'Maintenance Tool Kit',
             partNumber: 'TOOL-KIT-MAINT',
-            category: 'Maintenance Equipment',
+            category: 'Maintenance Asset',
             type: 'part',
             currentStock: 5,
             minStock: 3,
@@ -1248,7 +1309,7 @@ class SeedService {
           {
             name: 'Calibration Kit',
             partNumber: 'MAINT-CAL-KIT',
-            category: 'Maintenance Equipment',
+            category: 'Maintenance Asset',
             type: 'part',
             currentStock: 4,
             minStock: 2,
@@ -2102,16 +2163,16 @@ class SeedService {
         { name: 'Rieter', description: 'Leading manufacturer of textile machinery, specializing in spinning systems' },
         { name: 'Schlafhorst', description: 'Premium textile machinery for rotor spinning and winding' },
         { name: 'Murata Machinery', description: 'Advanced textile machinery including air jet looms and spinning frames' },
-        { name: 'Toyota Industries', description: 'High-speed air jet weaving machines and textile equipment' },
+        { name: 'Toyota Industries', description: 'High-speed air jet weaving machines and textile asset' },
         { name: 'Picanol', description: 'Innovative weaving solutions and air jet looms' },
         { name: 'Sulzer', description: 'Precision weaving machinery and projectile looms' },
         { name: 'Itema', description: 'High-performance weaving machines and textile solutions' },
-        { name: 'Benninger', description: 'Textile finishing equipment and dyeing machines' },
+        { name: 'Benninger', description: 'Textile finishing asset and dyeing machines' },
         { name: 'Lakshmi Machine Works', description: 'Comprehensive textile machinery manufacturer' },
-        { name: 'Trützschler', description: 'Carding and blowroom equipment for spinning preparation' },
+        { name: 'Trützschler', description: 'Carding and blowroom asset for spinning preparation' },
         { name: 'Juki', description: 'Industrial sewing machines and automation solutions' },
         { name: 'Gerber', description: 'Automated cutting systems for apparel and textiles' },
-        { name: 'Monforts', description: 'Textile finishing and coating equipment' },
+        { name: 'Monforts', description: 'Textile finishing and coating asset' },
         { name: 'Thies', description: 'Dyeing and finishing machinery for textiles' },
         { name: 'Other', description: 'Other brands not listed' }
       ];
@@ -2150,11 +2211,11 @@ class SeedService {
     try {
       console.log('Starting interventions seeding...');
 
-      const equipment = await Equipment.find();
+      const asset = await Asset.find();
       const users = await User.find();
 
-      if (equipment.length === 0) {
-        throw new Error('No equipment found. Please seed equipment first.');
+      if (asset.length === 0) {
+        throw new Error('No asset found. Please seed asset first.');
       }
 
       const interventionTypes = ['Corrective', 'Preventive', 'Emergency'];
@@ -2167,7 +2228,7 @@ class SeedService {
 
       // Generate 250 random interventions over the last year
       for (let i = 0; i < 250; i++) {
-        const randomEquipment = equipment[Math.floor(Math.random() * equipment.length)];
+        const randomAsset = asset[Math.floor(Math.random() * asset.length)];
         const randomUser = users.length > 0 ? users[Math.floor(Math.random() * users.length)] : null;
 
         const isRecent = Math.random() > 0.8; // 20% recent (Active)
@@ -2192,15 +2253,15 @@ class SeedService {
         }
 
         interventionsData.push({
-          title: `${type} maintenance for ${randomEquipment.model}`,
+          title: `${type} maintenance for ${randomAsset.model}`,
           type: type,
           priority: priority,
           status: status,
-          equipment: randomEquipment.model, // Legacy field
-          equipmentId: randomEquipment._id,
-          factory: randomEquipment.factory, // Assign to same factory as equipment
+          asset: randomAsset.model, // Legacy field
+          assetId: randomAsset._id,
+          factory: randomAsset.factory, // Assign to same factory as asset
           assignedTo: randomUser ? randomUser.email : 'Unassigned',
-          description: `Generated ${type.toLowerCase()} intervention for ${randomEquipment.model}. Issue reported on ${createdDate.toLocaleDateString()}.`,
+          description: `Generated ${type.toLowerCase()} intervention for ${randomAsset.model}. Issue reported on ${createdDate.toLocaleDateString()}.`,
           createdDate: createdDate,
           dueDate: new Date(createdDate.getTime() + 7 * 24 * 60 * 60 * 1000) // Due 1 week after creation
         });
@@ -2212,7 +2273,7 @@ class SeedService {
       for (const data of interventionsData) {
         // Simple check to avoid exact duplicates if re-running (though random dates make it unlikely)
         const existing = await Intervention.findOne({
-          equipmentId: data.equipmentId,
+          assetId: data.assetId,
           createdDate: data.createdDate
         });
 
@@ -2255,7 +2316,7 @@ class SeedService {
         const projectsData = [
 
           {
-            title: 'Equipment Modernization Phase 1',
+            title: 'Asset Modernization Phase 1',
             description: 'Upgrading spinning machines with IoT sensors and predictive maintenance capabilities.',
             status: 'In Progress',
             budget: 450000,
@@ -2266,7 +2327,7 @@ class SeedService {
             createdBy: adminUser?._id
           },
           {
-            title: 'Equipment Modernization Phase 2',
+            title: 'Asset Modernization Phase 2',
             description: 'Extending IoT integration to weaving looms and quality control systems.',
             status: 'Planned',
             budget: 550000,
@@ -2277,7 +2338,7 @@ class SeedService {
             createdBy: adminUser?._id
           },
           {
-            title: 'Equipment Modernization Phase 3',
+            title: 'Asset Modernization Phase 3',
             description: 'Full automation of material handling between spinning and weaving sections.',
             status: 'Planned',
             budget: 750000,
@@ -2344,7 +2405,7 @@ class SeedService {
           },
           {
             title: 'Staff Training Program',
-            description: 'Advanced technical training for maintenance staff on new equipment.',
+            description: 'Advanced technical training for maintenance staff on new asset.',
             status: 'In Progress',
             budget: 25000,
             startDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
@@ -2403,29 +2464,29 @@ class SeedService {
     }
   }
 
-  static async seedEquipmentParts() {
+  static async seedAssetParts() {
     try {
-      console.log('Starting equipment parts seeding...');
+      console.log('Starting asset parts seeding...');
 
-      // Get all equipment and parts
-      const equipment = await Equipment.find().populate('category').populate('type').lean();
+      // Get all asset and parts
+      const asset = await Asset.find().populate('category').populate('type').lean();
       const parts = await Part.find().lean();
       const adminUser = await User.findOne({ role: 'admin' });
 
-      if (equipment.length === 0 || parts.length === 0) {
-        throw new Error('No equipment or parts found. Please seed equipment and parts first.');
+      if (asset.length === 0 || parts.length === 0) {
+        throw new Error('No asset or parts found. Please seed asset and parts first.');
       }
 
       if (!adminUser) {
         throw new Error('No admin user found. Please seed admin user first.');
       }
 
-      const createdEquipmentParts = [];
+      const createdAssetParts = [];
       let skippedCount = 0;
 
       // Helper to determine compatible parts
-      const getCompatibleParts = (equipmentModel, availableParts) => {
-        const model = equipmentModel.toUpperCase();
+      const getCompatibleParts = (assetModel, availableParts) => {
+        const model = assetModel.toUpperCase();
         const compatible = [];
 
         // Universal parts (Oils, Grease, Fuses, Belts if generic)
@@ -2477,8 +2538,8 @@ class SeedService {
         return [...new Set([...compatible, ...selectedUniversals])]; // Dedupe
       };
 
-      // For each equipment, assign COMPATIBLE parts
-      for (const eq of equipment) {
+      // For each asset, assign COMPATIBLE parts
+      for (const eq of asset) {
         // Determine compatible parts based on model name
         const compatibleParts = getCompatibleParts(eq.model, parts);
 
@@ -2487,8 +2548,8 @@ class SeedService {
 
         for (const part of partsToAssign) {
           // Check if association already exists
-          const existing = await EquipmentPart.findOne({
-            equipment: eq._id,
+          const existing = await AssetPart.findOne({
+            asset: eq._id,
             part: part._id
           });
 
@@ -2497,8 +2558,8 @@ class SeedService {
             continue;
           }
 
-          const equipmentPartData = {
-            equipment: eq._id,
+          const assetPartData = {
+            asset: eq._id,
             part: part._id,
             quantity: Math.floor(Math.random() * 2) + 1, // 1-2 units usually installed
             isStandardPart: true,
@@ -2508,23 +2569,23 @@ class SeedService {
             replacementFrequency: part.category === 'Lubricants' ? 2000 : 500 // Hours
           };
 
-          const equipmentPart = new EquipmentPart(equipmentPartData);
-          await equipmentPart.save();
-          createdEquipmentParts.push(equipmentPart);
+          const assetPart = new AssetPart(assetPartData);
+          await assetPart.save();
+          createdAssetParts.push(assetPart);
         }
       }
 
-      console.log(`Equipment parts seeding completed.Created: ${createdEquipmentParts.length}, Skipped: ${skippedCount} `);
+      console.log(`Asset parts seeding completed.Created: ${createdAssetParts.length}, Skipped: ${skippedCount} `);
 
       return {
         success: true,
-        message: `Equipment parts seeding completed.Created: ${createdEquipmentParts.length}, Skipped: ${skippedCount} `,
-        created: createdEquipmentParts,
+        message: `Asset parts seeding completed.Created: ${createdAssetParts.length}, Skipped: ${skippedCount} `,
+        created: createdAssetParts,
         skipped: skippedCount
       };
     } catch (error) {
-      console.error('Error seeding equipment parts:', error);
-      throw new Error(`Failed to seed equipment parts: ${error.message} `);
+      console.error('Error seeding asset parts:', error);
+      throw new Error(`Failed to seed asset parts: ${error.message} `);
     }
   }
   static async seedMaintenancePersonnel() {
