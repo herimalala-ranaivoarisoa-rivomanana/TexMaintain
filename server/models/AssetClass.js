@@ -11,6 +11,11 @@ const schema = new mongoose.Schema({
         type: String,
         trim: true,
     },
+    factory: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Factory',
+        required: false
+    },
     createdAt: {
         type: Date,
         default: Date.now,

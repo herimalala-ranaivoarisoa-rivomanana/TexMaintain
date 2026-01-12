@@ -161,18 +161,12 @@ export const getAssetInterventions = async (id: string, params?: { page?: number
   return response.data;
 };
 
-// Legacy alias for backward compatibility
-export const getAssetInterventions = getAssetInterventions;
-
 // Description: Get asset associated parts
 // Endpoint: GET /api/assets/:id/parts
 export const getAssetParts = async (id: string) => {
   const response = await api.get(`/assets/${id}/parts`);
   return response.data;
 };
-
-// Legacy alias for backward compatibility
-export const getAssetParts = getAssetParts;
 
 // ===== STATUS MANAGEMENT ENDPOINTS =====
 
@@ -186,9 +180,6 @@ export const getAssetStatusHistory = async (
   return response.data;
 };
 
-// Legacy alias for backward compatibility
-export const getAssetStatusHistory = getAssetStatusHistory;
-
 // Description: Get status statistics for an asset
 // Endpoint: GET /api/assets/:id/status-statistics
 export const getAssetStatusStatistics = async (
@@ -198,9 +189,6 @@ export const getAssetStatusStatistics = async (
   const response = await api.get(`/assets/${id}/status-statistics`, { params });
   return response.data;
 };
-
-// Legacy alias for backward compatibility
-export const getAssetStatusStatistics = getAssetStatusStatistics;
 
 // Description: Get allowed status transitions for an asset
 // Endpoint: GET /api/assets/:id/allowed-transitions
@@ -221,9 +209,6 @@ export const getAssetsByStatus = async (
   return response.data;
 };
 
-// Legacy alias for backward compatibility
-export const getAssetByStatus = getAssetsByStatus;
-
 // Description: Get all assets in a status category
 // Endpoint: GET /api/assets/category/:category
 export const getAssetsByCategory = async (
@@ -234,20 +219,12 @@ export const getAssetsByCategory = async (
   return response.data;
 };
 
-// Legacy alias for backward compatibility
-export const getAssetByCategory = getAssetsByCategory;
-
 // Description: Bulk change status for multiple assets
 // Endpoint: POST /api/assets/bulk-change-status
 export const bulkChangeStatus = async (
-  data: { assetIds?: string[]; assetIds?: string[]; status: string; reason?: string; notes?: string }
+  data: { assetIds?: string[]; status: string; reason?: string; notes?: string }
 ): Promise<{ success: boolean; results: { successful: any[]; failed: any[] } }> => {
-  // Support both assetIds and assetIds for backward compatibility
-  const payload = {
-    ...data,
-    assetIds: data.assetIds || data.assetIds
-  };
-  const response = await api.post('/assets/bulk-change-status', payload);
+  const response = await api.post('/assets/bulk-change-status', data);
   return response.data;
 };
 

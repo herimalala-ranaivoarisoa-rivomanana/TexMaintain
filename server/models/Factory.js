@@ -22,6 +22,11 @@ const factorySchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    assetClasses: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'AssetClass',
+        required: false
+    }],
     settings: {
         type: mongoose.Schema.Types.Mixed,
         default: {}
