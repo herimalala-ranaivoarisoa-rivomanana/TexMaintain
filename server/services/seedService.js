@@ -45,7 +45,7 @@ class SeedService {
 
       console.log('✅ Database cleared successfully.');
     } catch (error) {
-      console.error('❌ Error clearing database:', error);
+      console.error(' Error clearing database:', error);
       throw error;
     }
   }
@@ -57,29 +57,49 @@ class SeedService {
       const adminEmail = 'admin@texmaintain.com';
       const adminPassword = 'admin123';
 
-      // Check if admin user already exists
-      const existingAdmin = await User.findOne({ email: adminEmail });
-      if (existingAdmin) {
+      // Récupérer toutes les usines existantes
+      const allFactories = await Factory.find({});
+      const factoryIds = allFactories.map(f => f._id);
+
+      // Vérifier si l'utilisateur admin existe déjà
+      let adminUser = await User.findOne({ email: adminEmail });
+      
+      if (adminUser) {
         console.log(`Admin user already exists with email: ${adminEmail}`);
+        
+        // Mettre à jour l'utilisateur existant avec les usines si nécessaire
+        if (factoryIds.length > 0) {
+          adminUser.factories = factoryIds;
+          // Si l'utilisateur n'a pas d'usine active, définir la première comme active
+          if (!adminUser.activeFactory && factoryIds.length > 0) {
+            adminUser.activeFactory = factoryIds[0];
+          }
+          await adminUser.save();
+          console.log(`Updated admin user with ${factoryIds.length} factories`);
+        }
+        
         return {
           success: true,
           message: 'Admin user already exists',
-          user: existingAdmin
+          user: adminUser
         };
       }
 
-      // Create admin user
+      // Créer un nouvel utilisateur admin
       const hashedPassword = await generatePasswordHash(adminPassword);
-      const adminUser = new User({
+      adminUser = new User({
         email: adminEmail,
         password: hashedPassword,
         role: 'admin',
         isActive: true,
-        lastLoginAt: new Date()
+        lastLoginAt: new Date(),
+        factories: factoryIds,
+        activeFactory: factoryIds.length > 0 ? factoryIds[0] : null
       });
 
       await adminUser.save();
       console.log(`Admin user created successfully with email: ${adminEmail}`);
+      console.log(`Associated ${factoryIds.length} factories with admin user`);
 
       return {
         success: true,

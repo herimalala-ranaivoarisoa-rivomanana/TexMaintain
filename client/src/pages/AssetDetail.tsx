@@ -344,7 +344,7 @@ export function AssetDetail() {
         </TabsContent>
 
         <TabsContent value="history">
-          <AssetTimeline assetId={id || ''} assetId={id || ''} limit={100} />
+          <AssetTimeline assetId={id || ''} limit={100} />
         </TabsContent>
       </Tabs>
     </div>
