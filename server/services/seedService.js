@@ -209,7 +209,7 @@ class SeedService {
 
   static async seedAssetCategories() {
     try {
-      console.log('Starting asset categories seeding...');
+      console.log('Starting categories seeding...');
 
       // Ensure Machinery class exists or fetch it
       let machineryClass = await AssetClass.findOne({ name: 'Machinery' });
@@ -269,19 +269,19 @@ class SeedService {
         skipped: skippedCount
       };
     } catch (error) {
-      console.error('Error seeding asset categories:', error);
-      throw new Error(`Failed to seed asset categories: ${error.message}`);
+      console.error('Error seeding categories:', error);
+      throw new Error(`Failed to seed categories: ${error.message}`);
     }
   }
 
   static async seedSubCategorys() {
     try {
-      console.log('Starting asset types seeding...');
+      console.log('Starting sub-categories seeding...');
 
       // First ensure categories exist
       const categories = await Category.find();
       if (categories.length === 0) {
-        throw new Error('No asset categories found. Please seed categories first.');
+        throw new Error('No categories found. Please seed categories first.');
       }
 
       const categoryMap = {};
@@ -358,17 +358,17 @@ class SeedService {
         console.log(`Type created: ${type.name}`);
       }
 
-      console.log(`Types seeding completed. Created: ${createdTypes.length}, Skipped: ${skippedCount}`);
+      console.log(`Sub-categories seeding completed. Created: ${createdTypes.length}, Skipped: ${skippedCount}`);
 
       return {
         success: true,
-        message: `Types seeding completed. Created: ${createdTypes.length}, Skipped: ${skippedCount}`,
+        message: `Sub-categories seeding completed. Created: ${createdTypes.length}, Skipped: ${skippedCount}`,
         created: createdTypes,
         skipped: skippedCount
       };
     } catch (error) {
-      console.error('Error seeding asset types:', error);
-      throw new Error(`Failed to seed asset types: ${error.message}`);
+      console.error('Error seeding sub-categories:', error);
+      throw new Error(`Failed to seed sub-categories: ${error.message}`);
     }
   }
 
@@ -543,7 +543,7 @@ class SeedService {
             name: `${details.brandName} ${modelName}`,
             code: `EQ-${factory.code}-${modelName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)}-${Math.floor(Math.random() * 9999)}`,
             category: category._id,
-            type: type._id,
+            subCategory: type._id,
             status: status,
             location: factory.name,
             factory: factory._id,
@@ -2489,7 +2489,7 @@ class SeedService {
       console.log('Starting asset parts seeding...');
 
       // Get all asset and parts
-      const asset = await Asset.find().populate('category').populate('type').lean();
+      const asset = await Asset.find().populate('category').populate('subCategory').lean();
       const parts = await Part.find().lean();
       const adminUser = await User.findOne({ role: 'admin' });
 

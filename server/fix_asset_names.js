@@ -11,7 +11,7 @@ async function fixAssetNames() {
         console.log('✅ Connected to MongoDB');
 
         const asset = await Asset.find()
-            .populate('type')
+            .populate('subCategory')
             .populate('brand')
             .lean();
 
@@ -22,7 +22,7 @@ async function fixAssetNames() {
             const ast = asset[i];
 
             // Generate name and code
-            const typeName = ast.type?.name || 'Asset';
+            const typeName = ast.subCategory?.name || 'Asset';
             const brandName = ast.brand?.name || 'Generic';
             const code = `AST-${typeName.substring(0, 4).toUpperCase()}-${String(i + 1).padStart(3, '0')}`;
             const name = `${typeName} ${ast.model || brandName}`;

@@ -57,7 +57,7 @@ interface ProcessArea {
         assetId: {
           _id: string
           category: { name: string }
-          type: { name: string }
+          subCategory: { name: string }
           status: string
           location: string
           model?: string
@@ -88,7 +88,7 @@ interface Asset {
   _id: string
   name?: string
   category: { name: string }
-  type: { name: string }
+  subCategory: { name: string }
   status: string
   location: string
   model?: string

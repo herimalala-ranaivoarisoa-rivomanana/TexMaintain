@@ -70,7 +70,7 @@ router.get('/', requireUser, async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const associations = await AssetPart.find(filter)
-      .populate('asset', 'model serialNumber location category type')
+      .populate('asset', 'model serialNumber location category subCategory')
       .populate('part', 'name partNumber category type currentStock minStock maxStock unitPrice supplier')
       .populate('changedBy', 'fullName email')
       .sort({ createdAt: -1 })
@@ -130,7 +130,7 @@ router.get('/part/:partId', requireUser, async (req, res) => {
     const { partId } = req.params;
 
     const associations = await AssetPart.find({ part: partId })
-      .populate('asset', 'model serialNumber location status category type')
+      .populate('asset', 'model serialNumber location status category subCategory')
       .populate('changedBy', 'fullName email')
       .sort({ machineImportance: -1, criticality: -1 })
       .lean();
@@ -245,7 +245,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
     const { duplicateToSameType = true } = req.body; // Par défaut: true
 
     // Vérifier que l'équipement et la pièce existent
-    const asset = await Asset.findById(data.asset).populate('type');
+    const asset = await Asset.findById(data.asset).populate('subCategory');
     if (!asset) {
       return res.status(404).json({ message: 'Asset not found' });
     }
@@ -278,11 +278,11 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager']), asy
     let duplicatedCount = 0;
 
     // Dupliquer sur tous les équipements du même type si demandé
-    if (duplicateToSameType && asset.type) {
+    if (duplicateToSameType && asset.subCategory) {
       try {
         // Trouver tous les autres équipements du même type
         const sameTypeAssets = await Asset.find({
-          type: asset.type._id,
+          subCategory: asset.subCategory._id,
           _id: { $ne: asset._id } // Exclure l'équipement actuel
         });
 
@@ -400,11 +400,11 @@ router.patch('/:id', requireUser, requireRole(['admin', 'maintenance_manager']),
 
     // Propager automatiquement les modifications aux équipements du même type
     let propagatedCount = 0;
-    if (association.asset.type) {
+    if (association.asset.subCategory) {
       try {
         // Trouver toutes les autres associations du même type avec la même pièce
         const sameTypeAssets = await Asset.find({
-          type: association.asset.type,
+          subCategory: association.asset.subCategory,
           _id: { $ne: association.asset._id }
         });
 

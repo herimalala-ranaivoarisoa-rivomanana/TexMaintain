@@ -51,7 +51,7 @@ interface Department {
                 _id: string
                 name: string
                 status: string
-                type: { name: string }
+                subCategory: { name: string }
             }
         }>
     }
@@ -99,7 +99,7 @@ interface SortableAssetProps {
         _id: string
         name: string
         status: string
-        type: { name: string }
+        subCategory: { name: string }
     }
 }
 
@@ -127,7 +127,7 @@ const SortableAsset = ({ id, asset }: SortableAssetProps) => {
         >
             <div className="flex flex-col">
                 <span className="font-medium text-sm">{asset.name}</span>
-                <span className="text-xs text-muted-foreground">{asset.type?.name}</span>
+                <span className="text-xs text-muted-foreground">{asset.subCategory?.name}</span>
             </div>
             <Badge variant={asset.status === 'in_production' ? 'default' : 'secondary'} className="text-[10px]">
                 {asset.status}

@@ -14,7 +14,7 @@ async function diagnoseHistory() {
     console.log('✅ Connected to database\n');
 
     // Get all asset
-    const allAsset = await Asset.find().select('_id location category type').lean();
+    const allAsset = await Asset.find().select('_id location category subCategory').lean();
     console.log(`📦 Total asset in database: ${allAsset.length}\n`);
 
     // Get all history entries

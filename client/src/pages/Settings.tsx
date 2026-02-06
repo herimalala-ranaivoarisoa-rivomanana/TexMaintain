@@ -55,9 +55,9 @@ export function Settings() {
 
   const handleSeedSubCategorys = async () => {
     try {
-      setLoading({ ...loading, assetTypes: true })
+      setLoading({ ...loading, subCategories: true })
       const result = await seedSubCategorys()
-      setSeedResults({ ...seedResults, assetTypes: result })
+      setSeedResults({ ...seedResults, subCategories: result })
       toast({
         title: "Success",
         description: result.message,
@@ -70,7 +70,7 @@ export function Settings() {
         variant: "destructive",
       })
     } finally {
-      setLoading({ ...loading, assetTypes: false })
+      setLoading({ ...loading, subCategories: false })
     }
   }
 
@@ -459,39 +459,39 @@ export function Settings() {
                     </CardContent>
                   </Card>
 
-                  {/* Seed Asset Types */}
+                  {/* Seed Sub-Categories */}
                   <Card className="border-2 border-dashed border-slate-200">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <Wrench className="h-5 w-5" />
-                        Seed Asset Types
+                        Seed Sub-Categories
                       </CardTitle>
                       <CardDescription>
-                        Initialize the database with sample asset
+                        Initialize the database with sample sub-categories
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <Button
                         onClick={handleSeedSubCategorys}
-                        disabled={loading.assetTypes}
+                        disabled={loading.subCategories}
                         className="w-full"
                       >
-                        {loading.assetTypes ? "Creating..." : "Create Asset Types"}
+                        {loading.subCategories ? "Creating..." : "Create Sub-Categories"}
                       </Button>
                       
-                      {seedResults.assetTypes && (
+                      {seedResults.subCategories && (
                         <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                           <div className="flex items-center gap-2 text-green-800 mb-2">
                             <CheckCircle className="h-4 w-4" />
                             <span className="font-medium">Success</span>
                           </div>
-                          <p className="text-sm text-green-700 mb-2">{seedResults.assetTypes.message}</p>
+                          <p className="text-sm text-green-700 mb-2">{seedResults.subCategories.message}</p>
                           <div className="flex gap-2">
                             <Badge variant="outline" className="text-green-700">
-                              Created: {seedResults.assetTypes.data?.created || 0}
+                              Created: {seedResults.subCategories.data?.created || 0}
                             </Badge>
                             <Badge variant="outline" className="text-yellow-700">
-                              Skipped: {seedResults.assetTypes.data?.skipped || 0}
+                              Skipped: {seedResults.subCategories.data?.skipped || 0}
                             </Badge>
                           </div>
                         </div>

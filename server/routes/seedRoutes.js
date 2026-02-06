@@ -27,10 +27,10 @@ router.post('/admin', requireUser, requireRole('admin'), async (req, res) => {
   }
 });
 
-// Seed asset categories
+// Seed categories
 router.post('/asset-categories', requireUser, requireRole('admin'), async (req, res) => {
   try {
-    console.log('Received request to seed asset categories');
+    console.log('Received request to seed categories');
     const result = await SeedService.seedAssetCategories();
 
     res.status(200).json({
@@ -43,18 +43,18 @@ router.post('/asset-categories', requireUser, requireRole('admin'), async (req, 
       }
     });
   } catch (error) {
-    console.error('Error in seed asset categories route:', error);
+    console.error('Error in seed categories route:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to seed asset categories'
+      message: error.message || 'Failed to seed categories'
     });
   }
 });
 
-// Seed asset types
+// Seed sub-categories
 router.post('/asset-types', requireUser, requireRole('admin'), async (req, res) => {
   try {
-    console.log('Received request to seed asset types');
+    console.log('Received request to seed sub-categories');
     const result = await SeedService.seedSubCategorys();
 
     res.status(200).json({
@@ -67,10 +67,10 @@ router.post('/asset-types', requireUser, requireRole('admin'), async (req, res) 
       }
     });
   } catch (error) {
-    console.error('Error in seed asset types route:', error);
+    console.error('Error in seed sub-categories route:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to seed asset types'
+      message: error.message || 'Failed to seed sub-categories'
     });
   }
 });
@@ -163,21 +163,21 @@ router.post('/all', requireUser, requireRole('admin'), async (req, res) => {
       results.admin = { message: 'Admin user may already exist' };
     }
 
-    // Seed asset categories
+    // Seed categories
     try {
       results.categories = await SeedService.seedAssetCategories();
-      console.log('Asset categories seeding completed');
+      console.log('Categories seeding completed');
     } catch (error) {
       console.error('Error seeding categories:', error);
       results.categories = { error: error.message };
     }
 
-    // Seed asset types
+    // Seed sub-categories
     try {
       results.types = await SeedService.seedSubCategorys();
-      console.log('Asset types seeding completed');
+      console.log('Sub-categories seeding completed');
     } catch (error) {
-      console.error('Error seeding types:', error);
+      console.error('Error seeding sub-categories:', error);
       results.types = { error: error.message };
     }
 

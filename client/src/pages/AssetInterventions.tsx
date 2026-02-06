@@ -15,7 +15,7 @@ import { AssetTimeline } from "@/components/AssetTimeline"
 interface Asset {
   _id: string
   category: { name: string }
-  type: { name: string }
+  subCategory: { name: string }
   model: string
   location: string
   processArea?: { name: string }
@@ -94,7 +94,7 @@ export function AssetInterventions() {
           </h1>
           {asset && (
             <p className="text-muted-foreground">
-              {asset.category.name} - {asset.type.name} ({asset.model})
+              {asset.category.name} - {asset.subCategory.name} ({asset.model})
             </p>
           )}
         </div>

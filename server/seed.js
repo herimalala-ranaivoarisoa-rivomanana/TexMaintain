@@ -64,22 +64,22 @@ async function runSeeder() {
       console.error('❌ Error seeding asset classes:', error.message + '\n');
     }
 
-    // Seed asset categories
-    console.log('🏷️  Seeding asset categories...');
+    // Seed categories
+    console.log('🏷️  Seeding categories...');
     try {
       results.categories = await SeedService.seedAssetCategories();
-      console.log(`✅ Asset categories seeded: ${results.categories.created} created, ${results.categories.skipped} skipped\n`);
+      console.log(`✅ Categories seeded: ${results.categories.created} created, ${results.categories.skipped} skipped\n`);
     } catch (error) {
       console.error('❌ Error seeding categories:', error.message + '\n');
     }
 
-    // Seed asset types
-    console.log('🔧 Seeding asset types...');
+    // Seed sub-categories
+    console.log('🔧 Seeding sub-categories...');
     try {
       results.types = await SeedService.seedSubCategorys();
-      console.log(`✅ Asset types seeded: ${results.types.created} created, ${results.types.skipped} skipped\n`);
+      console.log(`✅ Sub-categories seeded: ${results.types.created} created, ${results.types.skipped} skipped\n`);
     } catch (error) {
-      console.error('❌ Error seeding types:', error.message + '\n');
+      console.error('❌ Error seeding sub-categories:', error.message + '\n');
     }
 
     // Seed process areas and sections (moved before asset)

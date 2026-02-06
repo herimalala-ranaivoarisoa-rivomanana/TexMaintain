@@ -16,7 +16,7 @@ export const seedAdminUser = async () => {
   }
 };
 
-// Description: Seed asset types into the database
+// Description: Seed sub-categories into the database
 // Endpoint: POST /api/seed/asset-types
 // Request: {}
 // Response: { success: boolean, message: string, data: { created: number, skipped: number, asset: Array } }
@@ -26,12 +26,12 @@ export const seedSubCategorys = async () => {
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError<{ message?: string }>;
-    const message = axiosError?.response?.data?.message || axiosError?.message || 'Failed to seed asset types';
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Failed to seed sub-categories';
     throw new Error(message);
   }
 };
 
-// Description: Seed asset categories into the database
+// Description: Seed categories into the database
 // Endpoint: POST /api/seed/asset-categories
 // Request: {}
 // Response: { success: boolean, message: string, data: { created: number, skipped: number, categories: Array } }
@@ -41,7 +41,7 @@ export const seedAssetCategories = async () => {
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError<{ message?: string }>;
-    const message = axiosError?.response?.data?.message || axiosError?.message || 'Failed to seed asset categories';
+    const message = axiosError?.response?.data?.message || axiosError?.message || 'Failed to seed categories';
     throw new Error(message);
   }
 };

@@ -82,7 +82,7 @@ export function Assets() {
   const [assetClassFilter, setAssetClassFilter] = useState(searchParams.get('assetClass') || "all") // New
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10) || 1)
   const [total, setTotal] = useState(0)
-  const [limit, setLimit] = useState<number>(() => parseInt(localStorage.getItem('eq_limit') || '12', 10) || 12)
+  const [limit, setLimit] = useState<number>(() => parseInt(localStorage.getItem('asset_limit') || '12', 10) || 12)
   const [sort, setSort] = useState<string>(searchParams.get('sort') || 'createdAt')
   const [order, setOrder] = useState<'asc' | 'desc'>((searchParams.get('order') as any) || 'desc')
   const { toast } = useToast()

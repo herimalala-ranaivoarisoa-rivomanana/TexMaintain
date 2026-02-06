@@ -17,7 +17,7 @@ async function testHistoryAPI() {
     console.log('✅ Connected to database\n');
 
     // Get first asset
-    const asset = await Asset.findOne().populate('category type').lean();
+    const asset = await Asset.findOne().populate('category subCategory').lean();
     if (!asset) {
       console.log('❌ No asset found in database');
       return;
@@ -28,7 +28,7 @@ async function testHistoryAPI() {
     console.log(`   ID: ${assetId}`);
     console.log(`   Location: ${asset.location}`);
     console.log(`   Category: ${asset.category?.name}`);
-    console.log(`   Type: ${asset.type?.name}`);
+    console.log(`   SubCategory: ${asset.subCategory?.name}`);
     console.log(`   Current Status: ${asset.status}\n`);
 
     // First, let's check if we need to login
