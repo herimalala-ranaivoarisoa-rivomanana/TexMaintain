@@ -59,7 +59,7 @@ const STATUS_METADATA = {
     color: 'yellow',
     icon: 'pause',
     description: 'Temporarily paused by operator',
-    allowedTransitions: ['in_production', 'changeover', 'offline', 'stored']
+    allowedTransitions: ['in_production', 'changeover', 'offline', 'stored', 'breakdown']
   },
   changeover: {
     label: 'Changeover',
@@ -77,7 +77,7 @@ const STATUS_METADATA = {
     color: 'orange',
     icon: 'calendar',
     description: 'Preventive maintenance in progress',
-    allowedTransitions: ['in_production', 'offline', 'stored', 'scrapped']
+    allowedTransitions: ['in_production', 'offline', 'stored', 'scrapped', 'breakdown']
   },
   breakdown: {
     label: 'Breakdown',
@@ -85,7 +85,7 @@ const STATUS_METADATA = {
     color: 'red',
     icon: 'alert-triangle',
     description: 'Asset has broken down',
-    allowedTransitions: ['under_inspection', 'under_repair', 'in_workshop', 'in_production', 'stored', 'scrapped']
+    allowedTransitions: ['under_inspection', 'under_repair', 'in_workshop', 'in_production', 'stored', 'scrapped', 'breakdown']
   },
   under_repair: {
     label: 'Under Repair',
@@ -93,7 +93,7 @@ const STATUS_METADATA = {
     color: 'red',
     icon: 'wrench',
     description: 'Asset is being repaired',
-    allowedTransitions: ['in_workshop', 'in_production', 'offline', 'stored', 'scrapped']
+    allowedTransitions: ['in_workshop', 'in_production', 'offline', 'stored', 'scrapped', 'breakdown']
   },
   in_workshop: {
     label: 'In Workshop',
@@ -101,7 +101,7 @@ const STATUS_METADATA = {
     color: 'red',
     icon: 'tool',
     description: 'Asset moved to workshop for repair',
-    allowedTransitions: ['waiting_spare_parts', 'testing_after_repair', 'in_production', 'stored', 'scrapped']
+    allowedTransitions: ['waiting_spare_parts', 'testing_after_repair', 'in_production', 'stored', 'scrapped', 'breakdown']
   },
   waiting_spare_parts: {
     label: 'Waiting Spare Parts',
@@ -109,7 +109,7 @@ const STATUS_METADATA = {
     color: 'orange',
     icon: 'package',
     description: 'Waiting for spare parts to arrive',
-    allowedTransitions: ['under_repair', 'in_workshop', 'in_production', 'stored', 'scrapped']
+    allowedTransitions: ['under_repair', 'in_workshop', 'in_production', 'stored', 'scrapped', 'breakdown']
   },
   testing_after_repair: {
     label: 'Testing After Repair',
@@ -117,7 +117,7 @@ const STATUS_METADATA = {
     color: 'blue',
     icon: 'check-circle',
     description: 'Testing asset after repair',
-    allowedTransitions: ['pending_validation', 'in_production', 'under_repair', 'stored', 'scrapped']
+    allowedTransitions: ['pending_validation', 'in_production', 'under_repair', 'stored', 'scrapped', 'breakdown']
   },
   under_inspection: {
     label: 'Under Inspection',
@@ -125,7 +125,7 @@ const STATUS_METADATA = {
     color: 'yellow',
     icon: 'search',
     description: 'Asset being inspected or diagnosed',
-    allowedTransitions: ['under_repair', 'in_workshop', 'scheduled_maintenance', 'in_production', 'stored', 'scrapped']
+    allowedTransitions: ['under_repair', 'in_workshop', 'scheduled_maintenance', 'in_production', 'stored', 'scrapped', 'breakdown']
   },
   pending_validation: {
     label: 'Pending Validation',
@@ -133,7 +133,7 @@ const STATUS_METADATA = {
     color: 'blue',
     icon: 'clipboard-check',
     description: 'Awaiting validation for maintenance completion',
-    allowedTransitions: ['in_production', 'setup_adjustment', 'under_repair', 'stored', 'scrapped']
+    allowedTransitions: ['in_production', 'setup_adjustment', 'under_repair', 'stored', 'scrapped', 'breakdown']
   },
 
   // Out of Service States
@@ -143,7 +143,7 @@ const STATUS_METADATA = {
     color: 'gray',
     icon: 'archive',
     description: 'Asset in storage/reserve',
-    allowedTransitions: ['offline', 'setup_adjustment', 'under_inspection', 'scrapped']
+    allowedTransitions: ['offline', 'setup_adjustment', 'under_inspection', 'scrapped', 'breakdown']
   },
   offline: {
     label: 'Offline',
@@ -151,7 +151,7 @@ const STATUS_METADATA = {
     color: 'gray',
     icon: 'power',
     description: 'Asset temporarily not in use',
-    allowedTransitions: ['in_production', 'stored', 'setup_adjustment', 'scheduled_maintenance', 'scrapped']
+    allowedTransitions: ['in_production', 'stored', 'setup_adjustment', 'scheduled_maintenance', 'scrapped', 'breakdown']
   },
   scrapped: {
     label: 'Scrapped',

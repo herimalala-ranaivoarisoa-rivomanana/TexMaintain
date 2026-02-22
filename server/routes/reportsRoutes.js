@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const { requireUser } = require('./middleware/auth');
 const { Asset } = require('../models/Asset');
 const { Intervention } = require('../models/Intervention');
 const { Part } = require('../models/Part');
@@ -9,7 +10,7 @@ const { Part } = require('../models/Part');
 // but for simple counts we can fetch and filter or use aggregation)
 
 // GET /api/reports/stats - General Dashboard Stats
-router.get('/stats', async (req, res) => {
+router.get('/stats', requireUser, async (req, res) => {
   try {
     // KPI Logic Alignment with Dashboard
     // Dashboard: activeInterventions = status in ['Pending', 'In Progress']
@@ -61,7 +62,7 @@ router.get('/stats', async (req, res) => {
 });
 
 // GET /api/reports/maintenance - Maintenance Metrics
-router.get('/maintenance', async (req, res) => {
+router.get('/maintenance', requireUser, async (req, res) => {
   try {
     // Calculate averages for MTBF and MTTR from Asset
     const factoryFilter = req.activeFactoryId ? { factory: new mongoose.Types.ObjectId(req.activeFactoryId) } : {};
@@ -146,7 +147,7 @@ router.get('/maintenance', async (req, res) => {
 });
 
 // GET /api/reports/inventory - Inventory Metrics
-router.get('/inventory', async (req, res) => {
+router.get('/inventory', requireUser, async (req, res) => {
   try {
     const factoryFilter = req.activeFactoryId ? { factory: new mongoose.Types.ObjectId(req.activeFactoryId) } : {};
     const parts = await Part.find(factoryFilter);
@@ -195,7 +196,7 @@ router.get('/inventory', async (req, res) => {
 });
 
 // GET /api/reports/financials - Financial Health Metrics
-router.get('/financials', async (req, res) => {
+router.get('/financials', requireUser, async (req, res) => {
   try {
     const factoryFilter = req.activeFactoryId ? { factory: new mongoose.Types.ObjectId(req.activeFactoryId) } : {};
 

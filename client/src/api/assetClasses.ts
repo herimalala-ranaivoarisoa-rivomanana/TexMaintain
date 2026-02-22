@@ -7,20 +7,20 @@ export interface AssetClass {
 }
 
 export const getAssetClasses = async (): Promise<AssetClass[]> => {
-    const response = await api.get('/asset-classes');
+    const response = await api.get('/api/asset-classes');
     return response.data.assetClasses;
 };
 
 export const createAssetClass = async (data: Omit<AssetClass, '_id'>): Promise<AssetClass> => {
-    const response = await api.post('/asset-classes', data);
+    const response = await api.post('/api/asset-classes', data);
     return response.data.assetClass;
 };
 
 export const updateAssetClass = async (id: string, data: Partial<AssetClass>): Promise<AssetClass> => {
-    const response = await api.patch(`/asset-classes/${id}`, data);
+    const response = await api.patch(`/api/asset-classes/${id}`, data);
     return response.data.assetClass;
 };
 
 export const deleteAssetClass = async (id: string): Promise<void> => {
-    await api.delete(`/asset-classes/${id}`);
+    await api.delete(`/api/asset-classes/${id}`);
 };

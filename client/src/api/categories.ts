@@ -38,7 +38,7 @@ export const createCategory = async (data: Partial<Category>) => {
 };
 
 export const updateCategory = async (id: string, data: Partial<Category>) => {
-  const response = await api.put(`/api/asset-categories/${id}`, data);
+  const response = await api.patch(`/api/asset-categories/${id}`, data);
   return response.data;
 };
 

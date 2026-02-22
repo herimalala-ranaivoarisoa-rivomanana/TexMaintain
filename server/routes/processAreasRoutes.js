@@ -63,7 +63,7 @@ router.get('/', requireUser, async (req, res) => {
       model: 'Asset',
       populate: [
         { path: 'category', select: 'name' },
-        { path: 'type', select: 'name' },
+        { path: 'subCategory', select: 'name' },
         { path: 'brand', select: 'name' }
       ]
     }
@@ -82,7 +82,7 @@ router.get('/:id', requireUser, async (req, res) => {
         model: 'Asset',
         populate: [
           { path: 'category', select: 'name' },
-          { path: 'type', select: 'name' },
+          { path: 'subCategory', select: 'name' },
           { path: 'brand', select: 'name' }
         ]
       }

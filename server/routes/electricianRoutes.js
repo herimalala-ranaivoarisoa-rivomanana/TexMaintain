@@ -8,14 +8,14 @@ const router = express.Router();
 // GET /api/electricians - Get all electricians with pagination and filters
 router.get('/', requireUser, async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
     if (!factoryId) {
       return res.status(400).json({ message: 'Factory Header Missing' });
     }
 
     const { page = 1, limit = 50, q, isActive, specialization } = req.query;
 
-    const query = { factory: new mongoose.Types.ObjectId(factoryId), role: 'Electrician' };
+    const query = { factory: new mongoose.Types.ObjectId(factoryId), role: { $in: ['electrician', 'Electrician'] } };
 
     // Filter by active status
     if (isActive !== undefined) {
@@ -63,12 +63,12 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/electricians/:id - Get single electrician
 router.get('/:id', requireUser, async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
     const query = { _id: req.params.id };
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);
     }
-    const electrician = await Personnel.findOne({ ...query, role: 'Electrician' }).lean();
+    const electrician = await Personnel.findOne({ ...query, role: { $in: ['electrician', 'Electrician'] } }).lean();
 
     if (!electrician) {
       return res.status(404).json({ message: 'Electrician not found' });
@@ -84,7 +84,7 @@ router.get('/:id', requireUser, async (req, res) => {
 // POST /api/electricians - Create new electrician
 router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
     if (!factoryId) {
       return res.status(400).json({ message: 'Factory Header Missing' });
     }
@@ -100,7 +100,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
     const existing = await Personnel.findOne({
       matricule,
       factory: new mongoose.Types.ObjectId(factoryId),
-      role: 'Electrician'
+      role: { $in: ['electrician', 'Electrician'] }
     });
     if (existing) {
       return res.status(400).json({ message: 'An electrician with this matricule already exists in this factory' });
@@ -114,7 +114,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
       certifications,
       isActive: isActive !== undefined ? isActive : true,
       factory: factoryId,
-      role: 'Electrician'
+      role: 'electrician'
     });
 
     await electrician.save();
@@ -129,12 +129,12 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
 // PUT /api/electricians/:id - Update electrician
 router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
 
     // Ensure electrician belongs to factory on update
     const existingElectrician = await Personnel.findOne({
       _id: req.params.id,
-      role: 'Electrician',
+      role: { $in: ['electrician', 'Electrician'] },
       ...(factoryId && { factory: new mongoose.Types.ObjectId(factoryId) })
     });
 
@@ -150,7 +150,7 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
         matricule,
         _id: { $ne: req.params.id },
         factory: existingElectrician.factory,
-        role: 'Electrician'
+        role: { $in: ['electrician', 'Electrician'] }
       });
       if (existing) {
         return res.status(400).json({ message: 'An electrician with this matricule already exists in this factory' });
@@ -181,14 +181,14 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
 // DELETE /api/electricians/:id - Delete electrician (soft delete by setting isActive to false)
 router.delete('/:id', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
     const query = { _id: req.params.id };
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);
     }
 
     const electrician = await Personnel.findOneAndUpdate(
-      { ...query, role: 'Electrician' },
+      { ...query, role: { $in: ['electrician', 'Electrician'] } },
       { isActive: false },
       { new: true }
     );

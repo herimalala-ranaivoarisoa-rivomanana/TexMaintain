@@ -8,14 +8,18 @@ const router = express.Router();
 // GET /api/machinists - Get all machinists with pagination and filters
 router.get('/', requireUser, async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
     if (!factoryId) {
       return res.status(400).json({ message: 'Factory Header Missing' });
     }
 
     const { page = 1, limit = 50, q, isActive } = req.query;
 
-    const query = { factory: new mongoose.Types.ObjectId(factoryId), role: 'Machinist' };
+    // Model enum uses lowercase roles; keep backward compatibility with legacy capitalized values.
+    const query = {
+      factory: new mongoose.Types.ObjectId(factoryId),
+      role: { $in: ['machinist', 'Machinist'] }
+    };
 
     // Filter by active status
     if (isActive !== undefined) {
@@ -58,12 +62,12 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/machinists/:id - Get single machinist
 router.get('/:id', requireUser, async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
     const query = { _id: req.params.id };
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);
     }
-    const machinist = await Personnel.findOne({ ...query, role: 'Machinist' }).lean();
+    const machinist = await Personnel.findOne({ ...query, role: { $in: ['machinist', 'Machinist'] } }).lean();
 
     if (!machinist) {
       return res.status(404).json({ message: 'Machinist not found' });
@@ -79,7 +83,7 @@ router.get('/:id', requireUser, async (req, res) => {
 // POST /api/machinists - Create new machinist
 router.post('/', requireUser, requireRole(['admin', 'production_manager', 'line_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
     if (!factoryId) {
       return res.status(400).json({ message: 'Factory Header Missing' });
     }
@@ -95,7 +99,7 @@ router.post('/', requireUser, requireRole(['admin', 'production_manager', 'line_
     const existing = await Personnel.findOne({
       matricule,
       factory: new mongoose.Types.ObjectId(factoryId),
-      role: 'Machinist'
+      role: { $in: ['machinist', 'Machinist'] }
     });
     if (existing) {
       return res.status(400).json({ message: 'A machinist with this matricule already exists in this factory' });
@@ -107,7 +111,7 @@ router.post('/', requireUser, requireRole(['admin', 'production_manager', 'line_
       lastName,
       isActive: isActive !== undefined ? isActive : true,
       factory: factoryId,
-      role: 'Machinist'
+      role: 'machinist'
     });
 
     await machinist.save();
@@ -122,12 +126,12 @@ router.post('/', requireUser, requireRole(['admin', 'production_manager', 'line_
 // PUT /api/machinists/:id - Update machinist
 router.put('/:id', requireUser, requireRole(['admin', 'production_manager', 'line_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
 
     // Ensure machinist belongs to factory on update
     const existingMachinist = await Personnel.findOne({
       _id: req.params.id,
-      role: 'Machinist',
+      role: { $in: ['machinist', 'Machinist'] },
       ...(factoryId && { factory: new mongoose.Types.ObjectId(factoryId) })
     });
 
@@ -143,7 +147,7 @@ router.put('/:id', requireUser, requireRole(['admin', 'production_manager', 'lin
         matricule,
         _id: { $ne: req.params.id },
         factory: existingMachinist.factory,
-        role: 'Machinist'
+        role: { $in: ['machinist', 'Machinist'] }
       });
       if (existing) {
         return res.status(400).json({ message: 'A machinist with this matricule already exists in this factory' });
@@ -172,14 +176,14 @@ router.put('/:id', requireUser, requireRole(['admin', 'production_manager', 'lin
 // DELETE /api/machinists/:id - Delete machinist (soft delete by setting isActive to false)
 router.delete('/:id', requireUser, requireRole(['admin', 'production_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
     const query = { _id: req.params.id };
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);
     }
 
     const machinist = await Personnel.findOneAndUpdate(
-      { ...query, role: 'Machinist' },
+      { ...query, role: { $in: ['machinist', 'Machinist'] } },
       { isActive: false },
       { new: true }
     );

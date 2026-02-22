@@ -43,6 +43,7 @@ const procurementRoutes = require("./routes/procurementRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const personnelRoutes = require("./routes/personnelRoutes");
 const factoriesRoutes = require("./routes/factoriesRoutes");
+const productionSectionsRoutes = require("./routes/productionSectionsRoutes");
 
 const { connectDB } = require("./config/database");
 const backfillInterventions = require("./backfill_interventions_v2");
@@ -74,7 +75,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-factory-id'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   maxAge: 600 // 10 minutes
 }));
@@ -170,6 +171,7 @@ app.use('/api/procurement', procurementRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/personnel', personnelRoutes);
 app.use('/api/factories', factoriesRoutes);
+app.use('/api/production-sections', productionSectionsRoutes);
 
 // If no routes handled the request, it's a 404
 app.use((req, res, next) => {

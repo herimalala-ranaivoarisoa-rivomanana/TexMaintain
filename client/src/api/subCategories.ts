@@ -26,23 +26,23 @@ export interface SubCategory {
 export const getSubCategories = async (categoryId?: string): Promise<SubCategory[]> => {
   const params = categoryId ? { category: categoryId } : {};
   const response = await api.get('/api/asset-types', { params });
-  return response.data.types; // Backend returns 'types' for asset-types
+  return response.data.subCategories; // Backend returns 'subCategories'
 };
 
 export const getSubCategoryStatistics = async (): Promise<SubCategory[]> => {
   const response = await api.get('/api/asset-types/statistics');
-  return response.data;
+  return response.data.subCategories;
 };
 
 export const createSubCategory = async (data: Partial<SubCategory> & { categoryId: string }): Promise<SubCategory> => {
-  // Map categoryId to category for backend if needed, or backend handles it
-  const payload = { ...data, category: data.categoryId };
+  // Backend expects categoryId, not category
+  const payload = { name: data.name, description: data.description, categoryId: data.categoryId };
   const response = await api.post('/api/asset-types', payload);
   return response.data;
 };
 
 export const updateSubCategory = async (id: string, data: Partial<SubCategory>): Promise<SubCategory> => {
-  const response = await api.put(`/api/asset-types/${id}`, data);
+  const response = await api.patch(`/api/asset-types/${id}`, data);
   return response.data;
 };
 

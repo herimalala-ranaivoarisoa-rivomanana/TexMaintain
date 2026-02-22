@@ -16,7 +16,8 @@ const departmentSchema = z.object({
 
 // GET /api/process-departments
 router.get('/', requireUser, async (req, res) => {
-  const departments = await ProcessDepartment.find()
+  const factoryFilter = req.activeFactoryId ? { factory: new mongoose.Types.ObjectId(req.activeFactoryId) } : {};
+  const departments = await ProcessDepartment.find(factoryFilter)
     .populate('processArea', 'name')
     .sort({ processArea: 1, order: 1 })
     .lean();

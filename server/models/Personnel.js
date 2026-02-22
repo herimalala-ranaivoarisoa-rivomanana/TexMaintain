@@ -4,7 +4,7 @@ const schema = new mongoose.Schema({
     matricule: {
         type: String,
         required: true,
-        unique: true, // Note: Unique within collection, but during migration we must handle duplicates if any
+        // Note: Uniqueness enforced per factory in routes, not globally
         trim: true,
         index: true,
     },
@@ -31,7 +31,7 @@ const schema = new mongoose.Schema({
     role: {
         type: String,
         required: true,
-        enum: ['Mechanic', 'Electrician', 'Machinist', 'MaintenanceWorker'],
+        enum: ['mechanic', 'electrician', 'machinist', 'maintenance_worker'],
         index: true
     },
     specialization: {

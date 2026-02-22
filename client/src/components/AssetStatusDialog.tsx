@@ -30,6 +30,7 @@ import { getElectricians } from '@/api/electricians';
 import { getMaintenanceWorkers } from '@/api/maintenanceWorkers';
 import { useToast } from '@/hooks/useToast';
 import { MediaUpload } from './MediaUpload';
+import { getBreakdownMediaByAsset } from '@/api/breakdownMedia';
 import { BREAKDOWN_TYPES } from '@/types/asset';
 import type { AssetStatus, StatusTransition, StatusMetadata } from '@/types/asset';
 
@@ -89,8 +90,8 @@ export function AssetStatusDialog({
   currentMedia
 }: AssetStatusDialogProps) {
   // Support both assetId and assetId for backward compatibility
-  const id = assetId || assetId || '';
-  const name = assetName || assetName;
+  const id = assetId || '';
+  const name = assetName || '';
   const [allowedTransitions, setAllowedTransitions] = useState<StatusTransition[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<AssetStatus | ''>('');
   const [reason, setReason] = useState('');
@@ -104,6 +105,8 @@ export function AssetStatusDialog({
 
   // Media state
   const [media, setMedia] = useState<string[]>([]);
+  const [existingMedia, setExistingMedia] = useState<Array<{ path: string; mimetype?: string; originalName?: string }>>([]);
+  const [loadingExistingMedia, setLoadingExistingMedia] = useState(false);
 
   // Machinist for production
   const [machinists, setMachinists] = useState<any[]>([]);
@@ -124,11 +127,13 @@ export function AssetStatusDialog({
       fetchAllowedTransitions();
       fetchMachinists();
       fetchMaintenancePersonnel();
+      fetchExistingMedia();
       // Reset form state on open
       setBreakdownType('');
       setBreakdownDescription('');
       setBreakdownDescription('');
       setMedia([]);
+      setExistingMedia([]);
       setReason('');
       setNotes('');
       setSelectedStatus('');
@@ -138,6 +143,27 @@ export function AssetStatusDialog({
       setSelectedMaintenanceWorker('');
     }
   }, [open, id]);
+
+  const fetchExistingMedia = async () => {
+    try {
+      setLoadingExistingMedia(true);
+      const res = await getBreakdownMediaByAsset(id);
+      const list = Array.isArray((res as any)?.breakdownMedia) ? (res as any).breakdownMedia : [];
+      const files = list
+        .flatMap((bm: any) => Array.isArray(bm?.files) ? bm.files : [])
+        .map((f: any) => ({
+          path: String(f?.path || ''),
+          mimetype: f?.mimetype,
+          originalName: f?.originalName || f?.filename
+        }))
+        .filter((f: any) => Boolean(f.path));
+      setExistingMedia(files);
+    } catch (error) {
+      setExistingMedia([]);
+    } finally {
+      setLoadingExistingMedia(false);
+    }
+  };
 
   // Helper to map backend generic colors to Tailwind classes
 
@@ -228,17 +254,17 @@ export function AssetStatusDialog({
       return;
     }
 
-    // Breakdown validation
-    if (selectedStatus === 'breakdown') {
-      if (!breakdownType) {
-        toast({ title: 'Validation Error', description: 'Please select a breakdown type', variant: 'destructive' });
-        return;
-      }
-      if (!breakdownDescription) {
-        toast({ title: 'Validation Error', description: 'Please provide a description of the breakdown', variant: 'destructive' });
-        return;
-      }
-    }
+    // Breakdown validation - removed since backend accepts empty values
+    // if (selectedStatus === 'breakdown') {
+    //   if (!breakdownType) {
+    //     toast({ title: 'Validation Error', description: 'Please select a breakdown type', variant: 'destructive' });
+    //     return;
+    //   }
+    //   if (!breakdownDescription) {
+    //     toast({ title: 'Validation Error', description: 'Please provide a description of the breakdown', variant: 'destructive' });
+    //     return;
+    //   }
+    // }
 
     const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance'];
     if (maintenanceStatuses.includes(selectedStatus)) {
@@ -256,14 +282,14 @@ export function AssetStatusDialog({
       setLoading(true);
       await changeAssetStatus(id, {
         status: selectedStatus as AssetStatus,
-        reason,
-        notes,
-        machinistId: selectedMachinist || undefined,
-        mechanicId: selectedMechanic || undefined,
-        electricianId: selectedElectrician || undefined,
-        maintenanceWorkerId: selectedMaintenanceWorker || undefined,
-        breakdownType: breakdownType || undefined,
-        breakdownDescription: breakdownDescription || undefined,
+        reason: reason || '',
+        notes: notes || '',
+        machinistId: selectedMachinist || '',
+        mechanicId: selectedMechanic || '',
+        electricianId: selectedElectrician || '',
+        maintenanceWorkerId: selectedMaintenanceWorker || '',
+        breakdownType: breakdownType || '',
+        breakdownDescription: breakdownDescription || '',
         media
       });
 
@@ -449,6 +475,36 @@ export function AssetStatusDialog({
               />
             </div>
           )}
+
+          {/* Existing Media (from asset creation / breakdown media uploads) */}
+          <div className="space-y-2 pt-2 border-t">
+            <Label className="text-base font-semibold">Existing Media</Label>
+            {loadingExistingMedia ? (
+              <div className="text-sm text-muted-foreground">Loading existing media...</div>
+            ) : existingMedia.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {existingMedia.map((m) => (
+                  <div key={m.path} className="relative aspect-square bg-slate-100 rounded-md overflow-hidden border">
+                    {String(m.mimetype || '').startsWith('image/') ? (
+                      <img
+                        src={m.path}
+                        alt={m.originalName || 'Media'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <video
+                        src={m.path}
+                        className="w-full h-full object-cover"
+                        controls
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">No existing media</div>
+            )}
+          </div>
 
           {/* Media Upload Section (Visible for all statuses) */}
           <div className="space-y-2 pt-2 border-t">

@@ -45,7 +45,7 @@ const Categories = () => {
         getCategoryStatistics(),
         getAssetClasses()
       ]);
-      setCategories(categoriesData);
+      setCategories(categoriesData.categories || []);
       setAssetClasses(assetClassesData);
     } catch (error) {
       console.error('Error fetching data:', error);

@@ -43,19 +43,19 @@ class AssetStatusService {
     // Validate personnel roles if IDs are provided
     if (machinistId) {
       const p = await Personnel.findById(machinistId).session(session);
-      if (!p || p.role !== 'Machinist') throw new Error('Invalid Machinist ID or personnel is not a Machinist');
+      if (!p || p.role !== 'machinist') throw new Error('Invalid Machinist ID or personnel is not a Machinist');
     }
     if (mechanicId) {
       const p = await Personnel.findById(mechanicId).session(session);
-      if (!p || p.role !== 'Mechanic') throw new Error('Invalid Mechanic ID or personnel is not a Mechanic');
+      if (!p || p.role !== 'mechanic') throw new Error('Invalid Mechanic ID or personnel is not a Mechanic');
     }
     if (electricianId) {
       const p = await Personnel.findById(electricianId).session(session);
-      if (!p || p.role !== 'Electrician') throw new Error('Invalid Electrician ID or personnel is not an Electrician');
+      if (!p || p.role !== 'electrician') throw new Error('Invalid Electrician ID or personnel is not an Electrician');
     }
     if (maintenanceWorkerId) {
       const p = await Personnel.findById(maintenanceWorkerId).session(session);
-      if (!p || p.role !== 'MaintenanceWorker') throw new Error('Invalid Maintenance Worker ID or personnel is not a Maintenance Worker');
+      if (!p || p.role !== 'maintenance_worker') throw new Error('Invalid Maintenance Worker ID or personnel is not a Maintenance Worker');
     }
 
     // Maintenance statuses requiring personnel

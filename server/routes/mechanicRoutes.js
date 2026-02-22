@@ -8,14 +8,14 @@ const router = express.Router();
 // GET /api/mechanics - Get all mechanics with pagination and filters
 router.get('/', requireUser, async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
     if (!factoryId) {
       return res.status(400).json({ message: 'Factory Header Missing' });
     }
 
     const { page = 1, limit = 50, q, isActive, specialization } = req.query;
 
-    const query = { factory: new mongoose.Types.ObjectId(factoryId), role: 'Mechanic' };
+    const query = { factory: new mongoose.Types.ObjectId(factoryId), role: { $in: ['mechanic', 'Mechanic'] } };
 
     // Filter by active status
     if (isActive !== undefined) {
@@ -63,13 +63,13 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/mechanics/:id - Get single mechanic
 router.get('/:id', requireUser, async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
     const query = { _id: req.params.id };
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);
     }
 
-    const mechanic = await Personnel.findOne({ ...query, role: 'Mechanic' }).lean();
+    const mechanic = await Personnel.findOne({ ...query, role: { $in: ['mechanic', 'Mechanic'] } }).lean();
 
     if (!mechanic) {
       return res.status(404).json({ message: 'Mechanic not found' });
@@ -85,7 +85,7 @@ router.get('/:id', requireUser, async (req, res) => {
 // POST /api/mechanics - Create new mechanic
 router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
     if (!factoryId) {
       return res.status(400).json({ message: 'Factory Header Missing' });
     }
@@ -101,7 +101,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
     const existing = await Personnel.findOne({
       matricule,
       factory: new mongoose.Types.ObjectId(factoryId),
-      role: 'Mechanic'
+      role: { $in: ['mechanic', 'Mechanic'] }
     });
     if (existing) {
       return res.status(400).json({ message: 'A mechanic with this matricule already exists in this factory' });
@@ -115,7 +115,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
       certifications,
       isActive: isActive !== undefined ? isActive : true,
       factory: factoryId,
-      role: 'Mechanic'
+      role: 'mechanic'
     });
 
     await mechanic.save();
@@ -130,12 +130,12 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
 // PUT /api/mechanics/:id - Update mechanic
 router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
 
     // Ensure mechanic belongs to factory on update
     const existingMechanic = await Personnel.findOne({
       _id: req.params.id,
-      role: 'Mechanic',
+      role: { $in: ['mechanic', 'Mechanic'] },
       ...(factoryId && { factory: new mongoose.Types.ObjectId(factoryId) })
     });
 
@@ -151,7 +151,7 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
         matricule,
         _id: { $ne: req.params.id },
         factory: existingMechanic.factory,
-        role: 'Mechanic'
+        role: { $in: ['mechanic', 'Mechanic'] }
       });
       if (existing) {
         return res.status(400).json({ message: 'A mechanic with this matricule already exists in this factory' });
@@ -182,14 +182,14 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
 // DELETE /api/mechanics/:id - Delete mechanic (soft delete by setting isActive to false)
 router.delete('/:id', requireUser, requireRole(['admin', 'maintenance_manager']), async (req, res) => {
   try {
-    const factoryId = req.header('x-factory-id');
+    const factoryId = req.activeFactoryId || req.header('x-factory-id');
     const query = { _id: req.params.id };
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);
     }
 
     const mechanic = await Personnel.findOneAndUpdate(
-      { ...query, role: 'Mechanic' },
+      { ...query, role: { $in: ['mechanic', 'Mechanic'] } },
       { isActive: false },
       { new: true }
     );

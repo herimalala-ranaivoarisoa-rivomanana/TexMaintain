@@ -46,6 +46,69 @@ const upload = multer({
   }
 });
 
+// GET /api/assets/models
+router.get('/models', requireUser, async (req, res) => {
+  try {
+    const { category, subCategory, assetClass, brand } = req.query;
+    const query = {};
+
+    if (category) {
+      query.category = mongoose.isValidObjectId(category)
+        ? new mongoose.Types.ObjectId(category)
+        : category;
+    }
+    if (subCategory) {
+      query.subCategory = mongoose.isValidObjectId(subCategory)
+        ? new mongoose.Types.ObjectId(subCategory)
+        : subCategory;
+    }
+    if (assetClass) {
+      query.assetClass = mongoose.isValidObjectId(assetClass)
+        ? new mongoose.Types.ObjectId(assetClass)
+        : assetClass;
+    }
+    if (brand) {
+      query.brand = mongoose.isValidObjectId(brand)
+        ? new mongoose.Types.ObjectId(brand)
+        : brand;
+    }
+
+    const tryDistinct = async (q) => Asset.distinct('model', q);
+
+    let models = await tryDistinct(query);
+
+    // Fallbacks to avoid empty dropdowns when there are no assets for a given combination.
+    // 1) Remove brand filter
+    if ((!models || models.length === 0) && query.brand) {
+      const { brand: _brand, ...q } = query;
+      models = await tryDistinct(q);
+    }
+
+    // 2) Remove subCategory filter
+    if ((!models || models.length === 0) && query.subCategory) {
+      const { subCategory: _sub, ...q } = query;
+      models = await tryDistinct(q);
+    }
+
+    // 3) Remove category filter (last resort)
+    if ((!models || models.length === 0) && query.category) {
+      const { category: _cat, ...q } = query;
+      models = await tryDistinct(q);
+    }
+
+    const cleanedUnique = Array.from(new Set(
+      (models || [])
+        .map(m => String(m || '').trim())
+        .filter(Boolean)
+    )).sort((a, b) => a.localeCompare(b));
+
+    return res.status(200).json({ success: true, models: cleanedUnique });
+  } catch (error) {
+    console.error('Error fetching asset models:', error);
+    return res.status(500).json({ message: 'Error fetching asset models' });
+  }
+});
+
 // GET /api/assets
 router.get('/', requireUser, async (req, res) => {
   try {
@@ -61,7 +124,7 @@ router.get('/', requireUser, async (req, res) => {
 
     const query = {};
     if (req.activeFactoryId) {
-      query.factory = req.activeFactoryId;
+      query.factory = new mongoose.Types.ObjectId(req.activeFactoryId);
     }
 
     if (category) query.category = category;
@@ -86,6 +149,8 @@ router.get('/', requireUser, async (req, res) => {
       .populate('assetClass', 'name')
       .populate('brand', 'name')
       .populate('productionLine', 'name')
+      .populate('processArea', 'name')
+      .populate('processDepartment', 'name')
       .sort({ name: 1 })
       .skip(skip)
       .limit(parseInt(limit))
@@ -109,6 +174,11 @@ router.get('/', requireUser, async (req, res) => {
 router.get('/:id', requireUser, async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid asset id' });
+    }
+
     const asset = await Asset.findById(id)
       .populate('category', 'name')
       .populate('subCategory', 'name')
@@ -137,6 +207,10 @@ router.get('/:id/interventions', requireUser, async (req, res) => {
   try {
     const { id } = req.params;
     const { page = 1, limit = 50, type, status, q, sort = 'createdDate', order = 'desc' } = req.query;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid asset id' });
+    }
 
     const asset = await Asset.findById(id).lean();
     if (!asset) {
@@ -183,6 +257,10 @@ router.get('/:id/consumable', requireUser, async (req, res) => {
   try {
     const { id } = req.params;
     const { page = 1, limit = 50, skip = 0 } = req.query;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid asset id' });
+    }
 
     // Get asset info
     const asset = await Asset.findById(id)
@@ -240,6 +318,10 @@ router.post('/:id/consumable', requireUser, async (req, res) => {
     const { id } = req.params;
     const parse = consumableSchema.safeParse(req.body || {});
     if (!parse.success) return res.status(400).json({ message: parse.error.issues?.[0]?.message || 'Invalid request' });
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid asset id' });
+    }
 
     const created = await AssetPart.create({
       asset: id,
@@ -481,6 +563,11 @@ router.patch('/:id', requireUser, requireRole(['admin', 'maintenance_manager', '
 router.delete('/:id', requireUser, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid asset id' });
+    }
+
     const deleted = await Asset.findByIdAndDelete(id).lean();
     if (!deleted) return res.status(404).json({ message: 'Asset not found' });
     return res.status(200).json({ success: true });
@@ -497,7 +584,13 @@ router.post('/:id/change-status', requireUser, requireRole(['admin', 'maintenanc
     const { id } = req.params;
     const { status, reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media } = req.body;
 
-    if (!status) {
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid asset id' });
+    }
+
+    console.log('Status change request:', { status, reason, notes, machinistId, mechanicId, electricianId, maintenanceWorkerId });
+
+    if (!status || status.trim() === '') {
       return res.status(400).json({ message: 'Status is required' });
     }
 
@@ -539,6 +632,10 @@ router.get('/:id/status-history', requireUser, async (req, res) => {
     const { id } = req.params;
     const { limit, page = 1, startDate, endDate } = req.query;
 
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid asset id' });
+    }
+
     const skip = (parseInt(page) - 1) * (parseInt(limit) || 50);
 
     const result = await AssetStatusService.getStatusHistory(id, {
@@ -561,6 +658,10 @@ router.get('/:id/timeline', requireUser, async (req, res) => {
   try {
     const { id } = req.params;
     const { limit, page = 1, startDate, endDate, eventTypes } = req.query;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid asset id' });
+    }
 
     const skip = (parseInt(page) - 1) * (parseInt(limit) || 50);
 
@@ -593,6 +694,10 @@ router.get('/:id/timeline/statistics', requireUser, async (req, res) => {
     const { id } = req.params;
     const { startDate, endDate } = req.query;
 
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid asset id' });
+    }
+
     const AssetTimelineService = require('../services/assetTimelineService');
     const stats = await AssetTimelineService.getTimelineStatistics(id, {
       startDate,
@@ -613,6 +718,10 @@ router.get('/:id/status-statistics', requireUser, async (req, res) => {
     const { id } = req.params;
     const { startDate, endDate } = req.query;
 
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid asset id' });
+    }
+
     const stats = await AssetStatusService.getStatusStatistics(id, {
       startDate,
       endDate
@@ -630,6 +739,11 @@ router.get('/:id/status-statistics', requireUser, async (req, res) => {
 router.get('/:id/allowed-transitions', requireUser, async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid asset id' });
+    }
+
     const transitions = await AssetStatusService.getAllowedTransitions(id);
     return res.status(200).json({ success: true, transitions });
   } catch (error) {

@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getAsset, getStatusMetadata } from "@/api/assets"
 import { MapPin, Calendar, ArrowLeft, QrCode, History, Info } from "lucide-react"
 import type { StatusMetadata } from "@/types/asset"
+import { getBreakdownMediaByAsset } from "@/api/breakdownMedia"
 
 import { QRCodeGenerator } from "@/components/QRCodeGenerator"
 import { AssetTimeline } from "@/components/AssetTimeline"
@@ -64,20 +65,33 @@ export function AssetDetail() {
   const [data, setData] = useState<AssetDetailData | null>(null)
   const [loading, setLoading] = useState(true)
   const [statusMetadata, setStatusMetadata] = useState<Record<string, StatusMetadata>>({})
+  const [media, setMedia] = useState<Array<{ path: string; mimetype?: string; originalName?: string }>>([])
   const { currentFactory } = useFactory()
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [assetRes, metadataRes] = await Promise.all([
+        const [assetRes, metadataRes, mediaRes] = await Promise.all([
           getAsset(id as string),
-          getStatusMetadata()
+          getStatusMetadata(),
+          getBreakdownMediaByAsset(id as string)
         ])
 
         setData(assetRes as any)
         if (metadataRes && metadataRes.success) {
           setStatusMetadata(metadataRes.statuses)
         }
+
+        const list = Array.isArray((mediaRes as any)?.breakdownMedia) ? (mediaRes as any).breakdownMedia : []
+        const files = list
+          .flatMap((bm: any) => Array.isArray(bm?.files) ? bm.files : [])
+          .map((f: any) => ({
+            path: String(f?.path || ''),
+            mimetype: f?.mimetype,
+            originalName: f?.originalName || f?.filename
+          }))
+          .filter((f: any) => Boolean(f.path))
+        setMedia(files)
       } catch (error) {
         console.error("Error fetching details:", error)
       } finally {
@@ -313,6 +327,33 @@ export function AssetDetail() {
                         <p className="text-slate-900 text-lg font-semibold">{data.mttr ? `${data.mttr}h` : 'Not available'}</p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Media */}
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-semibold mb-4">Media</h3>
+                    {media.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {media.map((m) => (
+                          <div key={m.path} className="rounded border bg-white overflow-hidden">
+                            {String(m.mimetype || '').startsWith('image/') ? (
+                              <img
+                                src={m.path}
+                                alt={m.originalName || 'Media'}
+                                className="w-full h-40 object-cover"
+                              />
+                            ) : (
+                              <video src={m.path} className="w-full h-40 object-cover" controls />
+                            )}
+                            {m.originalName && (
+                              <div className="px-2 py-1 text-xs text-slate-500 truncate">{m.originalName}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-slate-500">No media uploaded</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>

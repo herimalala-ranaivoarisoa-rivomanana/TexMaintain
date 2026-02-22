@@ -116,6 +116,9 @@ schema.methods.getStockStatus = function () {
  * Ajoute une commande
  */
 schema.methods.addOrder = function (orderData) {
+  const references = Array.isArray(orderData.references) ? orderData.references.filter(Boolean) : [];
+  if (orderData.reference) references.push(orderData.reference);
+
   this.pendingOrders.push({
     quantity: orderData.quantity,
     status: orderData.status || 'pending',
@@ -123,6 +126,8 @@ schema.methods.addOrder = function (orderData) {
     expectedDate: orderData.expectedDate,
     supplier: orderData.supplier,
     orderNumber: orderData.orderNumber,
+    reference: references.length > 0 ? references[0] : orderData.reference,
+    references,
     notes: orderData.notes
   });
   return this.save();

@@ -9,6 +9,7 @@ export const ASSET_STATUSES = {
   IN_PRODUCTION: 'in_production',
   SCHEDULED_MAINTENANCE: 'scheduled_maintenance',
   UNDER_REPAIR: 'under_repair',
+  IN_WORKSHOP: 'in_workshop',
   BREAKDOWN: 'breakdown',
   OFFLINE: 'offline',
   SCRAPPED: 'scrapped',
@@ -107,64 +108,72 @@ export const getAssets = async (query: AssetQuery): Promise<AssetsResponse> => {
   if (assetClass) params.assetClass = assetClass;
   if (search) params.search = search;
 
-  const response = await api.get('/assets', { params });
+  const response = await api.get('/api/assets', { params });
+  return response.data;
+};
+
+export const getAssetModels = async (params?: { category?: string; subCategory?: string; assetClass?: string; brand?: string }): Promise<{ success: boolean; models: string[] }> => {
+  const response = await api.get('/api/assets/models', { params });
   return response.data;
 };
 
 export const getAsset = async (id: string): Promise<Asset> => {
-  const response = await api.get(`/assets/${id}`);
+  const response = await api.get(`/api/assets/${id}`);
   return response.data.asset || response.data; // Backend returns { asset: ... }
 };
 
 export const createAsset = async (data: CreateAssetData): Promise<{ success: boolean; asset: Asset; duplicatedPartsCount?: number; message?: string }> => {
-  const response = await api.post('/assets', data);
+  const payload: any = { ...data };
+  // Backend uses `chipNumber` field; UI historically used `code`.
+  if (payload.code && !payload.chipNumber) {
+    payload.chipNumber = payload.code;
+  }
+  const response = await api.post('/api/assets', payload);
   return response.data; // Backend returns { success, asset, duplicatedPartsCount, message }
 };
 
 export const updateAsset = async (id: string, data: Partial<CreateAssetData>): Promise<{ success: boolean; asset: Asset }> => {
-  const response = await api.patch(`/assets/${id}`, data); // Backend uses PATCH, not PUT
+  const payload: any = { ...data };
+  if (payload.code && !payload.chipNumber) {
+    payload.chipNumber = payload.code;
+  }
+  const response = await api.patch(`/api/assets/${id}`, payload); // Backend uses PATCH, not PUT
   return response.data; // Backend returns { success, asset }
 };
 
 export const deleteAsset = async (id: string): Promise<void> => {
-  await api.delete(`/assets/${id}`);
+  await api.delete(`/api/assets/${id}`);
 };
 
 export const changeAssetStatus = async (id: string, data: any): Promise<any> => {
-  const formData = new FormData();
+  // Backend expects JSON body (not multipart). If you need file uploads,
+  // upload them separately and send their URLs/paths in `media`.
+  if (data?.mediaFiles && Array.isArray(data.mediaFiles) && data.mediaFiles.length > 0) {
+    throw new Error('Direct file upload is not supported by /api/assets/:id/change-status. Upload media first, then send `media` URLs.');
+  }
 
-  // Append fields
-  Object.keys(data).forEach(key => {
-    if (key === 'mediaFiles' && Array.isArray(data[key])) {
-      data[key].forEach((file: File) => {
-        formData.append('media', file);
-      });
-    } else if (key === 'personnel' || key === 'userLocation') {
-      formData.append(key, JSON.stringify(data[key]));
-    } else if (data[key] !== undefined && key !== 'mediaFiles') {
-      formData.append(key, data[key]);
-    }
+  const payload: any = {};
+  Object.keys(data || {}).forEach(key => {
+    if (data[key] === undefined || data[key] === null) return;
+    if (key === 'mediaFiles') return;
+    payload[key] = data[key];
   });
 
-  const response = await api.post(`/assets/${id}/change-status`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  const response = await api.post(`/api/assets/${id}/change-status`, payload);
   return response.data;
 };
 
 // Description: Get asset interventions history
 // Endpoint: GET /api/assets/:id/interventions
 export const getAssetInterventions = async (id: string, params?: { page?: number; limit?: number; type?: string; status?: string; q?: string; sort?: string; order?: 'asc' | 'desc' }) => {
-  const response = await api.get(`/assets/${id}/interventions`, { params });
+  const response = await api.get(`/api/assets/${id}/interventions`, { params });
   return response.data;
 };
 
 // Description: Get asset associated parts
 // Endpoint: GET /api/assets/:id/parts
 export const getAssetParts = async (id: string) => {
-  const response = await api.get(`/assets/${id}/parts`);
+  const response = await api.get(`/api/assets/${id}/parts`);
   return response.data;
 };
 
@@ -176,7 +185,7 @@ export const getAssetStatusHistory = async (
   id: string,
   params?: { limit?: number; page?: number; startDate?: string; endDate?: string }
 ): Promise<{ history: any[]; total: number; page: number; limit: number }> => {
-  const response = await api.get(`/assets/${id}/status-history`, { params });
+  const response = await api.get(`/api/assets/${id}/status-history`, { params });
   return response.data;
 };
 
@@ -186,7 +195,7 @@ export const getAssetStatusStatistics = async (
   id: string,
   params?: { startDate?: string; endDate?: string }
 ): Promise<{ success: boolean; statistics: any }> => {
-  const response = await api.get(`/assets/${id}/status-statistics`, { params });
+  const response = await api.get(`/api/assets/${id}/status-statistics`, { params });
   return response.data;
 };
 
@@ -195,7 +204,7 @@ export const getAssetStatusStatistics = async (
 export const getAllowedTransitions = async (
   id: string
 ): Promise<{ success: boolean; transitions: any[] }> => {
-  const response = await api.get(`/assets/${id}/allowed-transitions`);
+  const response = await api.get(`/api/assets/${id}/allowed-transitions`);
   return response.data;
 };
 
@@ -205,7 +214,7 @@ export const getAssetsByStatus = async (
   status: string,
   params?: { limit?: number; page?: number }
 ) => {
-  const response = await api.get(`/assets/status/${status}`, { params });
+  const response = await api.get(`/api/assets/status/${status}`, { params });
   return response.data;
 };
 
@@ -215,7 +224,7 @@ export const getAssetsByCategory = async (
   category: string,
   params?: { limit?: number; page?: number }
 ) => {
-  const response = await api.get(`/assets/category/${category}`, { params });
+  const response = await api.get(`/api/assets/category/${category}`, { params });
   return response.data;
 };
 
@@ -224,7 +233,7 @@ export const getAssetsByCategory = async (
 export const bulkChangeStatus = async (
   data: { assetIds?: string[]; status: string; reason?: string; notes?: string }
 ): Promise<{ success: boolean; results: { successful: any[]; failed: any[] } }> => {
-  const response = await api.post('/assets/bulk-change-status', data);
+  const response = await api.post('/api/assets/bulk-change-status', data);
   return response.data;
 };
 
@@ -234,6 +243,6 @@ export const getStatusMetadata = async (): Promise<{
   success: boolean;
   statuses: Record<string, any>
 }> => {
-  const response = await api.get('/assets/statuses/metadata');
+  const response = await api.get('/api/assets/statuses/metadata');
   return response.data;
 };
