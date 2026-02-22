@@ -87,7 +87,7 @@ router.get('/', requireUser, async (req, res) => {
       .populate('brand', 'name')
       .populate('productionLine', 'name')
       .populate('processArea', 'name')
-      .populate('processDepartment', 'name')
+      .populate('processSection', 'name')
       .sort({ name: 1 })
       .skip(skip)
       .limit(parseInt(limit))
@@ -117,9 +117,9 @@ router.get('/:id', requireUser, async (req, res) => {
       .populate('assetClass', 'name')
       .populate('brand', 'name')
       .populate('productionLine', 'name')
-      .populate('productionDepartment', 'name')
+      .populate('productionSection', 'name')
       .populate('processArea', 'name')
-      .populate('processDepartment', 'name')
+      .populate('processSection', 'name')
       .populate('lastStatusChangedBy', 'email role')
       .lean();
 

@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/useToast"
 import { useAuth } from "@/contexts/AuthContext"
 import { useFactory } from "@/contexts/FactoryContext"
 import { getProcessAreas, createProcessArea, updateProcessArea, deleteProcessArea } from "@/api/processAreas"
-import { getProcessDepartments, createProcessDepartment, updateProcessDepartment, updateProcessDepartmentAsset } from "@/api/processDepartments"
+import { getProcessSections, createProcessSection, updateProcessSection, updateProcessSectionAsset } from "@/api/processSections"
 import { getAssets, updateAsset } from "@/api/assets"
 
 import { ASSET_STATUSES, getStatusColor as getAssetStatusColor, getStatusLabel, StatusMetadata } from "@/types/asset"
@@ -48,8 +48,8 @@ interface ProcessArea {
   name: string
   description?: string
   status: string
-  departments: Array<{
-    departmentId: {
+  sections: Array<{
+    sectionId: {
       _id: string
       name: string
       description?: string
@@ -72,7 +72,7 @@ interface ProcessArea {
   updatedAt: string
 }
 
-interface ProcessDepartment {
+interface ProcessSection {
   _id: string
   name: string
   description?: string
@@ -160,16 +160,16 @@ function ProcessAreas() {
 
   // Dialogs state
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [isCreateDepartmentDialogOpen, setIsCreateDepartmentDialogOpen] = useState(false)
+  const [isCreateSectionDialogOpen, setIsCreateSectionDialogOpen] = useState(false)
   const [selectedArea, setSelectedArea] = useState<ProcessArea | null>(null)
   const [isAddAssetDialogOpen, setIsAddAssetDialogOpen] = useState(false)
-  const [selectedDepartment, setSelectedDepartment] = useState<any | null>(null) // Department details for adding asset
+  const [selectedSection, setSelectedSection] = useState<any | null>(null) // Section details for adding asset
 
   // Form states
   const [newAreaName, setNewAreaName] = useState("")
   const [newAreaDescription, setNewAreaDescription] = useState("")
-  const [newDepartmentName, setNewDepartmentName] = useState("")
-  const [newDepartmentDescription, setNewDepartmentDescription] = useState("")
+  const [newSectionName, setNewSectionName] = useState("")
+  const [newSectionDescription, setNewSectionDescription] = useState("")
 
   // Asset selection state
   const [availableAsset, setAvailableAsset] = useState<Asset[]>([])
@@ -202,30 +202,30 @@ function ProcessAreas() {
       const data = await getProcessAreas()
       const normalized = Array.isArray(data)
         ? data.map((area: any) => {
-            const departments = Array.isArray(area?.departments)
-              ? [...area.departments]
+            const sections = Array.isArray(area?.sections)
+              ? [...area.sections]
                   .sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0))
                   .map((d: any) => {
-                    const department = d?.departmentId
-                    const asset = Array.isArray(department?.asset)
-                      ? [...department.asset].sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0))
+                    const section = d?.sectionId
+                    const asset = Array.isArray(section?.asset)
+                      ? [...section.asset].sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0))
                       : []
 
                     return {
                       ...d,
-                      departmentId: department
+                      sectionId: section
                         ? {
-                            ...department,
+                            ...section,
                             asset,
                           }
-                        : department,
+                        : section,
                     }
                   })
               : []
 
             return {
               ...area,
-              departments,
+              sections,
             }
           })
         : []
@@ -272,31 +272,31 @@ function ProcessAreas() {
     }
   }
 
-  const handleCreateDepartment = async () => {
+  const handleCreateSection = async () => {
     try {
-      if (!selectedArea || !newDepartmentName.trim()) return
+      if (!selectedArea || !newSectionName.trim()) return
 
-      await createProcessDepartment({
-        name: newDepartmentName,
-        description: newDepartmentDescription,
+      await createProcessSection({
+        name: newSectionName,
+        description: newSectionDescription,
         processArea: selectedArea._id,
-        order: (selectedArea.departments || []).length
+        order: (selectedArea.sections || []).length
       })
 
       toast({
         title: "Success",
-        description: "Department created successfully"
+        description: "Section created successfully"
       })
 
-      setIsCreateDepartmentDialogOpen(false)
-      setNewDepartmentName("")
-      setNewDepartmentDescription("")
+      setIsCreateSectionDialogOpen(false)
+      setNewSectionName("")
+      setNewSectionDescription("")
       fetchData()
     } catch (error) {
       console.error(error)
       toast({
         title: "Error",
-        description: "Failed to create department",
+        description: "Failed to create section",
         variant: "destructive"
       })
     }
@@ -320,30 +320,30 @@ function ProcessAreas() {
   }
 
   const handleAddAsset = async () => {
-    if (!selectedDepartment || !selectedAssetId) return
+    if (!selectedSection || !selectedAssetId) return
 
     try {
-      // 1. Add to department list logic
-      const currentAsset = selectedDepartment.asset || [];
+      // 1. Add to section list logic
+      const currentAsset = selectedSection.asset || [];
       const newAssetList = [
         ...currentAsset.map((e: any) => ({ assetId: e.assetId._id, order: e.order })),
         { assetId: selectedAssetId, order: currentAsset.length }
       ]
 
-      await updateProcessDepartmentAsset(selectedDepartment._id, newAssetList)
+      await updateProcessSectionAsset(selectedSection._id, newAssetList)
 
-      // 2. Update asset's processArea and processDepartment fields
-      // Find the parent area for this department
-      const parentArea = processAreas.find(area => area.departments.some(d => d.departmentId._id === selectedDepartment._id))
+      // 2. Update asset's processArea and processSection fields
+      // Find the parent area for this section
+      const parentArea = processAreas.find(area => area.sections.some(d => d.sectionId._id === selectedSection._id))
 
       if (parentArea) {
         await updateAsset(selectedAssetId, {
           processArea: parentArea._id,
-          processDepartment: selectedDepartment._id
+          processSection: selectedSection._id
         })
       }
 
-      toast({ title: "Success", description: "Asset added to department" })
+      toast({ title: "Success", description: "Asset added to section" })
       setIsAddAssetDialogOpen(false)
       setSelectedAssetId("")
       fetchData()
@@ -354,37 +354,37 @@ function ProcessAreas() {
   }
 
 
-  const handleDragEnd = async (event: DragEndEvent, departmentId: string) => {
+  const handleDragEnd = async (event: DragEndEvent, sectionId: string) => {
     const { active, over } = event
 
     if (active.id !== over?.id) {
       const areaIndex = processAreas.findIndex(area =>
-        area.departments.some(d => d.departmentId._id === departmentId)
+        area.sections.some(d => d.sectionId._id === sectionId)
       )
       if (areaIndex === -1) return
 
-      const departmentEntry = processAreas[areaIndex].departments.find(d => d.departmentId._id === departmentId)
-      if (!departmentEntry) return
+      const sectionEntry = processAreas[areaIndex].sections.find(d => d.sectionId._id === sectionId)
+      if (!sectionEntry) return
 
-      const department = departmentEntry.departmentId
-      const oldIndex = department.asset.findIndex((e) => e.assetId._id === active.id)
-      const newIndex = department.asset.findIndex((e) => e.assetId._id === over?.id)
+      const section = sectionEntry.sectionId
+      const oldIndex = section.asset.findIndex((e) => e.assetId._id === active.id)
+      const newIndex = section.asset.findIndex((e) => e.assetId._id === over?.id)
 
       // Optimist update locally
       // Deep clone to avoid mutating state directly
       const newProcessAreas = JSON.parse(JSON.stringify(processAreas))
-      const targetDepartment = newProcessAreas[areaIndex].departments.find((d: any) => d.departmentId._id === departmentId).departmentId
+      const targetSection = newProcessAreas[areaIndex].sections.find((d: any) => d.sectionId._id === sectionId).sectionId
 
-      targetDepartment.asset = arrayMove(targetDepartment.asset, oldIndex, newIndex)
+      targetSection.asset = arrayMove(targetSection.asset, oldIndex, newIndex)
       setProcessAreas(newProcessAreas)
 
       // Send to server
       try {
-        const assetList = targetDepartment.asset.map((e: any, index: number) => ({
+        const assetList = targetSection.asset.map((e: any, index: number) => ({
           assetId: e.assetId._id,
           order: index
         }))
-        await updateProcessDepartmentAsset(departmentId, assetList)
+        await updateProcessSectionAsset(sectionId, assetList)
       } catch (error) {
         console.error(error)
         toast({ title: "Error", description: "Failed to reorder asset", variant: "destructive" })
@@ -405,7 +405,7 @@ function ProcessAreas() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Process Areas</h1>
           <p className="text-muted-foreground mt-2">
-            Manage your factory's process areas and departments structure.
+            Manage your factory's process areas and sections structure.
           </p>
         </div>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
@@ -434,32 +434,32 @@ function ProcessAreas() {
             <CardContent className="pt-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  Departments
+                  Sections
                 </h3>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
                     setSelectedArea(area)
-                    setIsCreateDepartmentDialogOpen(true)
+                    setIsCreateSectionDialogOpen(true)
                   }}
                 >
                   <Plus className="mr-2 h-3 w-3" />
-                  Add Department
+                  Add Section
                 </Button>
               </div>
 
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {(area.departments || []).map(({ departmentId: department }) => (
-                  <div key={department._id} className="border rounded-lg p-4 bg-card shadow-sm hover:shadow-md transition-shadow">
+                {(area.sections || []).map(({ sectionId: section }) => (
+                  <div key={section._id} className="border rounded-lg p-4 bg-card shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-center mb-3">
-                      <div className="font-semibold">{department.name}</div>
+                      <div className="font-semibold">{section.name}</div>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
                         onClick={() => {
-                          setSelectedDepartment(department)
+                          setSelectedSection(section)
                           loadAvailableAsset()
                           setIsAddAssetDialogOpen(true)
                         }}
@@ -471,19 +471,19 @@ function ProcessAreas() {
                     <DndContext
                       sensors={sensors}
                       collisionDetection={closestCenter}
-                      onDragEnd={(e) => handleDragEnd(e, department._id)}
+                      onDragEnd={(e) => handleDragEnd(e, section._id)}
                     >
                       <SortableContext
-                        items={(department.asset || []).map((e: any) => e.assetId?._id).filter(Boolean)}
+                        items={(section.asset || []).map((e: any) => e.assetId?._id).filter(Boolean)}
                         strategy={verticalListSortingStrategy}
                       >
                         <div className="space-y-2 min-h-[50px]">
-                          {(department.asset || []).length === 0 && (
+                          {(section.asset || []).length === 0 && (
                             <div className="text-xs text-muted-foreground text-center py-4 border-2 border-dashed rounded bg-muted/20">
                               No asset
                             </div>
                           )}
-                          {(department.asset || []).map(({ assetId }: any) => (
+                          {(section.asset || []).map(({ assetId }: any) => (
                             <SortableAsset
                               key={assetId._id}
                               id={assetId._id}
@@ -554,19 +554,19 @@ function ProcessAreas() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Department Dialog */}
-      <Dialog open={isCreateDepartmentDialogOpen} onOpenChange={setIsCreateDepartmentDialogOpen}>
+      {/* Create Section Dialog */}
+      <Dialog open={isCreateSectionDialogOpen} onOpenChange={setIsCreateSectionDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Department to {selectedArea?.name}</DialogTitle>
+            <DialogTitle>Add Section to {selectedArea?.name}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="dept-name">Name</Label>
               <Input
                 id="dept-name"
-                value={newDepartmentName}
-                onChange={(e) => setNewDepartmentName(e.target.value)}
+                value={newSectionName}
+                onChange={(e) => setNewSectionName(e.target.value)}
                 placeholder="e.g., Line 1"
               />
             </div>
@@ -574,15 +574,15 @@ function ProcessAreas() {
               <Label htmlFor="dept-desc">Description</Label>
               <Textarea
                 id="dept-desc"
-                value={newDepartmentDescription}
-                onChange={(e) => setNewDepartmentDescription(e.target.value)}
-                placeholder="Department description..."
+                value={newSectionDescription}
+                onChange={(e) => setNewSectionDescription(e.target.value)}
+                placeholder="Section description..."
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDepartmentDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateDepartment}>Create</Button>
+            <Button variant="outline" onClick={() => setIsCreateSectionDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateSection}>Create</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -591,7 +591,7 @@ function ProcessAreas() {
       <Dialog open={isAddAssetDialogOpen} onOpenChange={setIsAddAssetDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Asset to {selectedDepartment?.name}</DialogTitle>
+            <DialogTitle>Add Asset to {selectedSection?.name}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">

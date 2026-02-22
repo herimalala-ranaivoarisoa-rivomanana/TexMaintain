@@ -12,43 +12,43 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/useToast"
-import { updateProcessDepartment } from "@/api/processDepartments"
+import { updateProcessSection } from "@/api/processSections"
 
-interface UpdateDepartmentDialogProps {
+interface UpdateSectionDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    department: any
+    section: any
     onSuccess: () => void
 }
 
-export function UpdateDepartmentDialog({
+export function UpdateSectionDialog({
     open,
     onOpenChange,
-    department,
+    section,
     onSuccess,
-}: UpdateDepartmentDialogProps) {
+}: UpdateSectionDialogProps) {
     const { toast } = useToast()
     const [name, setName] = useState("")
     const [description, setDescription] = useState("")
     const [loading, setLoading] = useState(false)
 
     useEffect(() => {
-        if (department) {
-            setName(department.name || "")
-            setDescription(department.description || "")
+        if (section) {
+            setName(section.name || "")
+            setDescription(section.description || "")
         }
-    }, [department])
+    }, [section])
 
     const handleSubmit = async () => {
         try {
             setLoading(true)
-            await updateProcessDepartment(department._id, {
+            await updateProcessSection(section._id, {
                 name,
                 description,
             })
             toast({
                 title: "Success",
-                description: "Department updated successfully",
+                description: "Section updated successfully",
             })
             onSuccess()
             onOpenChange(false)
@@ -56,7 +56,7 @@ export function UpdateDepartmentDialog({
             console.error(error)
             toast({
                 title: "Error",
-                description: "Failed to update department",
+                description: "Failed to update section",
                 variant: "destructive",
             })
         } finally {
@@ -68,9 +68,9 @@ export function UpdateDepartmentDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Edit Department</DialogTitle>
+                    <DialogTitle>Edit Section</DialogTitle>
                     <DialogDescription>
-                        Make changes to the department details here.
+                        Make changes to the section details here.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">

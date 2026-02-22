@@ -38,7 +38,7 @@ export interface Asset {
   serialNumber?: string;
   brand?: { _id: string; name: string };
   productionLine?: { _id: string; name: string };
-  productionDepartment?: { _id: string; name: string };
+  productionSection?: { _id: string; name: string };
   mtbf: number;
   mttr: number;
   availability: number;
@@ -50,7 +50,7 @@ export interface Asset {
   totalMaintenanceCost: number;
   tco: number;
   processArea?: { _id: string; name: string };
-  processDepartment?: { _id: string; name: string };
+  processSection?: { _id: string; name: string };
   timeSinceAcquisition?: number;
   operatingTime?: number;
   lastMaintenance?: string;

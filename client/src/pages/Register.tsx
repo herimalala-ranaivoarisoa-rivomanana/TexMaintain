@@ -27,7 +27,7 @@ type RegisterForm = {
 
 const ROLE_GROUPS = [
   {
-    label: 'Maintenance Department',
+    label: 'Maintenance Section',
     roles: [
       { value: 'admin', label: 'Administrator' },
       { value: 'maintenance_manager', label: 'Maintenance Manager' },
@@ -39,7 +39,7 @@ const ROLE_GROUPS = [
     ]
   },
   {
-    label: 'Production Department',
+    label: 'Production Section',
     roles: [
       { value: 'factory_manager', label: 'Factory Manager' },
       { value: 'production_manager', label: 'Production Manager' },
@@ -48,7 +48,7 @@ const ROLE_GROUPS = [
     ]
   },
   {
-    label: 'Other Departments',
+    label: 'Other Sections',
     roles: [
       { value: 'procurement_manager', label: 'Procurement Manager' },
       { value: 'project_manager', label: 'Project Manager' },

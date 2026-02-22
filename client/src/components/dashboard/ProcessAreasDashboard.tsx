@@ -18,7 +18,7 @@ interface ProcessArea {
     name: string
     description: string
     status: 'active' | 'inactive' | 'maintenance'
-    departments: any[]
+    sections: any[]
 }
 
 export function ProcessAreasDashboard() {
@@ -114,8 +114,8 @@ export function ProcessAreasDashboard() {
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="text-slate-500">Departments</span>
-                                    <span className="font-medium">{area.departments?.length || 0}</span>
+                                    <span className="text-slate-500">Sections</span>
+                                    <span className="font-medium">{area.sections?.length || 0}</span>
                                 </div>
 
                                 <div className="pt-4 border-t">

@@ -20,7 +20,7 @@ async function checkData() {
 
         // 2. Process Area Counts
         const lines = await ProductionLine.find().populate({
-            path: 'departments.departmentId',
+            path: 'sections.sectionId',
             populate: {
                 path: 'asset.assetId',
                 model: 'Asset'
@@ -33,9 +33,9 @@ async function checkData() {
             console.log(`\n--- LINE: ${line.name} ---`);
 
             const assetIds = [];
-            line.departments.forEach(department => {
-                if (department.departmentId && department.departmentId.asset) {
-                    department.departmentId.asset.forEach(item => {
+            line.sections.forEach(section => {
+                if (section.sectionId && section.sectionId.asset) {
+                    section.sectionId.asset.forEach(item => {
                         if (item.assetId) {
                             assetIds.push(item.assetId._id);
                         }

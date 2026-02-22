@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 const { Asset } = require('./models/Asset');
-const { ProductionDepartment } = require('./models/ProductionDepartment');
+const { ProductionSection } = require('./models/ProductionSection');
 const { ProductionLine } = require('./models/ProductionLine');
 
 const verify = async () => {
@@ -13,13 +13,13 @@ const verify = async () => {
         // Check Lines
         const lines = await ProductionLine.find().sort({ name: 1 });
         console.log(`Lines found: ${lines.length}`);
-        lines.forEach(l => console.log(` - ${l.name}: ${l.departments.length} departments`));
+        lines.forEach(l => console.log(` - ${l.name}: ${l.sections.length} sections`));
 
-        // Check Departments
-        const departments = await ProductionDepartment.find();
-        console.log(`Departments found: ${departments.length}`);
-        const departmentNames = [...new Set(departments.map(s => s.name))];
-        console.log('Department Names:', departmentNames.sort());
+        // Check Sections
+        const sections = await ProductionSection.find();
+        console.log(`Sections found: ${sections.length}`);
+        const sectionNames = [...new Set(sections.map(s => s.name))];
+        console.log('Section Names:', sectionNames.sort());
 
         // Check Asset
         const asset = await Asset.find();
@@ -44,9 +44,9 @@ const verify = async () => {
         // Check Association
         let orphanCount = 0;
         let missingFieldsCount = 0;
-        const departmentsWithEq = await ProductionDepartment.find().lean();
+        const sectionsWithEq = await ProductionSection.find().lean();
         const associatedIds = new Set();
-        departmentsWithEq.forEach(s => {
+        sectionsWithEq.forEach(s => {
             if (s.asset) {
                 s.asset.forEach(e => {
                     if (e.assetId) associatedIds.add(e.assetId.toString());
@@ -56,14 +56,14 @@ const verify = async () => {
 
         asset.forEach(e => {
             if (!associatedIds.has(e._id.toString())) orphanCount++;
-            if (e.location !== 'Antsirabe-1' || !e.productionLine || !e.productionDepartment) {
-                console.warn(`⚠️ Issue with EQ: ${e.name}. Loc: ${e.location}, Line: ${e.productionLine}, Department: ${e.productionDepartment}`);
+            if (e.location !== 'Antsirabe-1' || !e.productionLine || !e.productionSection) {
+                console.warn(`⚠️ Issue with EQ: ${e.name}. Loc: ${e.location}, Line: ${e.productionLine}, Section: ${e.productionSection}`);
                 missingFieldsCount++;
             }
         });
 
         if (orphanCount === 0 && missingFieldsCount === 0) {
-            console.log('✅ All asset associated and strictly formatted ("Antsirabe-1", Line, Department refs).');
+            console.log('✅ All asset associated and strictly formatted ("Antsirabe-1", Line, Section refs).');
         } else {
             console.log(`❌ ${orphanCount} orphans found. ${missingFieldsCount} with missing fields.`);
         }

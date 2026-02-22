@@ -126,7 +126,7 @@ export function BeforeAfterMediaUpload({
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Before Department */}
+                {/* Before Section */}
                 <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                         State Before
@@ -138,7 +138,7 @@ export function BeforeAfterMediaUpload({
                     {!readonly && <UploadZone type="before" loading={uploadingBefore} />}
                 </div>
 
-                {/* After Department */}
+                {/* After Section */}
                 <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                         State After

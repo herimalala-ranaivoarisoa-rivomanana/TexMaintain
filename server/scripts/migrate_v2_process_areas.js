@@ -28,13 +28,13 @@ const migrate = async () => {
             await db.collection('productionlines').rename('processareas');
         }
 
-        if (collectionNames.includes('productiondepartments')) {
-            console.log('Renaming productiondepartments to processdepartments...');
-            if (collectionNames.includes('processdepartments')) {
-                console.log('Target processdepartments collection exists. Dropping it...');
-                await db.collection('processdepartments').drop();
+        if (collectionNames.includes('productionsections')) {
+            console.log('Renaming productionsections to processsections...');
+            if (collectionNames.includes('processsections')) {
+                console.log('Target processsections collection exists. Dropping it...');
+                await db.collection('processsections').drop();
             }
-            await db.collection('productiondepartments').rename('processdepartments');
+            await db.collection('productionsections').rename('processsections');
         }
 
         // 2. Update Process Areas (formerly Production Lines)
@@ -45,22 +45,22 @@ const migrate = async () => {
             const updateDoc = {};
             const unsetDoc = {};
 
-            // Rename departments array to departments
-            if (area.departments) {
-                // Map departments to departments format
-                // The structure inside departments is { departmentId: ObjectId, order: Number }
-                // We need to change departmentId to departmentId
-                const departments = area.departments.map(s => ({
-                    departmentId: s.departmentId,
+            // Rename sections array to sections
+            if (area.sections) {
+                // Map sections to sections format
+                // The structure inside sections is { sectionId: ObjectId, order: Number }
+                // We need to change sectionId to sectionId
+                const sections = area.sections.map(s => ({
+                    sectionId: s.sectionId,
                     order: s.order
                 }));
-                updateDoc.departments = departments;
-                unsetDoc.departments = "";
+                updateDoc.sections = sections;
+                unsetDoc.sections = "";
                 updated = true;
             }
 
             // Rename legacy fields if any
-            if (area.productionDepartmentId) { // unlikely but just in case
+            if (area.productionSectionId) { // unlikely but just in case
                 // ...
             }
 
@@ -69,10 +69,10 @@ const migrate = async () => {
             }
         }
 
-        // 3. Update Process Departments (formerly Production Departments)
-        console.log('Updating Process Departments schema fields...');
-        const departments = await db.collection('processdepartments').find({}).toArray();
-        for (const dept of departments) {
+        // 3. Update Process Sections (formerly Production Sections)
+        console.log('Updating Process Sections schema fields...');
+        const sections = await db.collection('processsections').find({}).toArray();
+        for (const dept of sections) {
             let updated = false;
             const updateDoc = {};
             const unsetDoc = {};
@@ -84,7 +84,7 @@ const migrate = async () => {
             }
 
             if (updated) {
-                await db.collection('processdepartments').updateOne({ _id: dept._id }, { $set: updateDoc, $unset: unsetDoc });
+                await db.collection('processsections').updateOne({ _id: dept._id }, { $set: updateDoc, $unset: unsetDoc });
             }
         }
 
@@ -102,9 +102,9 @@ const migrate = async () => {
                 updated = true;
             }
 
-            if (eq.productionDepartment) {
-                updateDoc.processDepartment = eq.productionDepartment;
-                unsetDoc.productionDepartment = "";
+            if (eq.productionSection) {
+                updateDoc.processSection = eq.productionSection;
+                unsetDoc.productionSection = "";
                 updated = true;
             }
 

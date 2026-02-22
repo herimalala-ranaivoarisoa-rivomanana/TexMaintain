@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 const { Asset } = require('./models/Asset');
-const { ProductionDepartment } = require('./models/ProductionDepartment');
+const { ProductionSection } = require('./models/ProductionSection');
 const { ProductionLine } = require('./models/ProductionLine');
 const { AssetPart } = require('./models/AssetPart');
 const { Intervention } = require('./models/Intervention');
@@ -20,8 +20,8 @@ const clean = async () => {
         console.log('Deleting ProductionLines...');
         await ProductionLine.deleteMany({});
 
-        console.log('Deleting ProductionDepartments...');
-        await ProductionDepartment.deleteMany({});
+        console.log('Deleting ProductionSections...');
+        await ProductionSection.deleteMany({});
 
         console.log('Deleting AssetParts...');
         await AssetPart.deleteMany({});

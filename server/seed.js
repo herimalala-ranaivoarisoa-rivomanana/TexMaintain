@@ -82,8 +82,8 @@ async function runSeeder() {
       console.error('❌ Error seeding sub-categories:', error.message + '\n');
     }
 
-    // Seed process areas and departments (moved before asset)
-    console.log('🏭 Seeding process areas (ProcessArea/Department)...');
+    // Seed process areas and sections (moved before asset)
+    console.log('🏭 Seeding process areas (ProcessArea/Section)...');
     try {
       results.processAreas = await SeedService.seedProcessAreas();
       console.log(`✅ Process areas seeded: ${results.processAreas.created.length} found/created\n`);

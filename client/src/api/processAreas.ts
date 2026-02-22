@@ -6,8 +6,8 @@ export interface ProcessArea {
   description?: string
   status: 'active' | 'inactive' | 'maintenance'
   type?: 'production' | 'utility' | 'facility' | 'warehouse' | 'office' | 'other'
-  departments: Array<{
-    departmentId: {
+  sections: Array<{
+    sectionId: {
       _id: string
       name: string
       description?: string
@@ -63,8 +63,8 @@ export const updateProcessArea = async (id: string, data: Partial<ProcessArea>) 
   return response.data.processArea
 }
 
-export const updateProcessAreaDepartments = async (id: string, departments: Array<{ departmentId: string, order: number }>) => {
-  const response = await api.patch(`/api/process-areas/${id}/departments`, { departments })
+export const updateProcessAreaSections = async (id: string, sections: Array<{ sectionId: string, order: number }>) => {
+  const response = await api.patch(`/api/process-areas/${id}/sections`, { sections })
   return response.data.processArea
 }
 

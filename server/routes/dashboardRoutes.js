@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const { requireUser } = require('./middleware/auth');
 const { Asset } = require('../models/Asset');
 const { ProcessArea } = require('../models/ProcessArea');
-const { ProcessDepartment } = require('../models/ProcessDepartment');
+const { ProcessSection } = require('../models/ProcessSection');
 const { Intervention } = require('../models/Intervention');
 const { Part } = require('../models/Part');
 
@@ -25,7 +25,7 @@ router.get('/kpis', requireUser, async (req, res) => {
 
     // Fetch Process areas first
     const processAreas = await ProcessArea.find(factoryQuery).populate({
-      path: 'departments.departmentId',
+      path: 'sections.sectionId',
       populate: {
         path: 'asset.assetId',
         model: 'Asset'
@@ -35,10 +35,10 @@ router.get('/kpis', requireUser, async (req, res) => {
     // Collect all assigned asset IDs for Global Reliability calculation
     const allAssignedAssetIds = [];
     for (const area of processAreas) {
-      if (area.departments) {
-        for (const dept of area.departments) {
-          if (dept.departmentId && dept.departmentId.asset) {
-            for (const item of dept.departmentId.asset) {
+      if (area.sections) {
+        for (const dept of area.sections) {
+          if (dept.sectionId && dept.sectionId.asset) {
+            for (const item of dept.sectionId.asset) {
               if (item.assetId) {
                 allAssignedAssetIds.push(item.assetId._id);
               }
@@ -122,10 +122,10 @@ router.get('/kpis', requireUser, async (req, res) => {
       let areaAssetCount = 0;
       const areaAssetIds = [];
 
-      if (area.departments) {
-        for (const dept of area.departments) {
-          if (dept.departmentId && dept.departmentId.asset) {
-            for (const item of dept.departmentId.asset) {
+      if (area.sections) {
+        for (const dept of area.sections) {
+          if (dept.sectionId && dept.sectionId.asset) {
+            for (const item of dept.sectionId.asset) {
               if (item.assetId) {
                 areaAssetCount++;
                 areaAssetIds.push(item.assetId._id.toString());

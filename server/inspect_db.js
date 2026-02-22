@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { Asset } = require('./models/Asset');
 const { ProductionLine } = require('./models/ProductionLine');
-const { ProductionDepartment } = require('./models/ProductionDepartment');
+const { ProductionSection } = require('./models/ProductionSection');
 require('dotenv').config();
 
 async function inspectDB() {
@@ -12,31 +12,31 @@ async function inspectDB() {
 
         const totalAsset = await Asset.countDocuments();
         const totalLines = await ProductionLine.countDocuments();
-        const totalDepartments = await ProductionDepartment.countDocuments();
+        const totalSections = await ProductionSection.countDocuments();
 
         console.log(`Total Asset: ${totalAsset}`);
         console.log(`Total Process areas: ${totalLines}`);
-        console.log(`Total Departments: ${totalDepartments}`);
+        console.log(`Total Sections: ${totalSections}`);
 
         const lines = await ProductionLine.find().populate({
-            path: 'departments.departmentId',
+            path: 'sections.sectionId',
             populate: { path: 'asset.assetId' }
         });
 
         for (const line of lines) {
             let lineEquipCount = 0;
-            line.departments.forEach(s => {
-                if (s.departmentId && s.departmentId.asset) {
-                    lineEquipCount += s.departmentId.asset.length;
+            line.sections.forEach(s => {
+                if (s.sectionId && s.sectionId.asset) {
+                    lineEquipCount += s.sectionId.asset.length;
                 }
             });
             console.log(`Line '${line.name}': ${lineEquipCount} asset assigned.`);
         }
 
         const assignedEquipIds = new Set();
-        lines.forEach(l => l.departments.forEach(s => {
-            if (s.departmentId && s.departmentId.asset) {
-                s.departmentId.asset.forEach(e => assignedEquipIds.add(e.assetId?.toString()));
+        lines.forEach(l => l.sections.forEach(s => {
+            if (s.sectionId && s.sectionId.asset) {
+                s.sectionId.asset.forEach(e => assignedEquipIds.add(e.assetId?.toString()));
             }
         }));
 

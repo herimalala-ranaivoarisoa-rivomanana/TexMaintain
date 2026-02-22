@@ -19,7 +19,7 @@ interface Asset {
   model: string
   location: string
   processArea?: { name: string }
-  processDepartment?: { name: string }
+  processSection?: { name: string }
 }
 
 interface InterventionStats {
@@ -118,8 +118,8 @@ export function AssetInterventions() {
                 <p className="text-blue-900">{asset.processArea?.name || 'Not assigned'}</p>
               </div>
               <div>
-                <p className="text-blue-600 font-medium">Department</p>
-                <p className="text-blue-900">{asset.processDepartment?.name || 'Not assigned'}</p>
+                <p className="text-blue-600 font-medium">Section</p>
+                <p className="text-blue-900">{asset.processSection?.name || 'Not assigned'}</p>
               </div>
             </div>
           </CardContent>

@@ -31,7 +31,7 @@ const interventionsRoutes = require("./routes/interventionsRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const processAreasRoutes = require("./routes/processAreasRoutes");
-const processDepartmentsRoutes = require("./routes/processDepartmentsRoutes");
+const processSectionsRoutes = require("./routes/processSectionsRoutes");
 const machinistRoutes = require("./routes/machinistRoutes");
 const mechanicRoutes = require("./routes/mechanicRoutes");
 const electricianRoutes = require("./routes/electricianRoutes");
@@ -43,7 +43,7 @@ const procurementRoutes = require("./routes/procurementRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const personnelRoutes = require("./routes/personnelRoutes");
 const factoriesRoutes = require("./routes/factoriesRoutes");
-const productionDepartmentsRoutes = require("./routes/productionDepartmentsRoutes");
+const productionSectionsRoutes = require("./routes/productionSectionsRoutes");
 
 const { connectDB } = require("./config/database");
 const backfillInterventions = require("./backfill_interventions_v2");
@@ -158,7 +158,7 @@ app.use('/api/interventions', interventionsRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/process-areas', processAreasRoutes);
-app.use('/api/process-departments', processDepartmentsRoutes);
+app.use('/api/process-sections', processSectionsRoutes);
 app.use('/api/machinists', machinistRoutes);
 app.use('/api/mechanics', mechanicRoutes);
 app.use('/api/electricians', electricianRoutes);
@@ -171,7 +171,7 @@ app.use('/api/procurement', procurementRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/personnel', personnelRoutes);
 app.use('/api/factories', factoriesRoutes);
-app.use('/api/production-departments', productionDepartmentsRoutes);
+app.use('/api/production-sections', productionSectionsRoutes);
 
 // If no routes handled the request, it's a 404
 app.use((req, res, next) => {

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const processDepartmentSchema = new mongoose.Schema({
+const processSectionSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
@@ -72,15 +72,15 @@ const processDepartmentSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt field before saving
-processDepartmentSchema.pre('save', function (next) {
+processSectionSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
 
 // Index for better query performance
-processDepartmentSchema.index({ processArea: 1, order: 1 });
-processDepartmentSchema.index({ name: 1 });
+processSectionSchema.index({ processArea: 1, order: 1 });
+processSectionSchema.index({ name: 1 });
 
-const ProcessDepartment = mongoose.model('ProcessDepartment', processDepartmentSchema);
+const ProcessSection = mongoose.model('ProcessSection', processSectionSchema);
 
-module.exports = { ProcessDepartment };
+module.exports = { ProcessSection };

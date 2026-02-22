@@ -529,7 +529,7 @@ export function AssetStatusDialog({
             )}
           </div>
 
-          {/* Media Upload Department (Visible for all statuses) */}
+          {/* Media Upload Section (Visible for all statuses) */}
           <div className="space-y-2 pt-2 border-t">
             <Label className="text-base font-semibold">Media</Label>
             <MediaUpload

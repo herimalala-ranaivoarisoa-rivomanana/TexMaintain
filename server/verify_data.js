@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { Factory } = require('./models/Factory');
 const { Asset } = require('./models/Asset');
 const { ProcessArea } = require('./models/ProcessArea');
-const { ProcessDepartment } = require('./models/ProcessDepartment');
+const { ProcessSection } = require('./models/ProcessSection');
 require('dotenv').config();
 
 async function verify() {
@@ -13,7 +13,7 @@ async function verify() {
 
     for (const f of factories) {
         const areas = await ProcessArea.countDocuments({ factory: f._id });
-        const departments = await ProcessDepartment.aggregate([
+        const sections = await ProcessSection.aggregate([
             {
                 $lookup: {
                     from: 'processareas',
@@ -25,9 +25,9 @@ async function verify() {
             { $match: { 'pa.factory': f._id } },
             { $count: 'count' }
         ]);
-        const deptCount = departments.length > 0 ? departments[0].count : 0;
+        const deptCount = sections.length > 0 ? sections[0].count : 0;
         const equip = await Asset.countDocuments({ factory: f._id });
-        console.log(`- ${f.name} (${f.code}): ProcessAreas=${areas}, Departments=${deptCount}, Asset=${equip}`);
+        console.log(`- ${f.name} (${f.code}): ProcessAreas=${areas}, Sections=${deptCount}, Asset=${equip}`);
     }
 
     await mongoose.disconnect();

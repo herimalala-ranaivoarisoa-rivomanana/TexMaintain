@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 const { Asset } = require('./models/Asset');
 const { ProductionLine } = require('./models/ProductionLine');
-const { ProductionDepartment } = require('./models/ProductionDepartment');
+const { ProductionSection } = require('./models/ProductionSection');
 const { Intervention } = require('./models/Intervention');
 const { Part } = require('./models/Part');
 const { AssetPart } = require('./models/AssetPart');
@@ -14,7 +14,7 @@ const verify = async () => {
         console.log('Connected to DB');
 
         const line = await ProductionLine.findOne({ name: 'Line 1' }).populate({
-            path: 'departments.departmentId',
+            path: 'sections.sectionId',
             populate: {
                 path: 'asset.assetId',
                 model: 'Asset'
@@ -27,10 +27,10 @@ const verify = async () => {
         }
 
         const assetList = [];
-        if (line.departments) {
-            line.departments.forEach(department => {
-                if (department.departmentId && department.departmentId.asset) {
-                    department.departmentId.asset.forEach(item => {
+        if (line.sections) {
+            line.sections.forEach(section => {
+                if (section.sectionId && section.sectionId.asset) {
+                    section.sectionId.asset.forEach(item => {
                         if (item.assetId) {
                             assetList.push(item.assetId);
                         }

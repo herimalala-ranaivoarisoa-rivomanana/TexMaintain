@@ -27,10 +27,10 @@ const processAreaSchema = new mongoose.Schema({
         enum: ['production', 'utility', 'facility', 'warehouse', 'office', 'other'],
         default: 'production'
     },
-    departments: [{
-        departmentId: {
+    sections: [{
+        sectionId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'ProcessDepartment'
+            ref: 'ProcessSection'
         },
         order: {
             type: Number,

@@ -58,21 +58,21 @@
 
 ---
 
-## 5) ProductionDepartments Backend Routes Implementation ✅
+## 5) ProductionSections Backend Routes Implementation ✅
 
 ### **Issue**
 - Model exists but no backend routes → frontend API orphan.
 
 ### **Correction Applied**
-- **Created:** `server/routes/productionDepartmentsRoutes.js` (full CRUD + asset order endpoint)
-- **Mounted in:** `server/server.js` under `/api/production-departments`
+- **Created:** `server/routes/productionSectionsRoutes.js` (full CRUD + asset order endpoint)
+- **Mounted in:** `server/server.js` under `/api/production-sections`
 - **Features:**
   - GET list (populate productionLine, assets)
   - GET by id
   - POST (admin)
   - PATCH (admin)
   - DELETE (admin)
-  - PATCH `/:id/asset` (reorder assets within department)
+  - PATCH `/:id/asset` (reorder assets within section)
 
 ---
 
@@ -83,7 +83,7 @@
 
 ### **Corrections Applied**
 - **Files Updated:**
-  - `server/routes/processDepartmentsRoutes.js` (GET list)
+  - `server/routes/processSectionsRoutes.js` (GET list)
   - (Personnel/Project routes already use `req.activeFactoryId` or header; left as-is for now)
 - **Change:** Use `req.activeFactoryId` where available
 
@@ -100,21 +100,21 @@
 
 ---
 
-## 8) ProcessDepartments Factory Filter Added ✅
+## 8) ProcessSections Factory Filter Added ✅
 
 ### **Issue**
 - No factory filter → multi-tenant leak.
 
 ### **Correction Applied**
-- **File:** `server/routes/processDepartmentsRoutes.js`
+- **File:** `server/routes/processSectionsRoutes.js`
 - **Change:** Added factory filtering using `req.activeFactoryId` on GET list
 
 ---
 
-## 9) Frontend ProductionDepartments API Usage (Optional)
+## 9) Frontend ProductionSections API Usage (Optional)
 
 ### **Note**
-- If any frontend page actually uses `productionDepartments.ts`, it will now work post-backend implementation.
+- If any frontend page actually uses `productionSections.ts`, it will now work post-backend implementation.
 - No frontend changes required unless specific pages exist.
 
 ---
@@ -133,7 +133,7 @@
 - **Status:** ✅ Success (after fixes)
 - MongoDB 4.4 running via Docker Compose.
 - Seeder executed successfully (admin: admin@texmaintain.com / admin123).
-- **Issue Fixed:** `StrictPopulateError: Cannot populate path 'departments.departmentId.asset.assetId.type'` → Asset model uses `subCategory`, not `type`.
+- **Issue Fixed:** `StrictPopulateError: Cannot populate path 'sections.sectionId.asset.assetId.type'` → Asset model uses `subCategory`, not `type`.
 
 ### **Previous Errors Resolved**
 - Vite ES6 import syntax → Fixed by Node 18.
@@ -192,17 +192,17 @@
 
 ---
 
-## 21) Asset List Process Area/Department Display Fix ✅
+## 21) Asset List Process Area/Section Display Fix ✅
 
 ### **Issue**
-- Assets page showed "Not assigned" for process area/department while Process Areas page displayed assets correctly because assetRoutes.js GET list was missing `processArea` and `processDepartment` populate.
+- Assets page showed "Not assigned" for process area/section while Process Areas page displayed assets correctly because assetRoutes.js GET list was missing `processArea` and `processSection` populate.
 
 ### **Correction Applied**
 - **File:** `server/routes/assetRoutes.js`
-  - Added `.populate('processArea', 'name')` and `.populate('processDepartment', 'name')` to GET /api/assets endpoint.
+  - Added `.populate('processArea', 'name')` and `.populate('processSection', 'name')` to GET /api/assets endpoint.
 
 ### **Result**
-- Assets page now correctly displays assigned process area and department for each asset.
+- Assets page now correctly displays assigned process area and section for each asset.
 
 ---
 
@@ -339,17 +339,17 @@
 | `client/src/api/categories.ts` | Use `PATCH` for update |
 | `client/src/api/subCategories.ts` | Align response shapes, fields, method |
 | `server/routes/reportsRoutes.js` | Add `requireUser` middleware |
-| `server/routes/productionDepartmentsRoutes.js` | **Created** full CRUD |
-| `server/server.js` | Mount productionDepartments routes |
+| `server/routes/productionSectionsRoutes.js` | **Created** full CRUD |
+| `server/server.js` | Mount productionSections routes |
 | `server/models/Personnel.js` | Remove global unique on matricule |
-| `server/routes/processDepartmentsRoutes.js` | Add factory filter |
+| `server/routes/processSectionsRoutes.js` | Add factory filter |
 | `server/routes/processAreasRoutes.js` | Fix populate path: type→subCategory |
 | `docker-compose.yml` | Downgrade MongoDB 7→4.4 for AVX compatibility |
 | `server/models/Personnel.js` | Fix role enum values (lowercase) |
 | `server/services/assetStatusService.js` | Update role checks to match enum |
 | `client/src/components/AssetStatusDialog.tsx` | Fix assetId/assetName extraction |
 | `client/src/pages/Categories.tsx` | Fix API response structure (categories array) |
-| `server/routes/assetRoutes.js` | Add processArea/department populate to list |
+| `server/routes/assetRoutes.js` | Add processArea/section populate to list |
 | `server/routes/assetRoutes.js` | Convert factory filter to ObjectId |
 | `client/src/pages/Assets.tsx` | Implement client-side filtering and pagination |
 | `client/src/api/assets.ts` | Add /api prefix to all endpoints |

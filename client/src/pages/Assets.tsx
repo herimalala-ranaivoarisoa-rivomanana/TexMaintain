@@ -849,10 +849,10 @@ export function Assets() {
                     {item.processArea ? (
                       <span className="block font-medium text-blue-700">{item.processArea.name}</span>
                     ) : null}
-                    {item.processDepartment ? (
-                      <span className="block text-slate-600">{item.processDepartment.name}</span>
+                    {item.processSection ? (
+                      <span className="block text-slate-600">{item.processSection.name}</span>
                     ) : null}
-                    {!item.processArea && !item.processDepartment && <span className="text-slate-400 italic">Not assigned</span>}
+                    {!item.processArea && !item.processSection && <span className="text-slate-400 italic">Not assigned</span>}
                   </div>
                 </div>
                 <div>
@@ -1422,7 +1422,7 @@ export function Assets() {
               </div>
             </div>
 
-            {/* QR Code Department - Only show when editing existing asset */}
+            {/* QR Code Section - Only show when editing existing asset */}
             {editingItem && (
               <div className="col-span-1 md:col-span-2 border-t pt-4 mt-2">
                 <Label className="mb-2 block">Asset QR Code</Label>

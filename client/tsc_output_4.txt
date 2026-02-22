@@ -125,13 +125,13 @@ src/pages/ProcessAreas.tsx(15,3): error TS6133: 'Wrench' is declared but its val
 src/pages/ProcessAreas.tsx(16,3): error TS6133: 'Trash' is declared but its value is never read.
 src/pages/ProcessAreas.tsx(21,46): error TS6133: 'updateProcessArea' is declared but its value is never read.
 src/pages/ProcessAreas.tsx(21,65): error TS6133: 'deleteProcessArea' is declared but its value is never read.
-src/pages/ProcessAreas.tsx(22,10): error TS6133: 'getProcessDepartments' is declared but its value is never read.
-src/pages/ProcessAreas.tsx(22,58): error TS6133: 'updateProcessDepartment' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(22,10): error TS6133: 'getProcessSections' is declared but its value is never read.
+src/pages/ProcessAreas.tsx(22,58): error TS6133: 'updateProcessSection' is declared but its value is never read.
 src/pages/ProcessAreas.tsx(25,10): error TS6133: 'EQUIPMENT_STATUSES' is declared but its value is never read.
 src/pages/ProcessAreas.tsx(25,89): error TS6133: 'StatusMetadata' is declared but its value is never read.
 src/pages/ProcessAreas.tsx(27,1): error TS6133: 'getStatusMetadata' is declared but its value is never read.
 src/pages/ProcessAreas.tsx(28,39): error TS2307: Cannot find module '@/components/AssetStatusDialog' or its corresponding type declarations.
-src/pages/ProcessAreas.tsx(75,11): error TS6196: 'ProcessDepartment' is declared but never used.
+src/pages/ProcessAreas.tsx(75,11): error TS6196: 'ProcessSection' is declared but never used.
 src/pages/ProcessAreas.tsx(155,11): error TS2339: Property 'token' does not exist on type 'AuthContextType'.
 src/pages/ProcessAreas.tsx(155,18): error TS6133: 'user' is declared but its value is never read.
 src/pages/ProcessAreas.tsx(191,7): error TS2322: Type 'CollisionDetection' is not assignable to type 'KeyboardCoordinateGetter'.

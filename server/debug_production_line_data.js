@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { ProductionLine } = require('./models/ProductionLine');
 const { Asset } = require('./models/Asset');
-const { ProductionDepartment } = require('./models/ProductionDepartment');
+const { ProductionSection } = require('./models/ProductionSection');
 require('dotenv').config();
 
 async function debugData() {
@@ -11,7 +11,7 @@ async function debugData() {
 
         // 1. Get all Process areas
         const lines = await ProductionLine.find().populate({
-            path: 'departments.departmentId',
+            path: 'sections.sectionId',
             populate: {
                 path: 'asset.assetId',
                 model: 'Asset'
@@ -25,20 +25,20 @@ async function debugData() {
         } else {
             lines.forEach(line => {
                 console.log(`\nLine: ${line.name} (ID: ${line._id})`);
-                console.log(`Departments count: ${line.departments.length}`);
+                console.log(`Sections count: ${line.sections.length}`);
 
                 let totalEquipOnLine = 0;
-                line.departments.forEach((s, idx) => {
-                    const department = s.departmentId;
-                    if (!department) {
-                        console.log(`  Department ${idx}: NULL (Reference broken?)`);
+                line.sections.forEach((s, idx) => {
+                    const section = s.sectionId;
+                    if (!section) {
+                        console.log(`  Section ${idx}: NULL (Reference broken?)`);
                         return;
                     }
-                    console.log(`  Department ${idx}: ${department.name} (ID: ${department._id})`);
-                    console.log(`    Asset count in department: ${department.asset ? department.asset.length : 0}`);
+                    console.log(`  Section ${idx}: ${section.name} (ID: ${section._id})`);
+                    console.log(`    Asset count in section: ${section.asset ? section.asset.length : 0}`);
 
-                    if (department.asset) {
-                        department.asset.forEach(e => {
+                    if (section.asset) {
+                        section.asset.forEach(e => {
                             console.log(`      - Asset ID: ${e.assetId ? e.assetId._id : 'NULL'}`);
                             if (e.assetId) totalEquipOnLine++;
                         });

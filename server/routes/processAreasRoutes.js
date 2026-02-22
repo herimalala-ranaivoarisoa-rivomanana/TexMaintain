@@ -2,7 +2,7 @@ const express = require('express');
 const { requireUser, requireRole } = require('./middleware/auth');
 const { z } = require('zod');
 const { ProcessArea } = require('../models/ProcessArea');
-const { ProcessDepartment } = require('../models/ProcessDepartment');
+const { ProcessSection } = require('../models/ProcessSection');
 
 const router = express.Router();
 
@@ -57,7 +57,7 @@ router.get('/', requireUser, async (req, res) => {
   const query = {};
   if (req.activeFactoryId) query.factory = req.activeFactoryId; // Filter by Factory
   const processAreas = await ProcessArea.find(query).populate({
-    path: 'departments.departmentId',
+    path: 'sections.sectionId',
     populate: {
       path: 'asset.assetId',
       model: 'Asset',
@@ -76,7 +76,7 @@ router.get('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
   try {
     const processArea = await ProcessArea.findById(id).populate({
-      path: 'departments.departmentId',
+      path: 'sections.sectionId',
       populate: {
         path: 'asset.assetId',
         model: 'Asset',
@@ -106,7 +106,7 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
 
     // 1. Get Process Area and all its asset
     const processArea = await ProcessArea.findById(id).populate({
-      path: 'departments.departmentId',
+      path: 'sections.sectionId',
       populate: {
         path: 'asset.assetId',
         model: 'Asset'
@@ -117,10 +117,10 @@ router.get('/:id/dashboard', requireUser, async (req, res) => {
 
     // Extract all asset IDs
     const assetList = [];
-    if (processArea.departments) {
-      processArea.departments.forEach(dept => {
-        if (dept.departmentId && dept.departmentId.asset) {
-          dept.departmentId.asset.forEach(item => {
+    if (processArea.sections) {
+      processArea.sections.forEach(dept => {
+        if (dept.sectionId && dept.sectionId.asset) {
+          dept.sectionId.asset.forEach(item => {
             if (item.assetId) {
               assetList.push(item.assetId);
             }
@@ -290,25 +290,25 @@ router.patch('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
   const updates = req.body || {};
   const updated = await ProcessArea.findByIdAndUpdate(id, updates, { new: true }).populate({
-    path: 'departments.departmentId',
-    model: 'ProcessDepartment'
+    path: 'sections.sectionId',
+    model: 'ProcessSection'
   }).lean();
   if (!updated) return res.status(404).json({ message: 'Process area not found' });
   return res.status(200).json({ success: true, processArea: updated });
 });
 
-// PATCH /api/process-areas/:id/departments (update department order)
-router.patch('/:id/departments', requireUser, async (req, res) => {
+// PATCH /api/process-areas/:id/sections (update section order)
+router.patch('/:id/sections', requireUser, async (req, res) => {
   const { id } = req.params;
-  const { departments } = req.body || {};
+  const { sections } = req.body || {};
 
-  if (!Array.isArray(departments)) {
-    return res.status(400).json({ message: 'Departments must be an array' });
+  if (!Array.isArray(sections)) {
+    return res.status(400).json({ message: 'Sections must be an array' });
   }
 
-  const updated = await ProcessArea.findByIdAndUpdate(id, { departments }, { new: true }).populate({
-    path: 'departments.departmentId',
-    model: 'ProcessDepartment'
+  const updated = await ProcessArea.findByIdAndUpdate(id, { sections }, { new: true }).populate({
+    path: 'sections.sectionId',
+    model: 'ProcessSection'
   }).lean();
 
   if (!updated) return res.status(404).json({ message: 'Process area not found' });
@@ -319,8 +319,8 @@ router.patch('/:id/departments', requireUser, async (req, res) => {
 router.delete('/:id', requireUser, async (req, res) => {
   const { id } = req.params;
 
-  // Delete associated departments first
-  await ProcessDepartment.deleteMany({ processArea: id });
+  // Delete associated sections first
+  await ProcessSection.deleteMany({ processArea: id });
 
   const deleted = await ProcessArea.findByIdAndDelete(id).lean();
   if (!deleted) return res.status(404).json({ message: 'Process area not found' });

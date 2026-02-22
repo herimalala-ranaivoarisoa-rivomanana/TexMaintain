@@ -14,9 +14,9 @@ const { Electrician } = require('../models/Electrician.js');
 const { MaintenanceWorker } = require('../models/MaintenanceWorker.js');
 const { Machinist } = require('../models/Machinist.js');
 const { ProductionLine } = require('../models/ProductionLine.js');
-const { ProductionDepartment } = require('../models/ProductionDepartment.js');
+const { ProductionSection } = require('../models/ProductionSection.js');
 const { ProcessArea } = require('../models/ProcessArea.js');
-const { ProcessDepartment } = require('../models/ProcessDepartment.js');
+const { ProcessSection } = require('../models/ProcessSection.js');
 const { Factory } = require('../models/Factory.js');
 
 class SeedService {
@@ -30,13 +30,13 @@ class SeedService {
         Intervention.deleteMany({}),
         Project.deleteMany({}),
         ProcessArea.deleteMany({}),
-        ProcessDepartment.deleteMany({}),
+        ProcessSection.deleteMany({}),
         Part.deleteMany({}),
         Category.deleteMany({}),
         SubCategory.deleteMany({}),
         Brand.deleteMany({}),
         ProductionLine.deleteMany({}),
-        ProductionDepartment.deleteMany({}),
+        ProductionSection.deleteMany({}),
         Mechanic.deleteMany({}),
         Electrician.deleteMany({}),
         MaintenanceWorker.deleteMany({}),
@@ -379,8 +379,8 @@ class SeedService {
       const categories = await Category.find();
       const types = await SubCategory.find();
       const brands = await Brand.find();
-      const departments = await ProcessDepartment.countDocuments();
-      console.log(`Available departments for assignment: ${departments}`);
+      const sections = await ProcessSection.countDocuments();
+      console.log(`Available sections for assignment: ${sections}`);
 
 
       if (categories.length === 0 || types.length === 0 || brands.length === 0) {
@@ -495,14 +495,14 @@ class SeedService {
       console.log(`Processing asset for ${factories.length} factories...`);
 
       for (const factory of factories) {
-        // Find departments belonging to this factory
+        // Find sections belonging to this factory
         const factoryAreas = await ProcessArea.find({ factory: factory._id });
         const factoryAreaIds = factoryAreas.map(l => l._id);
 
-        const factoryDepartments = await ProcessDepartment.find({ processArea: { $in: factoryAreaIds } });
+        const factorySections = await ProcessSection.find({ processArea: { $in: factoryAreaIds } });
 
-        if (factoryDepartments.length === 0) {
-          console.log(`No departments found for factory ${factory.name}, skipping asset generation for it.`);
+        if (factorySections.length === 0) {
+          console.log(`No sections found for factory ${factory.name}, skipping asset generation for it.`);
           continue;
         }
 
@@ -531,8 +531,8 @@ class SeedService {
           if (rand > 0.90) status = 'breakdown';
           else if (rand > 0.80) status = 'scheduled_maintenance';
 
-          // Assign to a department in this factory
-          const assignedDept = factoryDepartments[deptIndex % factoryDepartments.length];
+          // Assign to a section in this factory
+          const assignedDept = factorySections[deptIndex % factorySections.length];
           deptIndex++;
 
           // Generate lifecycle
@@ -548,7 +548,7 @@ class SeedService {
             location: factory.name,
             factory: factory._id,
             processArea: assignedDept.processArea,
-            processDepartment: assignedDept._id,
+            processSection: assignedDept._id,
             model: modelName,
             brand: brand._id,
             manufacturer: details.brandName,
@@ -592,9 +592,9 @@ class SeedService {
         createdAsset.push(asset);
 
         if (assignedDept) {
-          const currentDept = await ProcessDepartment.findById(assignedDept._id).select('asset').lean();
+          const currentDept = await ProcessSection.findById(assignedDept._id).select('asset').lean();
           const nextOrder = Array.isArray(currentDept?.asset) ? currentDept.asset.length : 0;
-          await ProcessDepartment.findByIdAndUpdate(assignedDept._id, {
+          await ProcessSection.findByIdAndUpdate(assignedDept._id, {
             $push: {
               asset: {
                 assetId: asset._id,
@@ -626,7 +626,7 @@ class SeedService {
 
   static async seedProcessAreas() {
     try {
-      console.log('Starting process areas seeding (ProcessArea/Department)...');
+      console.log('Starting process areas seeding (ProcessArea/Section)...');
 
       // Ensure factories exist
       const factories = await Factory.find();
@@ -637,31 +637,31 @@ class SeedService {
       const createdAreas = [];
       let skippedCount = 0;
 
-      // Define standard areas and departments structure to replicate per factory
+      // Define standard areas and sections structure to replicate per factory
       const standardAreas = [
         {
           name: 'Line 1',
           description: 'Production Line 1',
           type: 'production',
-          departments: ['Preparation', 'Assembly', 'Finishing', 'Quality Control']
+          sections: ['Preparation', 'Assembly', 'Finishing', 'Quality Control']
         },
         {
           name: 'Line 2',
           description: 'Production Line 2',
           type: 'production',
-          departments: ['Cutting', 'Sewing', 'Ironing', 'Packing']
+          sections: ['Cutting', 'Sewing', 'Ironing', 'Packing']
         },
         {
           name: 'Line 3',
           description: 'Production Line 3',
           type: 'production',
-          departments: ['Molding', 'Assembly', 'Testing']
+          sections: ['Molding', 'Assembly', 'Testing']
         },
         {
           name: 'Utilities',
           description: 'Factory Utilities',
           type: 'utility',
-          departments: ['Power Plant', 'Water Treatment', 'Compressor Room']
+          sections: ['Power Plant', 'Water Treatment', 'Compressor Room']
         }
       ];
 
@@ -693,24 +693,24 @@ class SeedService {
           });
           await area.save();
 
-          // Create departments
+          // Create sections
           const deptObjects = [];
-          for (const deptName of areaTemplate.departments) {
-            const department = new ProcessDepartment({
+          for (const deptName of areaTemplate.sections) {
+            const section = new ProcessSection({
               name: deptName,
               description: `${deptName} - ${areaTemplate.name} (${factory.name})`,
               processArea: area._id,
               asset: []
             });
-            await department.save();
+            await section.save();
 
             deptObjects.push({
-              departmentId: department._id,
+              sectionId: section._id,
               order: deptObjects.length
             });
           }
 
-          area.departments = deptObjects;
+          area.sections = deptObjects;
           await area.save();
 
           createdAreas.push(area);
@@ -2361,7 +2361,7 @@ class SeedService {
           },
           {
             title: 'Asset Modernization Phase 3',
-            description: 'Full automation of material handling between spinning and weaving departments.',
+            description: 'Full automation of material handling between spinning and weaving sections.',
             status: 'Planned',
             budget: 750000,
             startDate: new Date(Date.now() + 240 * 24 * 60 * 60 * 1000), // 8 months from now
@@ -2438,7 +2438,7 @@ class SeedService {
           },
           {
             title: 'Water Recycling Plant',
-            description: 'Construction of a new water recycling facility for the dyeing department.',
+            description: 'Construction of a new water recycling facility for the dyeing section.',
             status: 'Planned',
             budget: 850000,
             startDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),

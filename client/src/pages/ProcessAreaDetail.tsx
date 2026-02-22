@@ -20,9 +20,9 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { getProcessAreaById, getProcessAreaDashboardStats } from "@/api/processAreas"
-import { updateProcessDepartmentAsset } from "@/api/processDepartments"
+import { updateProcessSectionAsset } from "@/api/processSections"
 import { UpdateProcessAreaStatsDialog } from "@/components/production/UpdateProcessAreaStatsDialog"
-import { UpdateDepartmentDialog } from "@/components/production/UpdateDepartmentDialog"
+import { UpdateSectionDialog } from "@/components/production/UpdateSectionDialog"
 import {
     DndContext,
     closestCenter,
@@ -41,9 +41,9 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useFactory } from "@/contexts/FactoryContext"
 
-interface Department {
+interface Section {
     _id: string
-    departmentId: {
+    sectionId: {
         _id: string
         name: string
         asset: Array<{
@@ -62,7 +62,7 @@ interface ProcessArea {
     name: string
     description: string
     status: 'active' | 'inactive' | 'maintenance'
-    departments: Department[]
+    sections: Section[]
     stats?: {
         targetOutput: number
         actualOutput: number
@@ -143,8 +143,8 @@ export function ProcessAreaDetail() {
     const [stats, setStats] = useState<DashboardStats | null>(null)
     const [loading, setLoading] = useState(true)
     const [isStatsDialogOpen, setIsStatsDialogOpen] = useState(false)
-    const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false)
-    const [selectedDepartment, setSelectedDepartment] = useState<any>(null)
+    const [isSectionDialogOpen, setIsSectionDialogOpen] = useState(false)
+    const [selectedSection, setSelectedSection] = useState<any>(null)
     const { currentFactory } = useFactory()
 
     const sensors = useSensors(
@@ -181,30 +181,30 @@ export function ProcessAreaDetail() {
         }
     }
 
-    const handleDragEnd = async (event: DragEndEvent, departmentId: string) => {
+    const handleDragEnd = async (event: DragEndEvent, sectionId: string) => {
         const { active, over } = event
         if (!processArea) return
 
         if (active.id !== over?.id) {
-            const departmentIndex = processArea.departments.findIndex(d => d.departmentId._id === departmentId)
-            if (departmentIndex === -1) return
+            const sectionIndex = processArea.sections.findIndex(d => d.sectionId._id === sectionId)
+            if (sectionIndex === -1) return
 
-            const department = processArea.departments[departmentIndex].departmentId
-            const oldIndex = department.asset.findIndex((e) => e.assetId._id === active.id)
-            const newIndex = department.asset.findIndex((e) => e.assetId._id === over?.id)
+            const section = processArea.sections[sectionIndex].sectionId
+            const oldIndex = section.asset.findIndex((e) => e.assetId._id === active.id)
+            const newIndex = section.asset.findIndex((e) => e.assetId._id === over?.id)
 
             // Optimistic update
             const newProcessArea = { ...processArea }
-            newProcessArea.departments[departmentIndex].departmentId.asset = arrayMove(department.asset, oldIndex, newIndex)
+            newProcessArea.sections[sectionIndex].sectionId.asset = arrayMove(section.asset, oldIndex, newIndex)
             setProcessArea(newProcessArea)
 
             // Server update
             try {
-                const assetList = newProcessArea.departments[departmentIndex].departmentId.asset.map((e, index) => ({
+                const assetList = newProcessArea.sections[sectionIndex].sectionId.asset.map((e, index) => ({
                     assetId: e.assetId._id,
                     order: index
                 }))
-                await updateProcessDepartmentAsset(departmentId, assetList)
+                await updateProcessSectionAsset(sectionId, assetList)
             } catch (error) {
                 console.error(error)
                 toast({
@@ -289,17 +289,17 @@ export function ProcessAreaDetail() {
                 </Card>
             </div>
 
-            {/* Department Management */}
+            {/* Section Management */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {processArea.departments.map(({ departmentId: department }) => (
-                    <Card key={department._id} className="flex flex-col">
+                {processArea.sections.map(({ sectionId: section }) => (
+                    <Card key={section._id} className="flex flex-col">
                         <CardHeader className="flex flex-row items-start justify-between pb-2">
                             <div>
-                                <CardTitle className="text-lg">{department.name}</CardTitle>
+                                <CardTitle className="text-lg">{section.name}</CardTitle>
                                 <Dialog>
                                     <DialogContent>
                                         <DialogHeader>
-                                            <DialogTitle>Edit Department</DialogTitle>
+                                            <DialogTitle>Edit Section</DialogTitle>
                                         </DialogHeader>
                                         {/* Simple edit form could go here, for now using placeholder logic */}
                                     </DialogContent>
@@ -310,8 +310,8 @@ export function ProcessAreaDetail() {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => {
-                                    setSelectedDepartment(department)
-                                    setIsDepartmentDialogOpen(true)
+                                    setSelectedSection(section)
+                                    setIsSectionDialogOpen(true)
                                 }}
                             >
                                 <Pencil className="h-4 w-4" />
@@ -321,19 +321,19 @@ export function ProcessAreaDetail() {
                             <DndContext
                                 sensors={sensors}
                                 collisionDetection={closestCenter}
-                                onDragEnd={(e) => handleDragEnd(e, department._id)}
+                                onDragEnd={(e) => handleDragEnd(e, section._id)}
                             >
                                 <SortableContext
-                                    items={department.asset.map(e => e.assetId._id)}
+                                    items={section.asset.map(e => e.assetId._id)}
                                     strategy={verticalListSortingStrategy}
                                 >
                                     <div className="space-y-2">
-                                        {department.asset.length === 0 && (
+                                        {section.asset.length === 0 && (
                                             <div className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
                                                 No asset
                                             </div>
                                         )}
-                                        {department.asset.map(({ assetId }) => (
+                                        {section.asset.map(({ assetId }) => (
                                             <SortableAsset key={assetId._id} id={assetId._id} asset={assetId} />
                                         ))}
                                     </div>
@@ -352,10 +352,10 @@ export function ProcessAreaDetail() {
                 onSuccess={() => fetchData(id!)}
             />
 
-            <UpdateDepartmentDialog
-                open={isDepartmentDialogOpen}
-                onOpenChange={setIsDepartmentDialogOpen}
-                department={selectedDepartment}
+            <UpdateSectionDialog
+                open={isSectionDialogOpen}
+                onOpenChange={setIsSectionDialogOpen}
+                section={selectedSection}
                 onSuccess={() => fetchData(id!)}
             />
         </div>
