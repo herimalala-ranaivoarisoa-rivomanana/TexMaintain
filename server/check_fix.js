@@ -3,7 +3,7 @@ const { ProductionLine } = require('./models/ProductionLine');
 const { Asset } = require('./models/Asset');
 const { Intervention } = require('./models/Intervention');
 const { Part } = require('./models/Part');
-const { ProductionSection } = require('./models/ProductionSection'); // The fix
+const { ProductionDepartment } = require('./models/ProductionDepartment'); // The fix
 require('dotenv').config();
 
 async function checkKPIs() {
@@ -14,7 +14,7 @@ async function checkKPIs() {
 
         // Simulate the aggregation logic from dashboardRoutes.js
         const productionLines = await ProductionLine.find().populate({
-            path: 'sections.sectionId',
+            path: 'departments.departmentId',
             populate: {
                 path: 'asset.assetId',
                 model: 'Asset'
@@ -24,7 +24,7 @@ async function checkKPIs() {
         console.log(`Found ${productionLines.length} lines.`);
 
         // If this runs without "Schema hasn't been registered" error, the fix works.
-        console.log('Successfully populated lines with sections and asset.');
+        console.log('Successfully populated lines with departments and asset.');
 
         process.exit(0);
     } catch (error) {

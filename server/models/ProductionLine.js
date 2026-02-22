@@ -15,10 +15,10 @@ const productionLineSchema = new mongoose.Schema({
     enum: ['active', 'inactive', 'maintenance'],
     default: 'active'
   },
-  sections: [{
-    sectionId: {
+  departments: [{
+    departmentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'ProductionSection'
+      ref: 'ProductionDepartment'
     },
     order: {
       type: Number,

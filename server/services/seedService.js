@@ -14,7 +14,7 @@ const { Electrician } = require('../models/Electrician.js');
 const { MaintenanceWorker } = require('../models/MaintenanceWorker.js');
 const { Machinist } = require('../models/Machinist.js');
 const { ProductionLine } = require('../models/ProductionLine.js');
-const { ProductionSection } = require('../models/ProductionSection.js');
+const { ProductionDepartment } = require('../models/ProductionDepartment.js');
 const { ProcessArea } = require('../models/ProcessArea.js');
 const { ProcessDepartment } = require('../models/ProcessDepartment.js');
 const { Factory } = require('../models/Factory.js');
@@ -36,7 +36,7 @@ class SeedService {
         SubCategory.deleteMany({}),
         Brand.deleteMany({}),
         ProductionLine.deleteMany({}),
-        ProductionSection.deleteMany({}),
+        ProductionDepartment.deleteMany({}),
         Mechanic.deleteMany({}),
         Electrician.deleteMany({}),
         MaintenanceWorker.deleteMany({}),
@@ -379,8 +379,8 @@ class SeedService {
       const categories = await Category.find();
       const types = await SubCategory.find();
       const brands = await Brand.find();
-      const sections = await ProductionSection.find().populate('productionLine');
-      console.log(`Available sections for assignment: ${sections.length}`);
+      const departments = await ProcessDepartment.countDocuments();
+      console.log(`Available departments for assignment: ${departments}`);
 
 
       if (categories.length === 0 || types.length === 0 || brands.length === 0) {
@@ -592,11 +592,13 @@ class SeedService {
         createdAsset.push(asset);
 
         if (assignedDept) {
+          const currentDept = await ProcessDepartment.findById(assignedDept._id).select('asset').lean();
+          const nextOrder = Array.isArray(currentDept?.asset) ? currentDept.asset.length : 0;
           await ProcessDepartment.findByIdAndUpdate(assignedDept._id, {
             $push: {
               asset: {
                 assetId: asset._id,
-                order: (assignedDept.asset?.length || 0) + 1,
+                order: nextOrder,
                 mtbf: asset.mtbf,
                 mttr: asset.mttr,
                 downTime: asset.downtime,
@@ -704,7 +706,7 @@ class SeedService {
 
             deptObjects.push({
               departmentId: department._id,
-              order: deptObjects.length + 1
+              order: deptObjects.length
             });
           }
 
@@ -2359,7 +2361,7 @@ class SeedService {
           },
           {
             title: 'Asset Modernization Phase 3',
-            description: 'Full automation of material handling between spinning and weaving sections.',
+            description: 'Full automation of material handling between spinning and weaving departments.',
             status: 'Planned',
             budget: 750000,
             startDate: new Date(Date.now() + 240 * 24 * 60 * 60 * 1000), // 8 months from now
@@ -2436,7 +2438,7 @@ class SeedService {
           },
           {
             title: 'Water Recycling Plant',
-            description: 'Construction of a new water recycling facility for the dyeing section.',
+            description: 'Construction of a new water recycling facility for the dyeing department.',
             status: 'Planned',
             budget: 850000,
             startDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),

@@ -36,11 +36,11 @@ async function test() {
 
         console.log(`Line Name: ${line.name}`);
 
-        if (line.sections) {
-            line.sections.forEach(section => {
-                console.log(`\nSection: ${section.sectionId.name}`);
-                if (section.sectionId.asset) {
-                    section.sectionId.asset.forEach(item => {
+        if (line.departments) {
+            line.departments.forEach(department => {
+                console.log(`\nDepartment: ${department.departmentId.name}`);
+                if (department.departmentId.asset) {
+                    department.departmentId.asset.forEach(item => {
                         console.log(`  - Asset ID: ${item.assetId._id}`);
                         console.log(`    Name: ${item.assetId.name}`);
                         console.log(`    Model: ${item.assetId.model}`);

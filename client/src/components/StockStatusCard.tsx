@@ -278,16 +278,9 @@ export function StockStatusCard({ partId, partName, defaultSupplier, onUpdate }:
                 {pendingOrders.filter(order => !['received', 'cancelled'].includes(order.status)).map((order) => {
                   const statusInfo = orderStatusLabels[order.status]
                   // Display references: prioritize array, fallback to single string
-                  const rawRefs = order.references && order.references.length > 0
+                  const displayRefs = order.references && order.references.length > 0
                     ? order.references
                     : (order.reference ? [order.reference] : []);
-
-                  // Sanitize references to avoid UI breaking with garbage values (e.g. long ++++++ strings)
-                  const displayRefs = rawRefs
-                    .map(r => String(r || '').trim())
-                    .filter(r => r.length > 0)
-                    .filter(r => !/^\++$/.test(r))
-                    .map(r => (r.length > 60 ? `${r.slice(0, 60)}…` : r));
 
                   return (
                     <div

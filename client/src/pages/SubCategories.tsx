@@ -55,10 +55,12 @@ const SubCategories = () => {
         getSubCategoryStatistics(),
         getCategories()
       ]);
-      setSubCategories(subCategoriesData);
-      setCategories(categoriesData);
+      setSubCategories(Array.isArray(subCategoriesData) ? subCategoriesData : []);
+      setCategories(Array.isArray(categoriesData) ? categoriesData : []);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setSubCategories([]);
+      setCategories([]);
       toast({
         title: 'Error',
         description: 'Failed to fetch sub-categories.',
@@ -307,7 +309,7 @@ const SubCategories = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map((category) => (
+                    {Array.isArray(categories) && categories.map((category) => (
                       <SelectItem key={category._id} value={category._id}>
                         {category.name}
                       </SelectItem>

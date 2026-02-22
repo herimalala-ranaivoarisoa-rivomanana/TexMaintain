@@ -162,8 +162,8 @@ TexMaintain/
    - Front uses `PUT` → back expects `PATCH`
 3. **AssetClasses API**
    - Front calls `'/asset-classes'` (no `/api`) → Vite proxy only handles `/api` → likely fails in dev
-4. **ProductionSections API**
-   - Front exposes API (`productionSections.ts`) → **no backend route found** (orphan)
+4. **ProductionDepartments API**
+   - Front exposes API (`productionDepartments.ts`) → **no backend route found** (orphan)
 5. **ProcessDepartments**
    - No factory filter → multi-tenant leak possible
 6. **Reports Routes**
@@ -253,7 +253,7 @@ TexMaintain/
 2. **Standardize factory filtering** (prefer `req.activeFactoryId` everywhere)
 3. **Add missing `requireUser` to reports routes**
 4. **Resolve AssetClasses endpoint path** (add `/api` prefix)
-5. **Decide on ProductionSections:** implement backend or remove frontend API
+5. **Decide on ProductionDepartments:** implement backend or remove frontend API
 6. **Review Personnel matricule uniqueness** if cross-factory duplicates needed
 7. **Add integration tests** for critical flows (status change, stock update, multi-tenant isolation)
 
@@ -284,25 +284,25 @@ Overall, the codebase is maintainable and follows good practices (services, midd
 
 ---
 
-## 15) ProductionSections — Model Exists, No Routes (Orphan)
+## 15) ProductionDepartments — Model Exists, No Routes (Orphan)
 
 ### **Model**
-- `server/models/ProductionSection.js` exists with fields:
+- `server/models/ProductionDepartment.js` exists with fields:
   - `name`, `description`, `status` (enum: active/inactive/maintenance)
   - `productionLine` (ObjectId ref: ProductionLine, required)
   - `asset[]` (array of `{assetId, order, mtbf, mttr, downTime, workingTime, TimeSinceInsertion, assignedDate}`)
   - Indexes on `name`, `productionLine`, `status`
 
 ### **Backend**
-- No `productionSectionsRoutes.js` found in `server/routes/`.
-- No route mounted in `server/server.js` for `/api/production-sections`.
-- However, `Asset` model includes `productionSection` field and asset list populates it (see `assetRoutes.js`).
+- No `productionDepartmentsRoutes.js` found in `server/routes/`.
+- No route mounted in `server/server.js` for `/api/production-departments`.
+- However, `Asset` model includes `productionDepartment` field and asset list populates it (see `assetRoutes.js`).
 
 ### **Frontend**
-- `client/src/api/productionSections.ts` exposes full CRUD API (`/api/production-sections/*`).
+- `client/src/api/productionDepartments.ts` exposes full CRUD API (`/api/production-departments/*`).
 - Since backend does not mount these routes, any frontend calls will return 404.
 
-**Conclusion:** ProductionSections is an **orphan module** — model exists, but API routes are missing. Either implement backend routes or remove frontend API client.
+**Conclusion:** ProductionDepartments is an **orphan module** — model exists, but API routes are missing. Either implement backend routes or remove frontend API client.
 
 ---
 
@@ -320,11 +320,11 @@ Overall, the codebase is maintainable and follows good practices (services, midd
 
 ---
 
-## 17) Asset Model References ProductionSection
+## 17) Asset Model References ProductionDepartment
 
-- Asset schema includes `productionSection` (ObjectId ref: ProductionSection).
-- Asset list endpoint populates `productionSection` name.
-- Since ProductionSection routes are missing, any UI trying to display/edit production sections will fail.
+- Asset schema includes `productionDepartment` (ObjectId ref: ProductionDepartment).
+- Asset list endpoint populates `productionDepartment` name.
+- Since ProductionDepartment routes are missing, any UI trying to display/edit production departments will fail.
 
 ---
 
@@ -341,13 +341,13 @@ Overall, the codebase is maintainable and follows good practices (services, midd
 - Seeding and settings
 
 ### **Identified Gaps**
-- ProductionSections: model exists, no routes → orphan
+- ProductionDepartments: model exists, no routes → orphan
 - AssetClasses endpoint path mismatch (proxy issue)
 - Reports routes missing `requireUser` middleware
 - Minor API misalignments (PUT vs PATCH, response shapes, field names)
 
 ### **Recommendations Recap**
-1. Implement or remove ProductionSections backend routes.
+1. Implement or remove ProductionDepartments backend routes.
 2. Fix AssetClasses endpoint path (`/api/asset-classes`).
 3. Add `requireUser` to reports routes.
 4. Align Categories/SubCategories APIs (PUT→PATCH, response shapes, categoryId field).

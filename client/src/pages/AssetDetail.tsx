@@ -38,6 +38,7 @@ interface AssetDetailData {
     }
   }
   status: string
+  statusMedia?: string[]
   location: string
   brand?: {
     _id: string
@@ -66,6 +67,7 @@ export function AssetDetail() {
   const [loading, setLoading] = useState(true)
   const [statusMetadata, setStatusMetadata] = useState<Record<string, StatusMetadata>>({})
   const [media, setMedia] = useState<Array<{ path: string; mimetype?: string; originalName?: string }>>([])
+  const [statusMedia, setStatusMedia] = useState<string[]>([])
   const { currentFactory } = useFactory()
 
   useEffect(() => {
@@ -78,7 +80,7 @@ export function AssetDetail() {
         ])
 
         setData(assetRes as any)
-        if (metadataRes && metadataRes.success) {
+        if (metadataRes?.statuses) {
           setStatusMetadata(metadataRes.statuses)
         }
 
@@ -92,6 +94,9 @@ export function AssetDetail() {
           }))
           .filter((f: any) => Boolean(f.path))
         setMedia(files)
+
+        const sm = Array.isArray((assetRes as any)?.statusMedia) ? (assetRes as any).statusMedia : []
+        setStatusMedia(sm.map((u: any) => String(u || '')).filter(Boolean))
       } catch (error) {
         console.error("Error fetching details:", error)
       } finally {
@@ -176,6 +181,29 @@ export function AssetDetail() {
       return { text: 'Invalid date', color: 'text-red-500' }
     }
   }
+
+  const combinedMedia = (() => {
+    const fromBreakdown = media || []
+    const fromStatus = (statusMedia || [])
+      .map((url) => {
+        const u = String(url || '')
+        const isVideo = u.toLowerCase().match(/\.(mp4|webm|ogg)$/)
+        return {
+          path: u,
+          mimetype: isVideo ? 'video/mp4' : 'image/jpeg',
+          originalName: ''
+        }
+      })
+      .filter((m) => Boolean(m.path))
+
+    const seen = new Set<string>()
+    return [...fromStatus, ...fromBreakdown].filter((m) => {
+      if (!m?.path) return false
+      if (seen.has(m.path)) return false
+      seen.add(m.path)
+      return true
+    })
+  })()
 
   return (
     <div className="space-y-6">
@@ -332,9 +360,9 @@ export function AssetDetail() {
                   {/* Media */}
                   <div className="border-t pt-4">
                     <h3 className="text-lg font-semibold mb-4">Media</h3>
-                    {media.length > 0 ? (
+                    {combinedMedia.length > 0 ? (
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {media.map((m) => (
+                        {combinedMedia.map((m) => (
                           <div key={m.path} className="rounded border bg-white overflow-hidden">
                             {String(m.mimetype || '').startsWith('image/') ? (
                               <img

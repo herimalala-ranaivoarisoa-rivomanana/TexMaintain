@@ -200,7 +200,37 @@ function ProcessAreas() {
     try {
       setLoading(true)
       const data = await getProcessAreas()
-      setProcessAreas(Array.isArray(data) ? data : [])
+      const normalized = Array.isArray(data)
+        ? data.map((area: any) => {
+            const departments = Array.isArray(area?.departments)
+              ? [...area.departments]
+                  .sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0))
+                  .map((d: any) => {
+                    const department = d?.departmentId
+                    const asset = Array.isArray(department?.asset)
+                      ? [...department.asset].sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0))
+                      : []
+
+                    return {
+                      ...d,
+                      departmentId: department
+                        ? {
+                            ...department,
+                            asset,
+                          }
+                        : department,
+                    }
+                  })
+              : []
+
+            return {
+              ...area,
+              departments,
+            }
+          })
+        : []
+
+      setProcessAreas(normalized)
     } catch (error) {
       console.error(error)
       toast({
@@ -250,7 +280,7 @@ function ProcessAreas() {
         name: newDepartmentName,
         description: newDepartmentDescription,
         processArea: selectedArea._id,
-        order: selectedArea.departments.length
+        order: (selectedArea.departments || []).length
       })
 
       toast({
@@ -420,7 +450,7 @@ function ProcessAreas() {
               </div>
 
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {area.departments.map(({ departmentId: department }) => (
+                {(area.departments || []).map(({ departmentId: department }) => (
                   <div key={department._id} className="border rounded-lg p-4 bg-card shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-center mb-3">
                       <div className="font-semibold">{department.name}</div>
@@ -444,16 +474,16 @@ function ProcessAreas() {
                       onDragEnd={(e) => handleDragEnd(e, department._id)}
                     >
                       <SortableContext
-                        items={department.asset.map(e => e.assetId._id)}
+                        items={(department.asset || []).map((e: any) => e.assetId?._id).filter(Boolean)}
                         strategy={verticalListSortingStrategy}
                       >
                         <div className="space-y-2 min-h-[50px]">
-                          {department.asset.length === 0 && (
+                          {(department.asset || []).length === 0 && (
                             <div className="text-xs text-muted-foreground text-center py-4 border-2 border-dashed rounded bg-muted/20">
                               No asset
                             </div>
                           )}
-                          {department.asset.map(({ assetId }) => (
+                          {(department.asset || []).map(({ assetId }: any) => (
                             <SortableAsset
                               key={assetId._id}
                               id={assetId._id}

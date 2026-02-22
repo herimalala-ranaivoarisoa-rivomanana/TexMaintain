@@ -199,7 +199,7 @@ router.post('/all', requireUser, requireRole('admin'), async (req, res) => {
       results.parts = { error: error.message };
     }
 
-    // Seed process areas (and sections, assigning asset)
+    // Seed process areas (and departments, assigning asset)
     try {
       results.productionLines = await SeedService.seedProductionLines();
       console.log('Process areas seeding completed');

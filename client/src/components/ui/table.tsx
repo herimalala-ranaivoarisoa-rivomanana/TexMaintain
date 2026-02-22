@@ -18,16 +18,16 @@ const Table = React.forwardRef<
 Table.displayName = "Table"
 
 const TableHeader = React.forwardRef<
-  HTMLTableSectionElement,
-  React.HTMLAttributes<HTMLTableSectionElement>
+  HTMLTableDepartmentElement,
+  React.HTMLAttributes<HTMLTableDepartmentElement>
 >(({ className, ...props }, ref) => (
   <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 
 const TableBody = React.forwardRef<
-  HTMLTableSectionElement,
-  React.HTMLAttributes<HTMLTableSectionElement>
+  HTMLTableDepartmentElement,
+  React.HTMLAttributes<HTMLTableDepartmentElement>
 >(({ className, ...props }, ref) => (
   <tbody
     ref={ref}
@@ -38,8 +38,8 @@ const TableBody = React.forwardRef<
 TableBody.displayName = "TableBody"
 
 const TableFooter = React.forwardRef<
-  HTMLTableSectionElement,
-  React.HTMLAttributes<HTMLTableSectionElement>
+  HTMLTableDepartmentElement,
+  React.HTMLAttributes<HTMLTableDepartmentElement>
 >(({ className, ...props }, ref) => (
   <tfoot
     ref={ref}

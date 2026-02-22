@@ -43,7 +43,7 @@ const procurementRoutes = require("./routes/procurementRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const personnelRoutes = require("./routes/personnelRoutes");
 const factoriesRoutes = require("./routes/factoriesRoutes");
-const productionSectionsRoutes = require("./routes/productionSectionsRoutes");
+const productionDepartmentsRoutes = require("./routes/productionDepartmentsRoutes");
 
 const { connectDB } = require("./config/database");
 const backfillInterventions = require("./backfill_interventions_v2");
@@ -171,7 +171,7 @@ app.use('/api/procurement', procurementRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/personnel', personnelRoutes);
 app.use('/api/factories', factoriesRoutes);
-app.use('/api/production-sections', productionSectionsRoutes);
+app.use('/api/production-departments', productionDepartmentsRoutes);
 
 // If no routes handled the request, it's a 404
 app.use((req, res, next) => {

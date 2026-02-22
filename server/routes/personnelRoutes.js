@@ -8,7 +8,7 @@ const router = express.Router();
 // GET /api/personnel - Get all personnel (filtered by factory)
 router.get('/', requireUser, async (req, res) => {
     try {
-        const factoryId = req.header('x-factory-id');
+        const factoryId = req.activeFactoryId || req.header('x-factory-id');
         if (!factoryId) {
             return res.status(400).json({ message: 'Factory Header Missing' });
         }
@@ -64,7 +64,7 @@ router.get('/', requireUser, async (req, res) => {
 // GET /api/personnel/:id
 router.get('/:id', requireUser, async (req, res) => {
     try {
-        const factoryId = req.header('x-factory-id');
+        const factoryId = req.activeFactoryId || req.header('x-factory-id');
         const query = { _id: req.params.id };
         if (factoryId) {
             query.factory = new mongoose.Types.ObjectId(factoryId);
@@ -84,7 +84,7 @@ router.get('/:id', requireUser, async (req, res) => {
 // POST /api/personnel - Create new personnel
 router.post('/', requireUser, requireRole(['admin', 'hr', 'maintenance_manager']), async (req, res) => {
     try {
-        const factoryId = req.header('x-factory-id');
+        const factoryId = req.activeFactoryId || req.header('x-factory-id');
         if (!factoryId) {
             return res.status(400).json({ message: 'Factory Header Missing' });
         }
@@ -132,7 +132,7 @@ router.post('/', requireUser, requireRole(['admin', 'hr', 'maintenance_manager']
 // PUT /api/personnel/:id
 router.put('/:id', requireUser, requireRole(['admin', 'hr', 'maintenance_manager']), async (req, res) => {
     try {
-        const factoryId = req.header('x-factory-id');
+        const factoryId = req.activeFactoryId || req.header('x-factory-id');
         const existing = await Personnel.findOne({
             _id: req.params.id,
             ...(factoryId && { factory: new mongoose.Types.ObjectId(factoryId) })
@@ -178,7 +178,7 @@ router.put('/:id', requireUser, requireRole(['admin', 'hr', 'maintenance_manager
 // DELETE /api/personnel/:id (Soft delete)
 router.delete('/:id', requireUser, requireRole(['admin', 'hr', 'maintenance_manager']), async (req, res) => {
     try {
-        const factoryId = req.header('x-factory-id');
+        const factoryId = req.activeFactoryId || req.header('x-factory-id');
         const query = { _id: req.params.id };
         if (factoryId) {
             query.factory = new mongoose.Types.ObjectId(factoryId);

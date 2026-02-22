@@ -106,7 +106,7 @@ export function AssetPartsList({ assetId, type = 'part' }: AssetPartsListProps) 
     } catch (error: any) {
       console.error('❌ Error fetching asset parts:', error)
       toast({
-        title: 'Erreur',
+        title: 'Error',
         description: error.response?.data?.message || 'Unable to load asset parts',
         variant: 'destructive'
       })
@@ -120,20 +120,20 @@ export function AssetPartsList({ assetId, type = 'part' }: AssetPartsListProps) 
   }, [assetId, type])
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette association ?')) return
+    if (!confirm('Are you sure you want to delete this association?')) return
 
     try {
       await deleteAssetPart(id)
       toast({
-        title: 'Supprimé',
-        description: 'Association supprimée avec succès'
+        title: 'Deleted',
+        description: 'Association deleted successfully'
       })
       fetchParts()
     } catch (error: any) {
       console.error('Error deleting asset part:', error)
       toast({
-        title: 'Erreur',
-        description: error.response?.data?.message || 'Impossible de supprimer',
+        title: 'Error',
+        description: error.response?.data?.message || 'Unable to delete',
         variant: 'destructive'
       })
     }
@@ -412,7 +412,7 @@ export function AssetPartsList({ assetId, type = 'part' }: AssetPartsListProps) 
                               Last replacement
                             </p>
                             <p className="text-sm">
-                              {new Date(part.lastReplacementDate).toLocaleDateString('fr-FR')}
+                              {new Date(part.lastReplacementDate).toLocaleDateString('en-US')}
                             </p>
                           </div>
                           {replacementStatus && (

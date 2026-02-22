@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const productionSectionSchema = new mongoose.Schema({
+const productionDepartmentSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
@@ -50,16 +50,16 @@ const productionSectionSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt field before saving
-productionSectionSchema.pre('save', function (next) {
+productionDepartmentSchema.pre('save', function (next) {
     this.updatedAt = Date.now();
     next();
 });
 
 // Index for better query performance
-productionSectionSchema.index({ name: 1 });
-productionSectionSchema.index({ productionLine: 1 });
-productionSectionSchema.index({ status: 1 });
+productionDepartmentSchema.index({ name: 1 });
+productionDepartmentSchema.index({ productionLine: 1 });
+productionDepartmentSchema.index({ status: 1 });
 
-const ProductionSection = mongoose.model('ProductionSection', productionSectionSchema);
+const ProductionDepartment = mongoose.model('ProductionDepartment', productionDepartmentSchema);
 
-module.exports = { ProductionSection };
+module.exports = { ProductionDepartment };

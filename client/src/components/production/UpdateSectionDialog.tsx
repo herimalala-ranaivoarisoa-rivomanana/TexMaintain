@@ -3,25 +3,25 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { updateProductionSection } from "@/api/productionSections"
+import { updateProductionDepartment } from "@/api/productionDepartments"
 import { useToast } from "@/hooks/useToast"
 import { Loader2 } from "lucide-react"
 
-interface SectionData {
+interface DepartmentData {
     name: string
     code: string
 }
 
-interface UpdateSectionDialogProps {
+interface UpdateDepartmentDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    sectionId: string
-    currentData?: SectionData
+    departmentId: string
+    currentData?: DepartmentData
     onSuccess: () => void
 }
 
-export function UpdateSectionDialog({ open, onOpenChange, sectionId, currentData, onSuccess }: UpdateSectionDialogProps) {
-    const [data, setData] = useState<SectionData>({
+export function UpdateDepartmentDialog({ open, onOpenChange, departmentId, currentData, onSuccess }: UpdateDepartmentDialogProps) {
+    const [data, setData] = useState<DepartmentData>({
         name: "",
         code: ""
     })
@@ -37,7 +37,7 @@ export function UpdateSectionDialog({ open, onOpenChange, sectionId, currentData
         }
     }, [currentData, open])
 
-    const handleChange = (field: keyof SectionData, value: string) => {
+    const handleChange = (field: keyof DepartmentData, value: string) => {
         setData(prev => ({ ...prev, [field]: value }))
     }
 
@@ -45,18 +45,18 @@ export function UpdateSectionDialog({ open, onOpenChange, sectionId, currentData
         e.preventDefault()
         setLoading(true)
         try {
-            await updateProductionSection(sectionId, data)
+            await updateProductionDepartment(departmentId, data)
             toast({
                 title: "Success",
-                description: "Section updated successfully",
+                description: "Department updated successfully",
             })
             onSuccess()
             onOpenChange(false)
         } catch (error) {
-            console.error('Error updating section:', error)
+            console.error('Error updating department:', error)
             toast({
                 title: "Error",
-                description: "Failed to update section",
+                description: "Failed to update department",
                 variant: "destructive",
             })
         } finally {
@@ -68,9 +68,9 @@ export function UpdateSectionDialog({ open, onOpenChange, sectionId, currentData
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Update Section Details</DialogTitle>
+                    <DialogTitle>Update Department Details</DialogTitle>
                     <DialogDescription>
-                        Update the name and code for this production section.
+                        Update the name and code for this production department.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">

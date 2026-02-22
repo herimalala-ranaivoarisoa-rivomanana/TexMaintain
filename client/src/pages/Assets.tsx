@@ -37,15 +37,14 @@ import {
   changeAssetStatus,
   getStatusMetadata,
   Asset,
-  ASSET_STATUSES,
-  getAssetModels
+  ASSET_STATUSES
 } from "@/api/assets" // New Import
 import { getBrands } from "@/api/brands"
 import { getMachinists } from "@/api/machinists"
 import { getMechanics } from "@/api/mechanics"
 import { getElectricians } from "@/api/electricians"
 import { getMaintenanceWorkers } from "@/api/maintenanceWorkers"
-import { getBreakdownMediaByAsset, uploadBreakdownMedia } from "@/api/breakdownMedia"
+import { uploadBreakdownMedia } from "@/api/breakdownMedia"
 import { getCategories, Category } from "@/api/categories" // New Import
 import { getSubCategories, SubCategory } from "@/api/subCategories" // New Import
 import { getAssetClasses, AssetClass } from "@/api/assetClasses" // New Import
@@ -74,9 +73,6 @@ export function Assets() {
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]) // Renamed from types
   const [assetClasses, setAssetClasses] = useState<AssetClass[]>([]) // New
   const [brands, setBrands] = useState<{ _id: string; name: string }[]>([])
-  const [modelOptions, setModelOptions] = useState<string[]>([])
-  const [modelMode, setModelMode] = useState<'select' | 'custom'>('select')
-  const [loadingModels, setLoadingModels] = useState(false)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [searchParams] = useSearchParams()
@@ -137,8 +133,6 @@ export function Assets() {
   const [breakdownDescription, setBreakdownDescription] = useState<string>("")
   const [breakdownMedia, setBreakdownMedia] = useState<File[]>([])
   const [breakdownMediaPreviews, setBreakdownMediaPreviews] = useState<string[]>([])
-  const [existingMedia, setExistingMedia] = useState<Array<{ path: string; mimetype?: string; originalName?: string }>>([])
-  const [loadingExistingMedia, setLoadingExistingMedia] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   const fetchAssets = async () => {
@@ -202,8 +196,8 @@ export function Assets() {
           getStatusMetadata()
         ])
         setCategories(categoriesData.categories || categoriesData)
-        setSubCategories(subCategoriesData)
-        setAssetClasses(assetClassesData)
+        setSubCategories(subCategoriesData.subCategories || subCategoriesData)
+        setAssetClasses(assetClassesData.assetClasses || assetClassesData)
         setBrands(brandsData.brands || [])
         setMachinists(machinistsData.machinists || [])
         setMechanics(mechanicsData.mechanics || [])
@@ -218,44 +212,9 @@ export function Assets() {
       }
     }
     fetchData()
-  }, [])
+  }, [currentFactory])
 
-  useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        if (!form.category || !form.subCategory) {
-          setModelOptions([])
-          return
-        }
 
-        setLoadingModels(true)
-
-        const params = {
-          category: form.category,
-          subCategory: form.subCategory,
-          brand: form.brand || undefined
-        }
-
-        console.log('Fetching asset models with params:', params)
-        const res = await getAssetModels(params)
-        console.log('Asset models response:', res)
-        setModelOptions(res.models || [])
-      } catch (error: any) {
-        console.error('Error fetching asset models:', error)
-        toast({
-          title: 'Error',
-          description: error?.response?.data?.message || error?.message || 'Failed to load models',
-          variant: 'destructive'
-        })
-        setModelOptions([])
-      } finally {
-        setLoadingModels(false)
-      }
-
-    }
-
-    fetchModels()
-  }, [form.category, form.subCategory, form.brand])
 
   const getStatusIcon = (status: string) => {
     // If metadata has icon name, we could dynamically map it, 
@@ -321,11 +280,10 @@ export function Assets() {
     setBreakdownDescription("")
     setBreakdownMedia([])
     setBreakdownMediaPreviews([])
-    setExistingMedia([])
     setIsDialogOpen(true)
   }
 
-  const openEditDialog = async (item: Asset) => {
+  const openEditDialog = (item: Asset) => {
     setEditingItem(item)
     setForm({
       category: item.category?._id || "",
@@ -371,26 +329,6 @@ export function Assets() {
 
     setBreakdownMedia([])
     setBreakdownMediaPreviews([])
-
-    try {
-      setLoadingExistingMedia(true)
-      const res = await getBreakdownMediaByAsset(item._id)
-      const list = Array.isArray((res as any)?.breakdownMedia) ? (res as any).breakdownMedia : []
-      const files = list
-        .flatMap((bm: any) => Array.isArray(bm?.files) ? bm.files : [])
-        .map((f: any) => ({
-          path: String(f?.path || ''),
-          mimetype: f?.mimetype,
-          originalName: f?.originalName || f?.filename
-        }))
-        .filter((f: any) => Boolean(f.path))
-      setExistingMedia(files)
-    } catch (e) {
-      setExistingMedia([])
-    } finally {
-      setLoadingExistingMedia(false)
-    }
-
     setIsDialogOpen(true)
   }
 
@@ -484,30 +422,12 @@ export function Assets() {
 
     try {
       setIsSaving(true)
-      const emptyToUndefined = (v: any) => (typeof v === 'string' && v.trim() === '' ? undefined : v)
-
-      const assetData: any = {
-        // Required fields
-        category: form.category,
-        subCategory: form.subCategory,
-        location: (form.location && form.location.trim() !== '' ? form.location : 'Antsirabe-1'),
-
-        // Optional fields (only those accepted by backend assetSchema)
-        status: emptyToUndefined(form.status),
-        name: emptyToUndefined(form.name),
-        code: emptyToUndefined(form.code),
-        assetClass: emptyToUndefined(form.assetClass),
-        manufacturer: emptyToUndefined(form.manufacturer),
-        model: emptyToUndefined(form.model),
-        serialNumber: emptyToUndefined(form.serialNumber),
-        chipNumber: emptyToUndefined(form.code),
-        brand: emptyToUndefined(form.brand),
-        acquisitionDate: emptyToUndefined(form.acquisitionDate),
-        lastMaintenance: emptyToUndefined(form.lastMaintenance),
-        nextMaintenance: emptyToUndefined(form.nextMaintenance)
+      const assetData = {
+        ...form,
+        subCategory: form.subCategory, // Ensure mapping
+        assetClass: form.assetClass,
+        // Removed type mapping as it should be subCategory
       }
-
-      console.log('Saving asset payload:', assetData)
 
       if (editingItem) {
         const prev = assets
@@ -650,12 +570,7 @@ export function Assets() {
       setIsDialogOpen(false)
     } catch (error) {
       console.error('Save asset error:', error)
-      const err: any = error
-      toast({
-        title: "Error",
-        description: err?.response?.data?.message || err?.message || "Failed to save asset",
-        variant: "destructive"
-      })
+      toast({ title: "Error", description: "Failed to save asset", variant: "destructive" })
     }
     finally {
       setIsSaving(false)
@@ -984,11 +899,11 @@ export function Assets() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-slate-500">Time Since Acquisition</p>
-                  <p className="font-semibold text-slate-900">{formatDays(item.timeSinceAcquisition ?? 0)}</p>
+                  <p className="font-semibold text-slate-900">{formatDays(item.timeSinceAcquisition)}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">Operating Time</p>
-                  <p className="font-semibold text-slate-900">{formatTime(item.operatingTime ?? 0)}</p>
+                  <p className="font-semibold text-slate-900">{formatTime(item.operatingTime)}</p>
                 </div>
               </div>
 
@@ -1096,10 +1011,7 @@ export function Assets() {
           <div className="grid gap-4 py-4 overflow-y-auto flex-1 pr-2">
             <div className="grid gap-2">
               <Label htmlFor="category">Category</Label>
-              <Select value={form.category} onValueChange={(value) => {
-                setForm({ ...form, category: value, subCategory: "", model: "" })
-                setModelMode('select')
-              }}>
+              <Select value={form.category} onValueChange={(value) => setForm({ ...form, category: value, subCategory: "" })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -1114,10 +1026,7 @@ export function Assets() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="subCategory">Sub-Category</Label>
-              <Select value={form.subCategory} onValueChange={(value) => {
-                setForm({ ...form, subCategory: value, model: "" })
-                setModelMode('select')
-              }}>
+              <Select value={form.subCategory} onValueChange={(value) => setForm({ ...form, subCategory: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select sub-category" />
                 </SelectTrigger>
@@ -1413,11 +1322,20 @@ export function Assets() {
               <Input id="location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Enter location" />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="model">Model</Label>
+              <Input id="model" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="Enter model" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="serialNumber">Serial Number</Label>
+              <Input id="serialNumber" value={form.serialNumber} onChange={(e) => setForm({ ...form, serialNumber: e.target.value })} placeholder="Enter serial number" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="code">Chip Number</Label>
+              <Input id="code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="Enter chip number" />
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="brand">Brand</Label>
-              <Select value={form.brand} onValueChange={(value) => {
-                setForm({ ...form, brand: value, model: "" })
-                setModelMode('select')
-              }}>
+              <Select value={form.brand} onValueChange={(value) => setForm({ ...form, brand: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select brand" />
                 </SelectTrigger>
@@ -1429,69 +1347,6 @@ export function Assets() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="model">Model</Label>
-              {modelMode === 'custom' ? (
-                <div className="grid gap-2">
-                  <Input
-                    id="model"
-                    value={form.model}
-                    onChange={(e) => setForm({ ...form, model: e.target.value })}
-                    placeholder="Enter model"
-                  />
-                  <Button type="button" variant="outline" onClick={() => {
-                    setModelMode('select')
-                    setForm({ ...form, model: "" })
-                  }}>
-                    Back to list
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid gap-2">
-                  <Select
-                    value={form.model || "__none__"}
-                    onValueChange={(value) => {
-                      if (value === '__custom__') {
-                        setModelMode('custom')
-                        setForm({ ...form, model: "" })
-                        return
-                      }
-                      if (value === '__none__') {
-                        setForm({ ...form, model: "" })
-                        return
-                      }
-                      setForm({ ...form, model: value })
-                    }}
-                    disabled={!form.category || !form.subCategory}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={!form.category || !form.subCategory ? 'Select category and sub-category first' : 'Select model'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None</SelectItem>
-                      {loadingModels && (
-                        <SelectItem value="__loading__" disabled>Loading models...</SelectItem>
-                      )}
-                      {modelOptions.length === 0 && (
-                        <SelectItem value="__empty__" disabled>No models found</SelectItem>
-                      )}
-                      {modelOptions.map((m) => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
-                      ))}
-                      <SelectItem value="__custom__">Other...</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="serialNumber">Serial Number</Label>
-              <Input id="serialNumber" value={form.serialNumber} onChange={(e) => setForm({ ...form, serialNumber: e.target.value })} placeholder="Enter serial number" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="code">Chip Number</Label>
-              <Input id="code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="Enter chip number" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="acquisitionDate">Acquisition Date</Label>
@@ -1525,40 +1380,6 @@ export function Assets() {
                     onChange={(e) => handleMediaUpload(e.target.files)}
                   />
                 </div>
-
-                {/* Existing Media (already uploaded) */}
-                {editingItem && (
-                  <div className="grid gap-2">
-                    <p className="text-xs text-slate-500">
-                      Existing media
-                    </p>
-                    {loadingExistingMedia ? (
-                      <p className="text-xs text-slate-500 italic">Loading existing media...</p>
-                    ) : existingMedia.length > 0 ? (
-                      <div className="grid grid-cols-3 gap-2">
-                        {existingMedia.map((m) => (
-                          <div key={m.path} className="relative">
-                            {String(m.mimetype || '').startsWith('image/') ? (
-                              <img
-                                src={m.path}
-                                alt={m.originalName || 'Media'}
-                                className="w-full h-24 object-cover rounded border"
-                              />
-                            ) : (
-                              <video
-                                src={m.path}
-                                className="w-full h-24 object-cover rounded border"
-                                controls
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-500 italic">No existing media</p>
-                    )}
-                  </div>
-                )}
 
                 {/* Media Previews */}
                 {breakdownMediaPreviews.length > 0 && (
@@ -1601,7 +1422,7 @@ export function Assets() {
               </div>
             </div>
 
-            {/* QR Code Section - Only show when editing existing asset */}
+            {/* QR Code Department - Only show when editing existing asset */}
             {editingItem && (
               <div className="col-span-1 md:col-span-2 border-t pt-4 mt-2">
                 <Label className="mb-2 block">Asset QR Code</Label>

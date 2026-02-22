@@ -4,8 +4,7 @@ import JSONbig from 'json-bigint';
 
 
 const localApi = axios.create({
-  baseURL: (import.meta as any).env?.VITE_API_URL?.trim?.() || '',
-  timeout: Number((import.meta as any).env?.VITE_API_TIMEOUT_MS) || 30000,
+  baseURL: 'http://localhost:3000',
   headers: {
     'Content-Type': 'application/json',
   },

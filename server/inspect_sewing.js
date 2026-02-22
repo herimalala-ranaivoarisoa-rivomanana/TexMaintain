@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 const { Asset } = require('./models/Asset');
-const { ProductionSection } = require('./models/ProductionSection');
+const { ProductionDepartment } = require('./models/ProductionDepartment');
 
 const inspect = async () => {
     try {
@@ -12,13 +12,13 @@ const inspect = async () => {
         const asset = await Asset.findOne();
         console.log('Sample Asset:', JSON.stringify(asset, null, 2));
 
-        const section = await ProductionSection.findOne({ asset: { $exists: true, $not: { $size: 0 } } });
-        if (section) {
-            console.log('Sample Section with Asset:', JSON.stringify(section, null, 2));
+        const department = await ProductionDepartment.findOne({ asset: { $exists: true, $not: { $size: 0 } } });
+        if (department) {
+            console.log('Sample Department with Asset:', JSON.stringify(department, null, 2));
         } else {
-            console.log('No section found with asset.');
-            const anySection = await ProductionSection.findOne();
-            console.log('Sample Empty Section:', JSON.stringify(anySection, null, 2));
+            console.log('No department found with asset.');
+            const anyDepartment = await ProductionDepartment.findOne();
+            console.log('Sample Empty Department:', JSON.stringify(anyDepartment, null, 2));
         }
 
         process.exit(0);

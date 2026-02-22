@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 const { Asset } = require('./models/Asset');
-const { ProductionSection } = require('./models/ProductionSection');
+const { ProductionDepartment } = require('./models/ProductionDepartment');
 const { ProductionLine } = require('./models/ProductionLine');
 
 const verify = async () => {
@@ -11,19 +11,19 @@ const verify = async () => {
         console.log('Connected to DB');
 
         const asset = await Asset.find().lean();
-        const sections = await ProductionSection.find().populate('productionLine').lean();
+        const departments = await ProductionDepartment.find().populate('productionLine').lean();
 
         console.log(`Total Asset: ${asset.length}`);
-        console.log(`Total Sections: ${sections.length}`);
+        console.log(`Total Departments: ${departments.length}`);
 
         let orphanCount = 0;
         const orphans = [];
 
-        // Build a set of all asset IDs that are in sections
+        // Build a set of all asset IDs that are in departments
         const associatedAssetIds = new Set();
-        sections.forEach(section => {
-            if (section.asset) {
-                section.asset.forEach(item => {
+        departments.forEach(department => {
+            if (department.asset) {
+                department.asset.forEach(item => {
                     if (item.assetId) {
                         associatedAssetIds.add(item.assetId.toString());
                     }
@@ -31,7 +31,7 @@ const verify = async () => {
             }
         });
 
-        console.log(`Asset referenced in Sections: ${associatedAssetIds.size}`);
+        console.log(`Asset referenced in Departments: ${associatedAssetIds.size}`);
 
         asset.forEach(eq => {
             if (!associatedAssetIds.has(eq._id.toString())) {
@@ -41,9 +41,9 @@ const verify = async () => {
         });
 
         if (orphanCount === 0) {
-            console.log('✅ SUCCESS: All asset is associated with a section.');
+            console.log('✅ SUCCESS: All asset is associated with a department.');
         } else {
-            console.log(`❌ FAILURE: ${orphanCount} asset are NOT associated with any section.`);
+            console.log(`❌ FAILURE: ${orphanCount} asset are NOT associated with any department.`);
             console.log('Orphans:', orphans.slice(0, 5)); // Show first 5
         }
 

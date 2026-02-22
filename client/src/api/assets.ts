@@ -9,7 +9,6 @@ export const ASSET_STATUSES = {
   IN_PRODUCTION: 'in_production',
   SCHEDULED_MAINTENANCE: 'scheduled_maintenance',
   UNDER_REPAIR: 'under_repair',
-  IN_WORKSHOP: 'in_workshop',
   BREAKDOWN: 'breakdown',
   OFFLINE: 'offline',
   SCRAPPED: 'scrapped',
@@ -39,7 +38,7 @@ export interface Asset {
   serialNumber?: string;
   brand?: { _id: string; name: string };
   productionLine?: { _id: string; name: string };
-  productionSection?: { _id: string; name: string };
+  productionDepartment?: { _id: string; name: string };
   mtbf: number;
   mttr: number;
   availability: number;
@@ -112,32 +111,18 @@ export const getAssets = async (query: AssetQuery): Promise<AssetsResponse> => {
   return response.data;
 };
 
-export const getAssetModels = async (params?: { category?: string; subCategory?: string; assetClass?: string; brand?: string }): Promise<{ success: boolean; models: string[] }> => {
-  const response = await api.get('/api/assets/models', { params });
-  return response.data;
-};
-
 export const getAsset = async (id: string): Promise<Asset> => {
   const response = await api.get(`/api/assets/${id}`);
   return response.data.asset || response.data; // Backend returns { asset: ... }
 };
 
 export const createAsset = async (data: CreateAssetData): Promise<{ success: boolean; asset: Asset; duplicatedPartsCount?: number; message?: string }> => {
-  const payload: any = { ...data };
-  // Backend uses `chipNumber` field; UI historically used `code`.
-  if (payload.code && !payload.chipNumber) {
-    payload.chipNumber = payload.code;
-  }
-  const response = await api.post('/api/assets', payload);
+  const response = await api.post('/api/assets', data);
   return response.data; // Backend returns { success, asset, duplicatedPartsCount, message }
 };
 
 export const updateAsset = async (id: string, data: Partial<CreateAssetData>): Promise<{ success: boolean; asset: Asset }> => {
-  const payload: any = { ...data };
-  if (payload.code && !payload.chipNumber) {
-    payload.chipNumber = payload.code;
-  }
-  const response = await api.patch(`/api/assets/${id}`, payload); // Backend uses PATCH, not PUT
+  const response = await api.patch(`/api/assets/${id}`, data); // Backend uses PATCH, not PUT
   return response.data; // Backend returns { success, asset }
 };
 
@@ -146,20 +131,26 @@ export const deleteAsset = async (id: string): Promise<void> => {
 };
 
 export const changeAssetStatus = async (id: string, data: any): Promise<any> => {
-  // Backend expects JSON body (not multipart). If you need file uploads,
-  // upload them separately and send their URLs/paths in `media`.
-  if (data?.mediaFiles && Array.isArray(data.mediaFiles) && data.mediaFiles.length > 0) {
-    throw new Error('Direct file upload is not supported by /api/assets/:id/change-status. Upload media first, then send `media` URLs.');
-  }
+  const formData = new FormData();
 
-  const payload: any = {};
-  Object.keys(data || {}).forEach(key => {
-    if (data[key] === undefined || data[key] === null) return;
-    if (key === 'mediaFiles') return;
-    payload[key] = data[key];
+  // Append fields
+  Object.keys(data).forEach(key => {
+    if (key === 'mediaFiles' && Array.isArray(data[key])) {
+      data[key].forEach((file: File) => {
+        formData.append('media', file);
+      });
+    } else if (key === 'personnel' || key === 'userLocation') {
+      formData.append(key, JSON.stringify(data[key]));
+    } else if (data[key] !== undefined && data[key] !== null && key !== 'mediaFiles') {
+      formData.append(key, data[key]);
+    }
   });
 
-  const response = await api.post(`/api/assets/${id}/change-status`, payload);
+  const response = await api.post(`/api/assets/${id}/change-status`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return response.data;
 };
 

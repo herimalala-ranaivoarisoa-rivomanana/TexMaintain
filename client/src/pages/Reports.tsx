@@ -190,7 +190,7 @@ export function Reports() {
         </Card>
       </div>
 
-      {/* Main Analysis Section */}
+      {/* Main Analysis Department */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Monthly Maintenance Costs Chart */}

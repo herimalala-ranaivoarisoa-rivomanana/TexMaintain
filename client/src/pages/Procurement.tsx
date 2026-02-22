@@ -33,14 +33,12 @@ export function Procurement() {
     expectedDate: '',
     notes: ''
   })
-  const [newRequestReferences, setNewRequestReferences] = useState<string[]>([])
 
   // View Order State
   const [selectedOrder, setSelectedOrder] = useState<ProcurementOrder | null>(null)
   const [isViewOrderOpen, setIsViewOrderOpen] = useState(false)
   const [splitQuantity, setSplitQuantity] = useState<number>(0)
   const [reference, setReference] = useState("")
-  const [references, setReferences] = useState<string[]>([])
 
   const fetchData = async () => {
     try {
@@ -72,15 +70,12 @@ export function Procurement() {
 
   const handleCreateRequest = async () => {
     try {
-      const parsedReferences = (newRequestReferences || []).map(r => String(r || '').trim()).filter(Boolean)
-
       await createProcurementOrder({
         partId: requestData.partId,
         quantity: Number(requestData.quantity),
         supplier: requestData.supplier,
         expectedDate: requestData.expectedDate,
-        notes: requestData.notes,
-        references: parsedReferences.length > 0 ? parsedReferences : undefined
+        notes: requestData.notes
       })
 
       toast({
@@ -95,7 +90,6 @@ export function Procurement() {
         expectedDate: '',
         notes: ''
       })
-      setNewRequestReferences([])
       fetchData() // Refresh list
     } catch (error) {
       toast({
@@ -109,12 +103,9 @@ export function Procurement() {
   const handleUpdateStatus = async (newStatus: string) => {
     if (!selectedOrder) return
     try {
-      const parsedReferences = (references || []).map(r => String(r || '').trim()).filter(Boolean)
-
       await updateOrderStatus(selectedOrder._id, selectedOrder.partId, newStatus, {
         quantity: splitQuantity,
-        reference: reference,
-        references: parsedReferences.length > 0 ? parsedReferences : undefined
+        reference: reference
       })
       toast({
         title: "Success",
@@ -145,10 +136,6 @@ export function Procurement() {
     setSelectedOrder(order)
     setSplitQuantity(order.quantity)
     setReference(order.reference || "")
-    const refs = (order.references && order.references.length > 0)
-      ? order.references
-      : (order.reference ? [order.reference] : [])
-    setReferences(refs)
     setIsViewOrderOpen(true)
   }
 
@@ -265,43 +252,6 @@ export function Procurement() {
                   placeholder="Optional notes..."
                 />
               </div>
-
-              <div className="grid gap-2">
-                <Label>Document References</Label>
-                <div className="grid gap-2">
-                  {newRequestReferences.map((ref, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <Input
-                        value={ref}
-                        onChange={(e) => {
-                          const next = [...newRequestReferences]
-                          next[idx] = e.target.value
-                          setNewRequestReferences(next)
-                        }}
-                        placeholder="e.g. BL-123"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          const next = newRequestReferences.filter((_, i) => i !== idx)
-                          setNewRequestReferences(next)
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setNewRequestReferences([...newRequestReferences, ""])}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add reference
-                  </Button>
-                </div>
-              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsNewRequestOpen(false)}>Cancel</Button>
@@ -386,46 +336,6 @@ export function Procurement() {
                     {splitQuantity < selectedOrder.quantity && (
                       <span className="text-[10px] text-orange-600 font-medium">Splitting order (Remaining: {selectedOrder.quantity - splitQuantity})</span>
                     )}
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-xs text-slate-500">Document References (multiple)</Label>
-                  <div className="grid gap-2 mt-1">
-                    {references.map((ref, idx) => (
-                      <div key={idx} className="flex gap-2">
-                        <Input
-                          value={ref}
-                          onChange={(e) => {
-                            const next = [...references]
-                            next[idx] = e.target.value
-                            setReferences(next)
-                          }}
-                          placeholder="e.g. BL-123"
-                          className="h-8"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            const next = references.filter((_, i) => i !== idx)
-                            setReferences(next)
-                          }}
-                          className="h-8"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setReferences([...references, ""])}
-                      className="h-8"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add reference
-                    </Button>
                   </div>
                 </div>
 

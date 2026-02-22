@@ -58,21 +58,21 @@
 
 ---
 
-## 5) ProductionSections Backend Routes Implementation ✅
+## 5) ProductionDepartments Backend Routes Implementation ✅
 
 ### **Issue**
 - Model exists but no backend routes → frontend API orphan.
 
 ### **Correction Applied**
-- **Created:** `server/routes/productionSectionsRoutes.js` (full CRUD + asset order endpoint)
-- **Mounted in:** `server/server.js` under `/api/production-sections`
+- **Created:** `server/routes/productionDepartmentsRoutes.js` (full CRUD + asset order endpoint)
+- **Mounted in:** `server/server.js` under `/api/production-departments`
 - **Features:**
   - GET list (populate productionLine, assets)
   - GET by id
   - POST (admin)
   - PATCH (admin)
   - DELETE (admin)
-  - PATCH `/:id/asset` (reorder assets within section)
+  - PATCH `/:id/asset` (reorder assets within department)
 
 ---
 
@@ -111,10 +111,10 @@
 
 ---
 
-## 9) Frontend ProductionSections API Usage (Optional)
+## 9) Frontend ProductionDepartments API Usage (Optional)
 
 ### **Note**
-- If any frontend page actually uses `productionSections.ts`, it will now work post-backend implementation.
+- If any frontend page actually uses `productionDepartments.ts`, it will now work post-backend implementation.
 - No frontend changes required unless specific pages exist.
 
 ---
@@ -339,8 +339,8 @@
 | `client/src/api/categories.ts` | Use `PATCH` for update |
 | `client/src/api/subCategories.ts` | Align response shapes, fields, method |
 | `server/routes/reportsRoutes.js` | Add `requireUser` middleware |
-| `server/routes/productionSectionsRoutes.js` | **Created** full CRUD |
-| `server/server.js` | Mount productionSections routes |
+| `server/routes/productionDepartmentsRoutes.js` | **Created** full CRUD |
+| `server/server.js` | Mount productionDepartments routes |
 | `server/models/Personnel.js` | Remove global unique on matricule |
 | `server/routes/processDepartmentsRoutes.js` | Add factory filter |
 | `server/routes/processAreasRoutes.js` | Fix populate path: type→subCategory |

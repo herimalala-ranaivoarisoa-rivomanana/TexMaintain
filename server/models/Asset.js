@@ -72,9 +72,9 @@ const schema = new mongoose.Schema({
     ref: 'ProductionLine',
     required: false
   },
-  productionSection: {
+  productionDepartment: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'ProductionSection',
+    ref: 'ProductionDepartment',
     required: false
   },
   processArea: {

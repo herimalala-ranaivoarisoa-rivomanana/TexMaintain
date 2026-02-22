@@ -82,7 +82,7 @@ async function runSeeder() {
       console.error('❌ Error seeding sub-categories:', error.message + '\n');
     }
 
-    // Seed process areas and sections (moved before asset)
+    // Seed process areas and departments (moved before asset)
     console.log('🏭 Seeding process areas (ProcessArea/Department)...');
     try {
       results.processAreas = await SeedService.seedProcessAreas();
@@ -153,7 +153,7 @@ async function runSeeder() {
     console.log(`   - Types: ${results.types?.created || 0} created`);
     console.log(`   - Brands: ${results.brands?.created || 0} created`);
     console.log(`   - Asset: ${results.asset?.created || 0} created`);
-    console.log(`   - Process areas: ${results.productionLines?.created || 0} created`);
+    console.log(`   - Process areas: ${results.processAreas?.created?.length || 0} created`);
     console.log(`   - Interventions: ${results.interventions?.created || 0} created`);
     console.log(`   - Parts: ${results.parts?.created || 0} created`);
     console.log(`   - Asset-Parts: ${results.assetParts?.created || 0} created`);

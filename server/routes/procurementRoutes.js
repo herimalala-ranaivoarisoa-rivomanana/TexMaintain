@@ -31,10 +31,6 @@ router.get('/orders', requireUser, async (req, res) => {
                         expectedDate: order.expectedDate,
                         supplier: order.supplier || part.supplier,
                         orderNumber: order.orderNumber,
-                        reference: order.reference,
-                        references: Array.isArray(order.references)
-                            ? order.references
-                            : (order.reference ? [order.reference] : []),
                         totalPrice: (order.quantity * (part.unitPrice || 0))
                     });
                 });
@@ -63,11 +59,8 @@ router.get('/stats', requireUser, async (req, res) => {
 
         let pendingCount = 0;
         let activeCount = 0;
-        let overdueCount = 0;
         let completedCount = 0;
         const suppliers = new Set();
-
-        const now = new Date();
 
         parts.forEach(part => {
             if (part.supplier) suppliers.add(part.supplier);
@@ -79,14 +72,6 @@ router.get('/stats', requireUser, async (req, res) => {
                     if (order.status === 'pending') pendingCount++;
                     else if (['ordered', 'in_transit'].includes(order.status)) activeCount++;
                     else if (order.status === 'received') completedCount++;
-
-                    if (
-                        order.expectedDate &&
-                        !['received', 'cancelled'].includes(order.status) &&
-                        new Date(order.expectedDate) < now
-                    ) {
-                        overdueCount++;
-                    }
                 });
             }
         });
@@ -94,7 +79,6 @@ router.get('/stats', requireUser, async (req, res) => {
         res.json({
             pendingRequests: pendingCount,
             activeOrders: activeCount,
-            overdueOrders: overdueCount,
             completedOrders: completedCount,
             totalSuppliers: suppliers.size
         });
@@ -107,15 +91,7 @@ router.get('/stats', requireUser, async (req, res) => {
 // POST /api/procurement/orders - Create a new order (add to part)
 router.post('/orders', requireUser, async (req, res) => {
     try {
-        const { partId, quantity, supplier, notes, expectedDate, reference, references } = req.body;
-
-        if (!partId || !mongoose.isValidObjectId(partId)) {
-            return res.status(400).json({ message: 'Invalid partId' });
-        }
-
-        if (!quantity || Number(quantity) <= 0) {
-            return res.status(400).json({ message: 'Quantity must be greater than 0' });
-        }
+        const { partId, quantity, supplier, notes, expectedDate } = req.body;
 
         const query = { _id: partId };
         if (req.activeFactoryId) query.factory = req.activeFactoryId;
@@ -126,34 +102,15 @@ router.post('/orders', requireUser, async (req, res) => {
         }
 
         await part.addOrder({
-            quantity: Number(quantity),
+            quantity,
             supplier,
             notes,
             expectedDate,
-            reference,
-            references,
             status: 'pending',
             orderNumber: `PO-${Date.now()}`
         });
 
-        const createdOrder = part.pendingOrders?.[part.pendingOrders.length - 1];
-        res.status(201).json({
-            message: 'Order created successfully',
-            order: createdOrder
-                ? {
-                    _id: createdOrder._id,
-                    partId: part._id,
-                    quantity: createdOrder.quantity,
-                    status: createdOrder.status,
-                    orderDate: createdOrder.orderDate,
-                    expectedDate: createdOrder.expectedDate,
-                    supplier: createdOrder.supplier,
-                    orderNumber: createdOrder.orderNumber,
-                    reference: createdOrder.reference,
-                    references: createdOrder.references
-                }
-                : null
-        });
+        res.status(201).json({ message: 'Order created successfully' });
     } catch (error) {
         console.error('Error creating procurement order:', error);
         res.status(500).json({ message: 'Error creating procurement order' });
@@ -164,20 +121,7 @@ router.post('/orders', requireUser, async (req, res) => {
 router.patch('/orders/:id/status', requireUser, async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, partId, quantity, reference, references } = req.body;
-
-        if (!partId || !mongoose.isValidObjectId(partId)) {
-            return res.status(400).json({ message: 'Invalid partId' });
-        }
-
-        if (!status) {
-            return res.status(400).json({ message: 'Status is required' });
-        }
-
-        const validStatuses = ['pending', 'ordered', 'in_transit', 'received', 'cancelled'];
-        if (!validStatuses.includes(status)) {
-            return res.status(400).json({ message: 'Invalid status' });
-        }
+        const { status, partId, quantity, reference } = req.body;
 
         const query = { _id: partId };
         if (req.activeFactoryId) query.factory = req.activeFactoryId;
@@ -187,12 +131,7 @@ router.patch('/orders/:id/status', requireUser, async (req, res) => {
             return res.status(404).json({ message: 'Part not found' });
         }
 
-        // quantity < existingOrder.quantity => split => permet in_transit partiel / received partiel
-        await part.updateOrderStatus(id, status, {
-            quantity: quantity !== undefined ? Number(quantity) : undefined,
-            reference,
-            references
-        });
+        await part.updateOrderStatus(id, status, { quantity, reference });
 
         res.json({ message: 'Order status updated successfully' });
     } catch (error) {

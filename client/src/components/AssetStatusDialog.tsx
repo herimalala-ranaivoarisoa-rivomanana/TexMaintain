@@ -165,6 +165,29 @@ export function AssetStatusDialog({
     }
   };
 
+  const combinedExistingMedia = (() => {
+    const fromBreakdown = existingMedia || [];
+    const fromStatus = (currentMedia || [])
+      .map((url) => {
+        const u = String(url || '');
+        const isVideo = u.toLowerCase().match(/\.(mp4|webm|ogg)$/);
+        return {
+          path: u,
+          mimetype: isVideo ? 'video/mp4' : 'image/jpeg',
+          originalName: ''
+        };
+      })
+      .filter((m) => Boolean(m.path));
+
+    const seen = new Set<string>();
+    return [...fromStatus, ...fromBreakdown].filter((m) => {
+      if (!m?.path) return false;
+      if (seen.has(m.path)) return false;
+      seen.add(m.path);
+      return true;
+    });
+  })();
+
   // Helper to map backend generic colors to Tailwind classes
 
   // Helper to map backend generic colors to Tailwind classes
@@ -481,9 +504,9 @@ export function AssetStatusDialog({
             <Label className="text-base font-semibold">Existing Media</Label>
             {loadingExistingMedia ? (
               <div className="text-sm text-muted-foreground">Loading existing media...</div>
-            ) : existingMedia.length > 0 ? (
+            ) : combinedExistingMedia.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {existingMedia.map((m) => (
+                {combinedExistingMedia.map((m) => (
                   <div key={m.path} className="relative aspect-square bg-slate-100 rounded-md overflow-hidden border">
                     {String(m.mimetype || '').startsWith('image/') ? (
                       <img
@@ -506,7 +529,7 @@ export function AssetStatusDialog({
             )}
           </div>
 
-          {/* Media Upload Section (Visible for all statuses) */}
+          {/* Media Upload Department (Visible for all statuses) */}
           <div className="space-y-2 pt-2 border-t">
             <Label className="text-base font-semibold">Media</Label>
             <MediaUpload
