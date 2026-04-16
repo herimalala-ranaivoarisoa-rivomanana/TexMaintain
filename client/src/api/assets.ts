@@ -28,8 +28,8 @@ export interface Asset {
   code?: string;
   factory?: string;
   assetClass: AssetClass;
-  category: Category;
-  subCategory: SubCategory;
+  category?: Category;
+  subCategory?: SubCategory;
   status: string;
   statusCategory: 'production' | 'maintenance' | 'out_of_service';
   location: string;
@@ -65,11 +65,9 @@ export interface Asset {
 }
 
 export interface CreateAssetData {
-  name: string;
+  name?: string;
   code?: string;
-  category: string;
-  subCategory: string; // Was type
-  assetClass?: string;
+  assetClass: string;
   status: string;
   location: string;
   manufacturer?: string;
@@ -85,8 +83,6 @@ export interface AssetQuery {
   page?: number;
   limit?: number;
   status?: string;
-  category?: string;
-  subCategory?: string;
   assetClass?: string;
   search?: string;
 }
@@ -99,11 +95,9 @@ export interface AssetsResponse {
 }
 
 export const getAssets = async (query: AssetQuery): Promise<AssetsResponse> => {
-  const { page, limit, status, category, subCategory, assetClass, search } = query;
+  const { page, limit, status, assetClass, search } = query;
   const params: any = { page, limit };
   if (status) params.status = status;
-  if (category) params.category = category;
-  if (subCategory) params.subCategory = subCategory;
   if (assetClass) params.assetClass = assetClass;
   if (search) params.search = search;
 

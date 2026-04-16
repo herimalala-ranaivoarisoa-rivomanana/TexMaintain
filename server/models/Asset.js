@@ -36,12 +36,12 @@ const schema = new mongoose.Schema({
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
-    required: true,
+    required: false,
   },
   subCategory: { // Renamed from 'type'
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SubCategory',
-    required: true,
+    required: false,
   },
   status: {
     type: String,

@@ -542,6 +542,7 @@ class SeedService {
           assetData.push({
             name: `${details.brandName} ${modelName}`,
             code: `EQ-${factory.code}-${modelName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)}-${Math.floor(Math.random() * 9999)}`,
+            assetClass: category.assetClass || null,
             category: category._id,
             subCategory: type._id,
             status: status,

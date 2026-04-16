@@ -1,4 +1,5 @@
 import api from './api';
+import type { AssetClass } from './assetClasses';
 
 export interface Category {
   _id: string;
@@ -6,7 +7,7 @@ export interface Category {
   description?: string;
   createdAt?: string;
   updatedAt?: string;
-  assetClass?: string;
+  assetClass?: string | AssetClass;
   statistics?: CategoryStatistics;
 }
 

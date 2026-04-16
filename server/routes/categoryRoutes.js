@@ -20,7 +20,10 @@ router.get('/statistics', requireUser, async (req, res) => {
     const { Asset } = require('../models/Asset');
 
     // 1. Fetch all categories (GLOBAL, but we will merge stats)
-    const categories = await Category.find().sort({ name: 1 }).lean();
+    const categories = await Category.find()
+      .populate('assetClass', 'name')
+      .sort({ name: 1 })
+      .lean();
 
     // 2. Aggregate Assets by Category (FILTERED by Factory)
     const matchStage = {};

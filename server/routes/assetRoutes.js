@@ -264,8 +264,8 @@ router.post('/:id/consumable', requireUser, async (req, res) => {
 
 // POST /api/assets
 const assetSchema = z.object({
-  category: z.string().min(1), // ObjectId as string
-  subCategory: z.string().min(1), // ObjectId as string (was type)
+  category: z.string().optional(), // Internal, optional
+  subCategory: z.string().optional(), // Internal, optional
   status: z.enum(Object.values(ASSET_STATUSES)).optional(),
   location: z.string().min(1),
   name: z.string().optional(),

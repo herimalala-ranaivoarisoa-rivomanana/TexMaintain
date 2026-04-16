@@ -16,26 +16,17 @@ import { useFactory } from "@/contexts/FactoryContext"
 
 interface AssetDetailData {
   _id: string
-  category: {
+  assetClass?: {
     _id: string
     name: string
   }
-  subCategory: {
+  category?: {
     _id: string
     name: string
-    category: {
-      _id: string
-      name: string
-    }
   }
-  // Legacy support
-  type?: {
+  subCategory?: {
     _id: string
     name: string
-    category: {
-      _id: string
-      name: string
-    }
   }
   status: string
   statusMedia?: string[]
@@ -228,7 +219,9 @@ export function AssetDetail() {
               <Card className="bg-white/60 backdrop-blur-sm border-slate-200/60">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-2xl">{data.category?.name} - {data.subCategory?.name || data.type?.name}</CardTitle>
+                    <CardTitle className="text-2xl">
+                      {data.assetClass?.name || 'Unclassified'}
+                    </CardTitle>
                     <div className="flex gap-2">
                       <Dialog>
                         <DialogTrigger asChild>
@@ -254,12 +247,8 @@ export function AssetDetail() {
                   {/* Basic Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-slate-500">Category</p>
-                      <p className="text-slate-900">{data.category?.name || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-500">Sub-Category</p>
-                      <p className="text-slate-900">{data.subCategory?.name || data.type?.name || '-'}</p>
+                      <p className="text-sm text-slate-500">Asset Class</p>
+                      <p className="text-slate-900">{data.assetClass?.name || '-'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-slate-500">Location</p>

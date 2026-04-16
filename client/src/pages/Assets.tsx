@@ -69,17 +69,15 @@ const breakdownTypes = [
 
 export function Assets() {
   const [assets, setAssets] = useState<Asset[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [subCategories, setSubCategories] = useState<SubCategory[]>([]) // Renamed from types
+  const [categories, setCategories] = useState<Category[]>([]) // Used internally for defaults
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([]) // Used internally for defaults
   const [assetClasses, setAssetClasses] = useState<AssetClass[]>([]) // New
   const [brands, setBrands] = useState<{ _id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [searchParams] = useSearchParams()
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || "all")
-  const [categoryFilter, setCategoryFilter] = useState(searchParams.get('category') || "all")
-  const [subCategoryFilter, setSubCategoryFilter] = useState(searchParams.get('subCategory') || "all") // New
-  const [assetClassFilter, setAssetClassFilter] = useState(searchParams.get('assetClass') || "all") // New
+  const [assetClassFilter, setAssetClassFilter] = useState(searchParams.get('assetClass') || "all")
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10) || 1)
   const [total, setTotal] = useState(0)
   const [limit, setLimit] = useState<number>(() => parseInt(localStorage.getItem('asset_limit') || '12', 10) || 12)
@@ -91,9 +89,7 @@ export function Assets() {
   const navigate = useNavigate()
 
   const [form, setForm] = useState<any>({
-    category: "",
-    subCategory: "", // Was type
-    assetClass: "", // New
+    assetClass: "",
     brand: "",
     model: "",
     serialNumber: "",
@@ -141,12 +137,10 @@ export function Assets() {
       const data = await getAssets({
         page: 1,
         limit: 1000, // Get all assets for client-side filtering
-        // sort, // Sort needs adjustment if field names changed, but generic ones like createdAt seem fine
+        // sort,
         // order,
         search: searchTerm,
         status: statusFilter !== 'all' ? statusFilter : undefined,
-        category: categoryFilter !== 'all' ? categoryFilter : undefined,
-        subCategory: subCategoryFilter !== 'all' ? subCategoryFilter : undefined,
         assetClass: assetClassFilter !== 'all' ? assetClassFilter : undefined
       })
       if (data && data.assets) {
@@ -174,7 +168,7 @@ export function Assets() {
 
   useEffect(() => {
     fetchAssets()
-  }, [searchTerm, statusFilter, categoryFilter, subCategoryFilter, assetClassFilter, currentFactory])
+  }, [searchTerm, statusFilter, assetClassFilter, currentFactory])
 
   /* REMOVED: getStockStatus and helper functions - Now using backend provided stockStatus */
   const [statusMetadata, setStatusMetadata] = useState<Record<string, StatusMetadata>>({})
@@ -196,8 +190,8 @@ export function Assets() {
           getStatusMetadata()
         ])
         setCategories(categoriesData.categories || categoriesData)
-        setSubCategories(subCategoriesData.subCategories || subCategoriesData)
-        setAssetClasses(assetClassesData.assetClasses || assetClassesData)
+        setSubCategories(subCategoriesData)
+        setAssetClasses(assetClassesData)
         setBrands(brandsData.brands || [])
         setMachinists(machinistsData.machinists || [])
         setMechanics(mechanicsData.mechanics || [])
@@ -254,8 +248,6 @@ export function Assets() {
   const openAddDialog = () => {
     setEditingItem(null)
     setForm({
-      category: "",
-      subCategory: "",
       assetClass: "",
       brand: "",
       model: "",
@@ -286,9 +278,7 @@ export function Assets() {
   const openEditDialog = (item: Asset) => {
     setEditingItem(item)
     setForm({
-      category: item.category?._id || "",
-      subCategory: item.subCategory?._id || "",
-      assetClass: item.assetClass?._id || "",
+      assetClass: (item.assetClass as any)?._id || "",
       brand: typeof item.brand === 'object' ? item.brand?._id : (item.brand || ""),
       model: item.model || "",
       serialNumber: item.serialNumber || "",
@@ -422,11 +412,63 @@ export function Assets() {
 
     try {
       setIsSaving(true)
+
+      // Ensure we always send a category / subCategory to the backend (even if the user does not see them)
+      let categoryId = (form as any).category as string | undefined
+      let subCategoryId = (form as any).subCategory as string | undefined
+
+      // For new assets, pick sensible defaults based on selected asset class
+      if (!editingItem) {
+        if (!categoryId) {
+          const candidates = categories.filter((cat) => {
+            if (!form.assetClass) return true
+            const catAssetClass =
+              typeof cat.assetClass === 'object'
+                ? (cat.assetClass as any)?._id
+                : cat.assetClass
+            return catAssetClass === form.assetClass
+          })
+          const chosenCategory = (candidates.length > 0 ? candidates[0] : categories[0]) as any
+          categoryId = chosenCategory?._id
+        }
+
+        if (!subCategoryId && categoryId) {
+          const subCandidates = subCategories.filter((sub) => {
+            const subCategoryParent = (sub as any).category
+            const parentId =
+              typeof subCategoryParent === 'object'
+                ? (subCategoryParent as any)?._id
+                : subCategoryParent
+            return parentId === categoryId
+          })
+          const chosenSub = (subCandidates.length > 0 ? subCandidates[0] : subCategories[0]) as any
+          subCategoryId = chosenSub?._id
+        }
+      } else {
+        // For existing assets, if form values are empty, keep current DB values
+        if (!categoryId && (editingItem as any).category?._id) {
+          categoryId = (editingItem as any).category._id
+        }
+        if (!subCategoryId && (editingItem as any).subCategory?._id) {
+          subCategoryId = (editingItem as any).subCategory._id
+        }
+      }
+
+      if (!categoryId || !subCategoryId) {
+        toast({
+          title: 'Missing classification',
+          description: 'No internal class mapping could be determined for this asset.',
+          variant: 'destructive'
+        })
+        setIsSaving(false)
+        return
+      }
+
       const assetData = {
         ...form,
-        subCategory: form.subCategory, // Ensure mapping
+        category: categoryId,
+        subCategory: subCategoryId,
         assetClass: form.assetClass,
-        // Removed type mapping as it should be subCategory
       }
 
       if (editingItem) {
@@ -653,11 +695,9 @@ export function Assets() {
       item.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
-    const matchesCategory = categoryFilter === 'all' || item.category?._id === categoryFilter;
-    const matchesSubCategory = subCategoryFilter === 'all' || item.subCategory?._id === subCategoryFilter;
     const matchesAssetClass = assetClassFilter === 'all' || item.assetClass?._id === assetClassFilter;
     
-    return matchesSearch && matchesStatus && matchesCategory && matchesSubCategory && matchesAssetClass;
+    return matchesSearch && matchesStatus && matchesAssetClass;
   });
   
   // Apply pagination to filtered results
@@ -741,21 +781,6 @@ export function Assets() {
               </SelectContent>
             </Select>
 
-            <Select value={categoryFilter} onValueChange={(v) => { setPage(1); setCategoryFilter(v) }}>
-              <SelectTrigger className="w-full sm:w-48">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat._id} value={cat._id}>
-                    {cat.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             <Select value={statusFilter} onValueChange={(v) => { setPage(1); setStatusFilter(v) }}>
               <SelectTrigger className="w-full sm:w-48">
                 <Filter className="mr-2 h-4 w-4" />
@@ -820,7 +845,11 @@ export function Assets() {
           <Card key={item._id} className="bg-white/60 backdrop-blur-sm border-slate-200/60 hover:shadow-lg transition-all duration-200">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg"><Link className="hover:underline" to={`/assets/${item._id}`}>{item.category?.name} - {item.subCategory?.name}</Link></CardTitle>
+                <CardTitle className="text-lg">
+                  <Link className="hover:underline" to={`/assets/${item._id}`}>
+                    {item.assetClass?.name || 'Unclassified'}
+                  </Link>
+                </CardTitle>
                 <Badge
                   className={`${getStatusColor(item.status as AssetStatus)} text-white flex items-center gap-1 hover:opacity-90 text-[10px] whitespace-nowrap cursor-pointer border-0 w-fit`}
                   onClick={(e) => {
@@ -993,7 +1022,7 @@ export function Assets() {
           onOpenChange={setStatusDialogOpen}
           assetId={selectedAssetForStatus._id}
           currentStatus={selectedAssetForStatus.status as AssetStatus}
-          assetName={`${selectedAssetForStatus.category?.name} - ${selectedAssetForStatus.subCategory?.name}`}
+          assetName={selectedAssetForStatus.assetClass?.name || 'Unclassified'}
           onStatusChanged={() => {
             setStatusDialogOpen(false)
             fetchAssets()
@@ -1010,32 +1039,22 @@ export function Assets() {
           </DialogHeader>
           <div className="grid gap-4 py-4 overflow-y-auto flex-1 pr-2">
             <div className="grid gap-2">
-              <Label htmlFor="category">Category</Label>
-              <Select value={form.category} onValueChange={(value) => setForm({ ...form, category: value, subCategory: "" })}>
+              <Label htmlFor="assetClass">Asset Class</Label>
+              <Select
+                value={form.assetClass}
+                onValueChange={(value) =>
+                  setForm({ ...form, assetClass: value })
+                }
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder="Select asset class" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category._id} value={category._id}>
-                      {category.name}
+                  {assetClasses.map((assetClass) => (
+                    <SelectItem key={assetClass._id} value={assetClass._id}>
+                      {assetClass.name}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="subCategory">Sub-Category</Label>
-              <Select value={form.subCategory} onValueChange={(value) => setForm({ ...form, subCategory: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select sub-category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {subCategories.filter(sub => !form.category || sub.category._id === form.category).map((sub) => (
-                    <SelectItem key={sub._id} value={sub._id}>
-                      {sub.name}
-                    </SelectItem>
-                  )) || <SelectItem value="" disabled>No sub-categories available</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
