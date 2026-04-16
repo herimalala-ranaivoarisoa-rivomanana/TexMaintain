@@ -63,10 +63,10 @@ class SeedService {
 
       // Vérifier si l'utilisateur admin existe déjà
       let adminUser = await User.findOne({ email: adminEmail });
-      
+
       if (adminUser) {
         console.log(`Admin user already exists with email: ${adminEmail}`);
-        
+
         // Mettre à jour l'utilisateur existant avec les usines si nécessaire
         if (factoryIds.length > 0) {
           adminUser.factories = factoryIds;
@@ -77,7 +77,7 @@ class SeedService {
           await adminUser.save();
           console.log(`Updated admin user with ${factoryIds.length} factories`);
         }
-        
+
         return {
           success: true,
           message: 'Admin user already exists',
@@ -170,11 +170,11 @@ class SeedService {
       console.log('Starting asset classes seeding...');
 
       const classesData = [
-        { name: 'Machinery', description: 'Industrial machinery and assets' },
-        { name: 'Tools', description: 'Hand tools and power tools' },
-        { name: 'Facility', description: 'Building and infrastructure' },
-        { name: 'IT', description: 'Information Technology assets' },
-        { name: 'Vehicles', description: 'Transport vehicles' }
+        { name: 'Facilities', description: 'Buildings, civil works and shared infrastructure' },
+        { name: 'Utilities', description: 'Energy, water, air and utility distribution systems' },
+        { name: 'Production', description: 'Production line and manufacturing equipment' },
+        { name: 'Maintenance', description: 'Maintenance workshop and support equipment' },
+        { name: 'IT', description: 'Information technology, network and digital systems' }
       ];
 
       const createdClasses = [];
@@ -211,49 +211,69 @@ class SeedService {
     try {
       console.log('Starting categories seeding...');
 
-      // Ensure Machinery class exists or fetch it
-      let machineryClass = await AssetClass.findOne({ name: 'Machinery' });
-      if (!machineryClass) {
-          console.log('Machinery class not found, creating default...');
-          machineryClass = new AssetClass({ name: 'Machinery', description: 'Default class' });
-          await machineryClass.save();
-      }
+      const assetClasses = await AssetClass.find().lean();
+      const classIdByName = Object.fromEntries(assetClasses.map((c) => [c.name, c._id]));
 
       const categoriesData = [
-        { name: 'Cutting Machine', description: 'Machines for cutting fabrics and materials' },
-        { name: 'Sewing Machine', description: 'Industrial sewing machines for garment assembly' },
-        { name: 'Overlock/Serger', description: 'Overlock machines for fabric edge finishing' },
-        { name: 'Coverstitch Machine', description: 'Coverstitch machines for hems and edges' },
-        { name: 'Embroidery Machine', description: 'Automated embroidery machines' },
-        { name: 'Button/Buttonhole Machine', description: 'Machines for buttons and buttonholes' },
-        { name: 'Pressing/Ironing', description: 'Pressing and ironing asset' },
-        { name: 'Finishing Asset', description: 'Fabric finishing and treatment machines' },
-        { name: 'Printing Machine', description: 'Fabric printing asset' },
-        { name: 'Packaging Asset', description: 'Packaging and baling machines' },
-        { name: 'Quality Control', description: 'Quality inspection asset' },
-        { name: 'Maintenance Asset', description: 'Maintenance and repair tools' },
+        // Production (majority)
+        { name: 'Cutting Machine', description: 'Machines for cutting fabrics and materials', assetClassName: 'Production' },
+        { name: 'Sewing Machine', description: 'Industrial sewing machines for garment assembly', assetClassName: 'Production' },
+        { name: 'Overlock/Serger', description: 'Overlock machines for fabric edge finishing', assetClassName: 'Production' },
+        { name: 'Coverstitch Machine', description: 'Coverstitch machines for hems and edges', assetClassName: 'Production' },
+        { name: 'Embroidery Machine', description: 'Automated embroidery machines', assetClassName: 'Production' },
+        { name: 'Button/Buttonhole Machine', description: 'Machines for buttons and buttonholes', assetClassName: 'Production' },
+        { name: 'Pressing/Ironing', description: 'Pressing and ironing equipment', assetClassName: 'Production' },
+        { name: 'Finishing Asset', description: 'Fabric finishing and treatment machines', assetClassName: 'Production' },
+        { name: 'Printing Machine', description: 'Fabric printing equipment', assetClassName: 'Production' },
+        { name: 'Packaging Asset', description: 'Packaging and baling machines', assetClassName: 'Production' },
+        { name: 'Quality Control', description: 'Quality inspection equipment', assetClassName: 'Production' },
+
+        // Utilities
+        { name: 'Boiler & Steam', description: 'Steam generation and distribution systems', assetClassName: 'Utilities' },
+        { name: 'Compressed Air', description: 'Compressors and air distribution systems', assetClassName: 'Utilities' },
+        { name: 'Electrical Distribution', description: 'Transformers, panels and electrical rooms', assetClassName: 'Utilities' },
+        { name: 'Water & Effluent', description: 'Water treatment, pumping and effluent systems', assetClassName: 'Utilities' },
+
+        // Facilities
+        { name: 'Building Infrastructure', description: 'Buildings, civil structures and internal networks', assetClassName: 'Facilities' },
+        { name: 'HVAC', description: 'Heating, ventilation and air conditioning systems', assetClassName: 'Facilities' },
+        { name: 'Fire Safety', description: 'Detection and fire protection systems', assetClassName: 'Facilities' },
+
+        // Maintenance
+        { name: 'Maintenance Asset', description: 'Maintenance workshop and repair equipment', assetClassName: 'Maintenance' },
+
+        // IT
+        { name: 'IT Infrastructure', description: 'Servers, network and user IT equipment', assetClassName: 'IT' },
       ];
 
       const createdCategories = [];
       let skippedCount = 0;
 
       for (const categoryData of categoriesData) {
+        const targetAssetClassId = classIdByName[categoryData.assetClassName] || null;
+        if (!targetAssetClassId) {
+          console.warn(`Skipping category ${categoryData.name}: asset class ${categoryData.assetClassName} not found`);
+          skippedCount++;
+          continue;
+        }
+
         const existing = await Category.findOne({ name: categoryData.name });
         if (existing) {
           console.log(`Category already exists: ${categoryData.name}`);
-          // Update assetClass if missing (migration)
-          if (!existing.assetClass) {
-              existing.assetClass = machineryClass._id;
-              await existing.save();
-              console.log(`Updated category ${existing.name} with assetClass`);
+          // Keep category aligned with desired asset class
+          if (!existing.assetClass || existing.assetClass.toString() !== targetAssetClassId.toString()) {
+            existing.assetClass = targetAssetClassId;
+            await existing.save();
+            console.log(`Updated category ${existing.name} with assetClass ${categoryData.assetClassName}`);
           }
-          createdCategories.push(existing); // Keep existing ones in list
+          createdCategories.push(existing);
           skippedCount++;
           continue;
         }
         const category = new Category({
-            ...categoryData,
-            assetClass: machineryClass._id
+          name: categoryData.name,
+          description: categoryData.description,
+          assetClass: targetAssetClassId
         });
         await category.save();
         createdCategories.push(category);
@@ -337,12 +357,41 @@ class SeedService {
         { name: 'Packaging Asset', category: categoryMap['packagingasset'], description: 'Packaging and baling machines' },
         { name: 'Quality Control Asset', category: categoryMap['qualitycontrol'], description: 'Quality inspection tools' },
         { name: 'Maintenance Asset', category: categoryMap['maintenanceasset'], description: 'Maintenance and repair tools' },
+
+        // Utilities
+        { name: 'Steam Boiler', category: categoryMap['boilersteam'], description: 'Industrial steam boiler systems' },
+        { name: 'Steam Distribution', category: categoryMap['boilersteam'], description: 'Steam lines, valves and traps' },
+        { name: 'Air Compressor', category: categoryMap['compressedair'], description: 'Compressed air production units' },
+        { name: 'Air Dryer & Filter', category: categoryMap['compressedair'], description: 'Air treatment and filtration systems' },
+        { name: 'Transformer', category: categoryMap['electricaldistribution'], description: 'Power transformers' },
+        { name: 'Main Electrical Panel', category: categoryMap['electricaldistribution'], description: 'Main and secondary distribution panels' },
+        { name: 'Water Pump', category: categoryMap['watereffluent'], description: 'Water pumping systems' },
+        { name: 'Effluent Treatment Unit', category: categoryMap['watereffluent'], description: 'Waste water treatment equipment' },
+
+        // Facilities
+        { name: 'Civil Structure', category: categoryMap['buildinginfrastructure'], description: 'Building shell and civil structures' },
+        { name: 'Internal Utility Network', category: categoryMap['buildinginfrastructure'], description: 'Internal utility pathways and supports' },
+        { name: 'AHU / Ventilation Unit', category: categoryMap['hvac'], description: 'Air handling and ventilation units' },
+        { name: 'Cooling Unit', category: categoryMap['hvac'], description: 'Cooling and climate control units' },
+        { name: 'Fire Detection Panel', category: categoryMap['firesafety'], description: 'Central fire alarm and detection panel' },
+        { name: 'Extinguishing System', category: categoryMap['firesafety'], description: 'Fire suppression and extinguishing systems' },
+
+        // IT
+        { name: 'Server', category: categoryMap['itinfrastructure'], description: 'Application and database servers' },
+        { name: 'Network Equipment', category: categoryMap['itinfrastructure'], description: 'Switches, routers and network devices' },
+        { name: 'Workstation', category: categoryMap['itinfrastructure'], description: 'Desktop and user workstation assets' },
       ];
 
       const createdTypes = [];
       let skippedCount = 0;
 
       for (const typeData of typesData) {
+        if (!typeData.category) {
+          console.warn(`Skipping sub-category ${typeData.name}: parent category not found`);
+          skippedCount++;
+          continue;
+        }
+
         const existing = await SubCategory.findOne({
           name: typeData.name,
           category: typeData.category
@@ -672,6 +721,30 @@ class SeedService {
         for (const areaTemplate of standardAreas) {
           const existingArea = await ProcessArea.findOne({ name: areaTemplate.name, factory: factory._id });
           if (existingArea) {
+            // Backfill sections if area exists but sections are missing in ProcessSection collection
+            const existingSectionsCount = await ProcessSection.countDocuments({ processArea: existingArea._id });
+            if (existingSectionsCount === 0) {
+              const deptObjects = [];
+              for (const deptName of areaTemplate.sections) {
+                const section = new ProcessSection({
+                  name: deptName,
+                  description: `${deptName} - ${areaTemplate.name} (${factory.name})`,
+                  processArea: existingArea._id,
+                  asset: []
+                });
+                await section.save();
+
+                deptObjects.push({
+                  sectionId: section._id,
+                  order: deptObjects.length
+                });
+              }
+
+              existingArea.sections = deptObjects;
+              await existingArea.save();
+              console.log(`Backfilled ${deptObjects.length} sections for existing area ${existingArea.name} (${factory.name})`);
+            }
+
             skippedCount++;
             createdAreas.push(existingArea);
             continue;
