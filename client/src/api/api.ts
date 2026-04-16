@@ -1,10 +1,17 @@
-import axios, { AxiosRequestConfig, AxiosError, InternalAxiosRequestConfig, AxiosInstance } from 'axios';
+import axios, {
+  AxiosRequestConfig,
+  AxiosError,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+  AxiosInstance,
+} from 'axios';
 import JSONbig from 'json-bigint';
 
-
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || 'http://localhost:3000';
 
 const localApi = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -16,26 +23,22 @@ const localApi = axios.create({
       if (!data) return data;
       try {
         return JSONbig.parse(data);
-      } catch (_err) {
+      } catch {
         return data;
       }
-    }
-  ]
+    },
+  ],
 });
-
-
 
 let accessToken: string | null = null;
 
-const getApiInstance = (_url: string) => {
+const getApiInstance = () => {
   return localApi;
 };
 
-
-
 // Check if the URL is for the refresh token endpoint to avoid infinite loops
 const isRefreshTokenEndpoint = (url: string): boolean => {
-  return url.includes("/api/auth/refresh");
+  return url.includes('/api/auth/refresh');
 };
 
 const setupInterceptors = (apiInstance: AxiosInstance) => {
@@ -69,13 +72,17 @@ const setupInterceptors = (apiInstance: AxiosInstance) => {
 
   apiInstance.interceptors.response.use(
     (response) => response,
-    async (error: AxiosError): Promise<any> => {
+    async (error: AxiosError): Promise<AxiosResponse> => {
       const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
       // Only refresh token when we get a 401/403 error (token is invalid/expired)
-      if (error.response?.status && [401, 403].includes(error.response.status) &&
+      if (
+        error.response?.status &&
+        [401, 403].includes(error.response.status) &&
         !originalRequest._retry &&
-        originalRequest.url && !isRefreshTokenEndpoint(originalRequest.url)) {
+        originalRequest.url &&
+        !isRefreshTokenEndpoint(originalRequest.url)
+      ) {
         originalRequest._retry = true;
 
         try {
@@ -106,7 +113,7 @@ const setupInterceptors = (apiInstance: AxiosInstance) => {
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           }
-          return getApiInstance(originalRequest.url || '')(originalRequest);
+          return getApiInstance()(originalRequest);
         } catch (err) {
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('accessToken');
@@ -123,31 +130,29 @@ const setupInterceptors = (apiInstance: AxiosInstance) => {
 
 setupInterceptors(localApi);
 
-
-
 const api = {
   request: (config: AxiosRequestConfig) => {
-    const apiInstance = getApiInstance(config.url || '');
+    const apiInstance = getApiInstance();
     return apiInstance(config);
   },
   get: (url: string, config?: AxiosRequestConfig) => {
-    const apiInstance = getApiInstance(url);
+    const apiInstance = getApiInstance();
     return apiInstance.get(url, config);
   },
-  post: (url: string, data?: any, config?: AxiosRequestConfig) => {
-    const apiInstance = getApiInstance(url);
+  post: <T = unknown>(url: string, data?: T, config?: AxiosRequestConfig) => {
+    const apiInstance = getApiInstance();
     return apiInstance.post(url, data, config);
   },
-  put: (url: string, data?: any, config?: AxiosRequestConfig) => {
-    const apiInstance = getApiInstance(url);
+  put: <T = unknown>(url: string, data?: T, config?: AxiosRequestConfig) => {
+    const apiInstance = getApiInstance();
     return apiInstance.put(url, data, config);
   },
-  patch: (url: string, data?: any, config?: AxiosRequestConfig) => {
-    const apiInstance = getApiInstance(url);
+  patch: <T = unknown>(url: string, data?: T, config?: AxiosRequestConfig) => {
+    const apiInstance = getApiInstance();
     return apiInstance.patch(url, data, config);
   },
   delete: (url: string, config?: AxiosRequestConfig) => {
-    const apiInstance = getApiInstance(url);
+    const apiInstance = getApiInstance();
     return apiInstance.delete(url, config);
   },
 };

@@ -8,13 +8,14 @@ type User = {
   createdAt: string;
   lastLoginAt: string;
   isActive: boolean;
-  factories?: any[];
+  factories?: Array<{ _id: string; name?: string; code?: string }>;
   defaultFactory?: string;
   activeFactory?: string;
 };
 
 type AuthContextType = {
   isAuthenticated: boolean;
+  isInitializing: boolean;
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, role?: string) => Promise<void>;
@@ -25,9 +26,8 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return !!localStorage.getItem("accessToken");
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [user, setUser] = useState<User | null>(null);
 
   const refreshUserData = async () => {
@@ -44,10 +44,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (isAuthenticated && !user) {
-      refreshUserData();
-    }
-  }, [isAuthenticated, user]);
+    const bootstrapAuth = async () => {
+      try {
+        const existingToken = localStorage.getItem("accessToken");
+        if (!existingToken) {
+          setIsAuthenticated(false);
+          setUser(null);
+          return;
+        }
+
+        const userData = await getCurrentUser();
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch {
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("accessToken");
+        setIsAuthenticated(false);
+        setUser(null);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    bootstrapAuth();
+  }, []);
 
   const login = async (email: string, password: string) => {
     try {
@@ -98,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await apiLogout();
-    } catch (_err) {
+    } catch {
       // ignore logout API errors
     } finally {
       localStorage.removeItem("refreshToken");
@@ -110,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, register, logout, refreshUserData }}>
+    <AuthContext.Provider value={{ isAuthenticated, isInitializing, user, login, register, logout, refreshUserData }}>
       {children}
     </AuthContext.Provider>
   );

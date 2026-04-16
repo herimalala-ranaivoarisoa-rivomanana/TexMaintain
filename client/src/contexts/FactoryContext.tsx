@@ -14,7 +14,6 @@ interface FactoryContextType {
 const FactoryContext = createContext<FactoryContextType | undefined>(undefined);
 
 export const FactoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    console.log('FactoryProvider: Mounting...');
     const { user, isAuthenticated } = useAuth();
     const [factories, setFactories] = useState<Factory[]>([]);
     const [currentFactory, setCurrentFactoryState] = useState<Factory | null>(null);
@@ -39,24 +38,14 @@ export const FactoryProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         try {
             setIsLoading(true);
-            // We assume user object has factories populated or we fetch them
-            // If user object from AuthContext already has factories, use them.
-            // But AuthContext might not have full factory details, just IDs.
-            // Let's verify what /api/auth/me returns or if we need a new endpoint.
-            // For now, let's assume we can fetch allowed factories.
-            // Since we don't have a specific endpoint for "my factories", we might need to rely on the User object
-            // or create an endpoint.
-
-            // OPTION: Fetch user details again with populates
-            const response = await api.get('/api/auth/me');
-            console.log('FactoryContext: /api/auth/me response:', response.data);
-
-            // Handle both structure possibilities just in case
-            const fullUser = response.data.user || response.data;
+            const hasFactoriesOnUser = Array.isArray(user.factories) && user.factories.length > 0;
+            let fullUser: any = user;
+            if (!hasFactoriesOnUser) {
+                const response = await api.get('/api/auth/me');
+                fullUser = response.data.user || response.data;
+            }
 
             if (fullUser && fullUser.factories && Array.isArray(fullUser.factories)) {
-                console.log('FactoryContext: Factories found:', fullUser.factories.length);
-                // Assuming factories are populated in the response
                 setFactories(fullUser.factories);
 
                 // Determine active factory
@@ -70,7 +59,8 @@ export const FactoryProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     setCurrentFactory(defaultFactory);
                 }
             } else {
-                console.warn('FactoryContext: No factories found in user object', fullUser);
+                setFactories([]);
+                setCurrentFactoryState(null);
             }
         } catch (error) {
             console.error('Failed to load factories', error);
@@ -80,12 +70,6 @@ export const FactoryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     useEffect(() => {
-        console.log('FactoryProvider: User changed', {
-            isAuthenticated,
-            hasUser: !!user,
-            factoriesCount: user?.factories?.length,
-            factories: user?.factories
-        });
         refreshFactories();
     }, [isAuthenticated, user]);
 
