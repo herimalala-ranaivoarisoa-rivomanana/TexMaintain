@@ -95,7 +95,7 @@ router.post('/', requireUser, requireRole(['admin', 'hr', 'maintenance_manager']
             return res.status(400).json({ message: 'Matricule, firstName, lastName, and role are required' });
         }
 
-        const validRoles = ['Mechanic', 'Electrician', 'Machinist', 'MaintenanceWorker'];
+        const validRoles = ['mechanic', 'electrician', 'machinist', 'maintenance_worker'];
         if (!validRoles.includes(role)) {
             return res.status(400).json({ message: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
         }

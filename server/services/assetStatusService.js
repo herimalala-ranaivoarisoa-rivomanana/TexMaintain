@@ -36,32 +36,35 @@ class AssetStatusService {
     const previousStatus = asset.status;
 
     // Validate required personnel for specific statuses
-    if (newStatus === 'in_production' && !machinistId) {
+    if (newStatus === 'in_production' && (!machinistId || machinistId.trim() === '')) {
       throw new Error('Machinist is required when setting asset to In Production');
     }
 
-    // Validate personnel roles if IDs are provided
-    if (machinistId) {
+    // Validate personnel roles if IDs are provided (skip empty strings)
+    if (machinistId && machinistId.trim() !== '') {
       const p = await Personnel.findById(machinistId).session(session);
       if (!p || p.role !== 'machinist') throw new Error('Invalid Machinist ID or personnel is not a Machinist');
     }
-    if (mechanicId) {
+    if (mechanicId && mechanicId.trim() !== '') {
       const p = await Personnel.findById(mechanicId).session(session);
       if (!p || p.role !== 'mechanic') throw new Error('Invalid Mechanic ID or personnel is not a Mechanic');
     }
-    if (electricianId) {
+    if (electricianId && electricianId.trim() !== '') {
       const p = await Personnel.findById(electricianId).session(session);
       if (!p || p.role !== 'electrician') throw new Error('Invalid Electrician ID or personnel is not an Electrician');
     }
-    if (maintenanceWorkerId) {
+    if (maintenanceWorkerId && maintenanceWorkerId.trim() !== '') {
       const p = await Personnel.findById(maintenanceWorkerId).session(session);
       if (!p || p.role !== 'maintenance_worker') throw new Error('Invalid Maintenance Worker ID or personnel is not a Maintenance Worker');
     }
 
     // Maintenance statuses requiring personnel
     const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance', 'in_workshop'];
+    const hasMechanic = mechanicId && mechanicId.trim() !== '';
+    const hasElectrician = electricianId && electricianId.trim() !== '';
+    const hasMaintenanceWorker = maintenanceWorkerId && maintenanceWorkerId.trim() !== '';
     if (maintenanceStatuses.includes(newStatus)) {
-      if (!mechanicId && !electricianId && !maintenanceWorkerId) {
+      if (!hasMechanic && !hasElectrician && !hasMaintenanceWorker) {
         const statusLabel = STATUS_METADATA[newStatus]?.label || newStatus;
         throw new Error(`At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting asset to ${statusLabel}`);
       }

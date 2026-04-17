@@ -494,7 +494,7 @@ router.delete('/:id', requireUser, requireRole('admin'), async (req, res) => {
 
 // POST /api/assets/:id/change-status
 // Change asset status with tracking
-router.post('/:id/change-status', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager', 'foreman', 'mechanic', 'electrician', 'production_manager', 'line_manager']), async (req, res) => {
+router.post('/:id/change-status', requireUser, requireRole(['admin', 'maintenance_manager', 'assistant_maintenance_manager', 'foreman', 'mechanic', 'electrician', 'production_manager', 'line_manager']), upload.any(), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, reason, notes, interventionId, machinistId, mechanicId, electricianId, maintenanceWorkerId, breakdownType, breakdownDescription, media } = req.body;
@@ -506,13 +506,16 @@ router.post('/:id/change-status', requireUser, requireRole(['admin', 'maintenanc
     }
 
     // If status is "in_production", machinistId is required
-    if (status === 'in_production' && !machinistId) {
+    if (status === 'in_production' && (!machinistId || machinistId.trim() === '')) {
       return res.status(400).json({ message: 'Machinist is required when setting asset to In Production' });
     }
 
     // Maintenance statuses requiring personnel
     const maintenanceStatuses = ['under_repair', 'under_inspection', 'scheduled_maintenance', 'in_workshop'];
-    if (maintenanceStatuses.includes(status) && !mechanicId && !electricianId && !maintenanceWorkerId) {
+    const hasMechanic = mechanicId && mechanicId.trim() !== '';
+    const hasElectrician = electricianId && electricianId.trim() !== '';
+    const hasMaintenanceWorker = maintenanceWorkerId && maintenanceWorkerId.trim() !== '';
+    if (maintenanceStatuses.includes(status) && !hasMechanic && !hasElectrician && !hasMaintenanceWorker) {
       const statusLabel = STATUS_METADATA[status]?.label || status;
       return res.status(400).json({
         message: `At least one maintenance personnel (Mechanic, Electrician, or Maintenance Worker) is required when setting asset to ${statusLabel}`

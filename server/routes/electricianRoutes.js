@@ -15,7 +15,7 @@ router.get('/', requireUser, async (req, res) => {
 
     const { page = 1, limit = 50, q, isActive, specialization } = req.query;
 
-    const query = { factory: new mongoose.Types.ObjectId(factoryId), role: 'Electrician' };
+    const query = { factory: new mongoose.Types.ObjectId(factoryId), role: 'electrician' };
 
     // Filter by active status
     if (isActive !== undefined) {
@@ -68,7 +68,7 @@ router.get('/:id', requireUser, async (req, res) => {
     if (factoryId) {
       query.factory = new mongoose.Types.ObjectId(factoryId);
     }
-    const electrician = await Personnel.findOne({ ...query, role: 'Electrician' }).lean();
+    const electrician = await Personnel.findOne({ ...query, role: 'electrician' }).lean();
 
     if (!electrician) {
       return res.status(404).json({ message: 'Electrician not found' });
@@ -100,7 +100,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
     const existing = await Personnel.findOne({
       matricule,
       factory: new mongoose.Types.ObjectId(factoryId),
-      role: 'Electrician'
+      role: 'electrician'
     });
     if (existing) {
       return res.status(400).json({ message: 'An electrician with this matricule already exists in this factory' });
@@ -114,7 +114,7 @@ router.post('/', requireUser, requireRole(['admin', 'maintenance_manager', 'assi
       certifications,
       isActive: isActive !== undefined ? isActive : true,
       factory: factoryId,
-      role: 'Electrician'
+      role: 'electrician'
     });
 
     await electrician.save();
@@ -134,7 +134,7 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
     // Ensure electrician belongs to factory on update
     const existingElectrician = await Personnel.findOne({
       _id: req.params.id,
-      role: 'Electrician',
+      role: 'electrician',
       ...(factoryId && { factory: new mongoose.Types.ObjectId(factoryId) })
     });
 
@@ -150,7 +150,7 @@ router.put('/:id', requireUser, requireRole(['admin', 'maintenance_manager', 'as
         matricule,
         _id: { $ne: req.params.id },
         factory: existingElectrician.factory,
-        role: 'Electrician'
+        role: 'electrician'
       });
       if (existing) {
         return res.status(400).json({ message: 'An electrician with this matricule already exists in this factory' });
@@ -188,7 +188,7 @@ router.delete('/:id', requireUser, requireRole(['admin', 'maintenance_manager'])
     }
 
     const electrician = await Personnel.findOneAndUpdate(
-      { ...query, role: 'Electrician' },
+      { ...query, role: 'electrician' },
       { isActive: false },
       { new: true }
     );
